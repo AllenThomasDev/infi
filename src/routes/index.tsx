@@ -53,7 +53,7 @@ function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
   const reactFlow = useReactFlow();
-  const { toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
 
   const isInputFocused = useCallback(
     () =>
@@ -89,6 +89,7 @@ function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
 
   return (
     <ReactFlow
+      colorMode={resolvedTheme}
       defaultEdgeOptions={defaultEdgeOptions}
       fitView
       maxZoom={1.8}
