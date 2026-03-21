@@ -1,11 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, session } from "electron";
 import { ipcMain } from "electron/main";
-import {
-  installExtension,
-  REACT_DEVELOPER_TOOLS,
-} from "electron-devtools-installer";
 import { UpdateSourceType, updateElectronApp } from "update-electron-app";
 import { ipcContext } from "@/ipc/context";
 import { IPC_CHANNELS } from "./constants";
@@ -27,9 +23,6 @@ function createWindow() {
 
       preload,
     },
-    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "hidden",
-    trafficLightPosition:
-      process.platform === "darwin" ? { x: 5, y: 5 } : undefined,
   });
   ipcContext.setMainWindow(mainWindow);
 
@@ -43,19 +36,32 @@ function createWindow() {
 }
 
 async function installExtensions() {
+  const extensionPath = process.env.REACT_DEVTOOLS_PATH;
+
+  if (!(inDevelopment && extensionPath)) {
+    return;
+  }
+
   try {
-    const result = await installExtension(REACT_DEVELOPER_TOOLS);
-    console.log(`Extensions installed successfully: ${result.name}`);
-  } catch {
-    console.error("Failed to install extensions");
+    const extension = await session.defaultSession.extensions.loadExtension(
+      path.resolve(extensionPath)
+    );
+
+    console.log(`Extensions installed successfully: ${extension.name}`);
+  } catch (error) {
+    console.error("Failed to install extensions", error);
   }
 }
 
 function checkForUpdates() {
+  if (inDevelopment) {
+    return;
+  }
+
   updateElectronApp({
     updateSource: {
       type: UpdateSourceType.ElectronPublicUpdateService,
-      repo: "LuanRoger/electron-shadcn",
+      repo: "LuanRoger/infi",
     },
   });
 }

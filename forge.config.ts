@@ -28,7 +28,7 @@ const config: ForgeConfig = {
       config: {
         repository: {
           owner: "LuanRoger",
-          name: "electron-shadcn",
+          name: "infi",
         },
         draft: true,
         prerelease: false,

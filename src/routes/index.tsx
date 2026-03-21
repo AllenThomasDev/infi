@@ -1,59 +1,65 @@
-import { SiElectron, SiReact, SiVite } from "@icons-pack/react-simple-icons";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, useTransition } from "react";
-import { useTranslation } from "react-i18next";
-import { getAppVersion } from "@/actions/app";
-import ExternalLink from "@/components/external-link";
-import LangToggle from "@/components/lang-toggle";
-import NavigationMenu from "@/components/navigation-menu";
-import ToggleTheme from "@/components/toggle-theme";
+import {
+  Background,
+  Controls,
+  type NodeTypes,
+  ReactFlow,
+  useNodesState,
+} from "@xyflow/react";
+import { useMemo } from "react";
+import WindowNode, { type WindowFlowNode } from "@/components/flow/window-node";
 
-/*
- * Update this page to modify your home page.
- * You can delete this file component to start from a blank page.
- */
+const initialNodes: WindowFlowNode[] = [
+  {
+    id: "source-window",
+    type: "window",
+    position: { x: 80, y: 120 },
+    data: {
+      accent: "oklch(0.74 0.15 205)",
+      subtitle: "Renderer viewport ready",
+      title: "Main Workspace",
+    },
+  },
+  {
+    id: "preview-window",
+    type: "window",
+    position: { x: 420, y: 240 },
+    data: {
+      accent: "oklch(0.78 0.17 145)",
+      subtitle: "Custom node component",
+      title: "Preview Panel",
+    },
+  },
+];
+
+const nodeTypes: NodeTypes = {
+  window: WindowNode,
+};
 
 function HomePage() {
-  const iconSize = 48;
-
-  const [appVersion, setAppVersion] = useState("0.0.0");
-  const [, startGetAppVersion] = useTransition();
-  const { t } = useTranslation();
-
-  useEffect(
-    () => startGetAppVersion(() => getAppVersion().then(setAppVersion)),
-    []
-  );
+  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
 
   return (
-    <>
-      <NavigationMenu />
-      <div className="flex h-full flex-col items-center justify-center">
-        <div className="flex flex-col items-end justify-center gap-0.5">
-          <div className="inline-flex gap-2">
-            <SiReact size={iconSize} />
-            <SiVite size={iconSize} />
-            <SiElectron size={iconSize} />
-          </div>
-          <span className="flex items-end justify-end">
-            <h1 className="font-bold font-mono text-4xl">{t("appName")}</h1>
-            <p className="text-muted-foreground text-sm">v{appVersion}</p>
-          </span>
-          <div className="flex w-full justify-between">
-            <ExternalLink
-              className="flex gap-2 text-muted-foreground text-sm"
-              href="https://github.com/LuanRoger"
-            >
-              {t("madeBy")}
-            </ExternalLink>
-            <div className="flex items-center gap-2">
-              <LangToggle />
-              <ToggleTheme />
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
+    <section className="h-full overflow-hidden bg-[radial-gradient(circle_at_top_left,color-mix(in_oklab,var(--primary)_16%,transparent),transparent_32%),linear-gradient(180deg,color-mix(in_oklab,var(--background)_86%,var(--foreground)_4%),color-mix(in_oklab,var(--background)_96%,black_4%))]">
+      <ReactFlow
+        defaultEdgeOptions={defaultEdgeOptions}
+        fitView
+        maxZoom={1.8}
+        minZoom={0.5}
+        nodes={nodes}
+        nodeTypes={nodeTypes}
+        onNodesChange={onNodesChange}
+        panOnDrag={[1, 2]}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background
+          color="color-mix(in oklab, var(--foreground) 12%, transparent)"
+          gap={24}
+        />
+        <Controls position="bottom-right" showInteractive={false} />
+      </ReactFlow>
+    </section>
   );
 }
 
