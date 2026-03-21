@@ -1,17 +1,11 @@
-import type { Node, NodeProps } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 import {
   BaseNode,
   BaseNodeContent,
   BaseNodeHeader,
   BaseNodeHeaderTitle,
 } from "@/components/base-node";
-
-export interface WindowNodeData extends Record<string, unknown> {
-  subtitle: string;
-  title: string;
-}
-
-export type WindowFlowNode = Node<WindowNodeData, "window">;
+import type { WindowFlowNode } from "@/components/flow/types";
 
 export default function WindowNode({
   data,

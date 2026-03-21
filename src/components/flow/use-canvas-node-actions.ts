@@ -1,10 +1,8 @@
-import type { BuiltInNode, ReactFlowInstance } from "@xyflow/react";
+import type { NodeChange, ReactFlowInstance } from "@xyflow/react";
+import { applyNodeChanges } from "@xyflow/react";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useMemo } from "react";
-import type { WindowFlowNode } from "@/components/flow/window-node";
-
-export type GroupFlowNode = BuiltInNode & { type: "group" };
-export type FlowNode = WindowFlowNode | GroupFlowNode;
+import type { FlowNode, GroupFlowNode } from "@/components/flow/types";
 
 const GROUP_PADDING = 24;
 
@@ -12,29 +10,69 @@ function isGroupNode(node: FlowNode): node is GroupFlowNode {
   return node.type === "group";
 }
 
+const isSelectedTopLevel = (node: FlowNode) =>
+  node.selected && !node.parentId && !isGroupNode(node);
+
+const isSelectedGrouped = (node: FlowNode) =>
+  node.selected && !!node.parentId && !isGroupNode(node);
+
+const isSelectedGroup = (node: FlowNode) =>
+  node.selected && isGroupNode(node);
+
+function reparentNode(node: FlowNode, parentId: string): FlowNode {
+  return {
+    ...node,
+    expandParent: true,
+    parentId,
+    extent: "parent" as const,
+    selected: false,
+  };
+}
+
+function buildChildrenIndex(nodes: FlowNode[]): Map<string, FlowNode[]> {
+  const index = new Map<string, FlowNode[]>();
+  for (const node of nodes) {
+    if (node.parentId) {
+      const children = index.get(node.parentId);
+      if (children) {
+        children.push(node);
+      } else {
+        index.set(node.parentId, [node]);
+      }
+    }
+  }
+  return index;
+}
+
 function getDescendantNodeIds(
-  nodes: FlowNode[],
+  childrenIndex: Map<string, FlowNode[]>,
   parentId: string
 ): Set<string> {
   const descendantIds = new Set<string>();
   const stack = [parentId];
 
   while (stack.length > 0) {
-    const currentParentId = stack.pop();
-    if (!currentParentId) {
-      continue;
-    }
+    const currentParentId = stack.pop()!;
+    const children = childrenIndex.get(currentParentId);
+    if (!children) continue;
 
-    for (const node of nodes) {
-      if (node.parentId !== currentParentId || descendantIds.has(node.id)) {
-        continue;
+    for (const child of children) {
+      if (!descendantIds.has(child.id)) {
+        descendantIds.add(child.id);
+        stack.push(child.id);
       }
-      descendantIds.add(node.id);
-      stack.push(node.id);
     }
   }
 
   return descendantIds;
+}
+
+function removeEmptyGroups(nodes: FlowNode[]): FlowNode[] {
+  const childrenIndex = buildChildrenIndex(nodes);
+  const filtered = nodes.filter(
+    (node) => !isGroupNode(node) || childrenIndex.has(node.id)
+  );
+  return filtered.length === nodes.length ? nodes : filtered;
 }
 
 interface UseCanvasNodeActionsOptions {
@@ -46,25 +84,48 @@ interface UseCanvasNodeActionsOptions {
 export function useCanvasNodeActions({
   nodes,
   reactFlow,
-  setNodes,
+  setNodes: rawSetNodes,
 }: UseCanvasNodeActionsOptions) {
-  const selectedTopLevelNodes = useMemo(
-    () =>
-      nodes.filter(
-        (node) => node.selected && !node.parentId && !isGroupNode(node)
-      ),
-    [nodes]
+  const setNodes: Dispatch<SetStateAction<FlowNode[]>> = useCallback(
+    (update) => {
+      rawSetNodes((curr) => {
+        const next = typeof update === "function" ? update(curr) : update;
+        return removeEmptyGroups(next);
+      });
+    },
+    [rawSetNodes]
   );
 
-  const selectedGroupNodes = useMemo(
-    () => nodes.filter((node) => node.selected && isGroupNode(node)),
-    [nodes]
-  );
+  const {
+    selectedTopLevelNodes,
+    selectedGroupedNodes,
+    selectedGroupNodes,
+    hasSelectedNodes,
+  } = useMemo(() => {
+    const topLevel: FlowNode[] = [];
+    const grouped: FlowNode[] = [];
+    const groups: FlowNode[] = [];
+    let hasSelected = false;
 
-  const hasSelectedNodes = useMemo(
-    () => nodes.some((node) => node.selected),
-    [nodes]
-  );
+    for (const node of nodes) {
+      if (!node.selected) continue;
+      hasSelected = true;
+      if (isGroupNode(node)) {
+        groups.push(node);
+      } else if (node.parentId) {
+        grouped.push(node);
+      } else {
+        topLevel.push(node);
+      }
+    }
+
+    return {
+      selectedTopLevelNodes: topLevel,
+      selectedGroupedNodes: grouped,
+      selectedGroupNodes: groups,
+      hasSelectedNodes: hasSelected,
+    };
+  }, [nodes]);
 
   const selectAllNodes = useCallback(() => {
     setNodes((currentNodes) =>
@@ -74,12 +135,13 @@ export function useCanvasNodeActions({
 
   const deleteSelectedNodes = useCallback(() => {
     setNodes((currentNodes) => {
+      const childrenIndex = buildChildrenIndex(currentNodes);
       const idsToDelete = new Set(
         currentNodes
           .filter((node) => node.selected)
           .flatMap((node) => {
             const descendantIds = isGroupNode(node)
-              ? Array.from(getDescendantNodeIds(currentNodes, node.id))
+              ? Array.from(getDescendantNodeIds(childrenIndex, node.id))
               : [];
 
             return [node.id, ...descendantIds];
@@ -91,101 +153,103 @@ export function useCanvasNodeActions({
   }, [setNodes]);
 
   const groupSelectedNodes = useCallback(() => {
-    if (selectedTopLevelNodes.length < 2) {
-      return;
-    }
+    setNodes((currentNodes) => {
+      const topLevel = currentNodes.filter(isSelectedTopLevel);
 
-    const bounds = reactFlow.getNodesBounds(selectedTopLevelNodes);
-    const groupId = `group-${crypto.randomUUID()}`;
+      if (topLevel.length === 0) return currentNodes;
 
-    const groupNode: GroupFlowNode = {
-      id: groupId,
-      type: "group",
-      position: {
+      const selectedGroups = currentNodes.filter(isSelectedGroup);
+      const selectedChildren = currentNodes.filter(isSelectedGrouped);
+
+      const targetGroupIds = new Set<string>();
+      for (const group of selectedGroups) {
+        targetGroupIds.add(group.id);
+      }
+      for (const child of selectedChildren) {
+        if (child.parentId) targetGroupIds.add(child.parentId);
+      }
+
+      if (targetGroupIds.size > 1) return currentNodes;
+
+      const targetGroupId =
+        targetGroupIds.size === 1
+          ? targetGroupIds.values().next().value
+          : undefined;
+
+      if (targetGroupId) {
+        const group = currentNodes.find((node) => node.id === targetGroupId);
+        if (!group) return currentNodes;
+
+        const addIds = new Set(topLevel.map((node) => node.id));
+        return currentNodes.map((node) =>
+          addIds.has(node.id) ? reparentNode(node, targetGroupId) : node
+        );
+      }
+
+      if (topLevel.length < 2) return currentNodes;
+
+      const bounds = reactFlow.getNodesBounds(topLevel);
+      const groupId = `group-${crypto.randomUUID()}`;
+
+      const groupPosition = {
         x: bounds.x - GROUP_PADDING,
         y: bounds.y - GROUP_PADDING,
-      },
-      style: {
-        width: bounds.width + GROUP_PADDING * 2,
-        height: bounds.height + GROUP_PADDING * 2,
-        borderRadius: 8,
-        border: "1px dashed var(--color-border)",
-        background: "color-mix(in oklab, var(--color-muted) 35%, transparent)",
-      },
-      data: {},
-    };
+      };
 
-    setNodes((currentNodes) => {
-      const selectedIds = new Set(selectedTopLevelNodes.map((node) => node.id));
-      const nextNodes = currentNodes.map((node) => {
-        if (!selectedIds.has(node.id)) {
-          return node;
-        }
+      const groupNode: GroupFlowNode = {
+        id: groupId,
+        type: "group",
+        position: groupPosition,
+        style: {
+          width: bounds.width + GROUP_PADDING * 2,
+          height: bounds.height + GROUP_PADDING * 2,
+        },
+        data: {},
+      };
 
-        return {
-          ...node,
-          expandParent: true,
-          parentId: groupId,
-          extent: "parent" as const,
-          position: {
-            x: node.position.x - groupNode.position.x,
-            y: node.position.y - groupNode.position.y,
-          },
-          selected: false,
-        };
-      });
+      const selectedIds = new Set(topLevel.map((node) => node.id));
+      const nextNodes = currentNodes.map((node) =>
+        selectedIds.has(node.id) ? reparentNode(node, groupId) : node
+      );
 
       return [groupNode, ...nextNodes];
     });
-  }, [reactFlow, selectedTopLevelNodes, setNodes]);
+  }, [reactFlow, setNodes]);
 
   const ungroupSelectedNodes = useCallback(() => {
-    if (selectedGroupNodes.length === 0) {
-      return;
-    }
-
     setNodes((currentNodes) => {
-      const selectedGroupIds = new Set(
-        selectedGroupNodes.map((node) => node.id)
-      );
-      const groupLookup = new Map(
-        selectedGroupNodes.map((node) => [node.id, node])
+      const ungroupIds = new Set(
+        currentNodes.filter(isSelectedGrouped).map((node) => node.id)
       );
 
-      return currentNodes.flatMap((node) => {
-        if (selectedGroupIds.has(node.id)) {
-          return [];
-        }
+      if (ungroupIds.size === 0) return currentNodes;
 
-        const parentGroup = node.parentId
-          ? groupLookup.get(node.parentId)
-          : undefined;
-        if (!parentGroup) {
-          return [node];
-        }
+      return currentNodes.map((node) => {
+        if (!ungroupIds.has(node.id)) return node;
 
-        return [
-          {
-            ...node,
-            expandParent: undefined,
-            parentId: undefined,
-            extent: undefined,
-            position: {
-              x: parentGroup.position.x + node.position.x,
-              y: parentGroup.position.y + node.position.y,
-            },
-            selected: false,
-          },
-        ];
+        const { expandParent: _, parentId: __, extent: ___, ...rest } = node;
+        return {
+          ...rest,
+          selected: false,
+        };
       });
     });
-  }, [selectedGroupNodes, setNodes]);
+  }, [setNodes]);
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange<FlowNode>[]) => {
+      setNodes((curr) => applyNodeChanges(changes, curr));
+    },
+    [setNodes]
+  );
 
   return {
     deleteSelectedNodes,
     groupSelectedNodes,
     hasSelectedNodes,
+    onNodesChange,
     selectedGroupNodes,
+    selectedGroupedNodes,
     selectedTopLevelNodes,
     selectAllNodes,
     ungroupSelectedNodes,

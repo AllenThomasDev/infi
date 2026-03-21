@@ -79,6 +79,18 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
+@layer components {
+  .react-flow__node-group {
+    --xy-node-group-background-color: color-mix(
+      in oklab,
+      var(--color-muted) 35%,
+      transparent
+    );
+    border-radius: 8px;
+    border: 1px dashed var(--color-border);
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

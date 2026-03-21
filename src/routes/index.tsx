@@ -9,11 +9,9 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import { useCallback, useMemo, useState } from "react";
-import {
-  type FlowNode,
-  useCanvasNodeActions,
-} from "@/components/flow/use-canvas-node-actions";
-import WindowNode, { type WindowFlowNode } from "@/components/flow/window-node";
+import type { FlowNode, WindowFlowNode } from "@/components/flow/types";
+import { useCanvasNodeActions } from "@/components/flow/use-canvas-node-actions";
+import WindowNode from "@/components/flow/window-node";
 import ModeToggle from "@/components/mode-toggle";
 import TerminalDrawer, {
   type TerminalSession,
@@ -53,8 +51,7 @@ interface CanvasProps {
 }
 
 function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
-  const [nodes, setNodes, onNodesChange] =
-    useNodesState<FlowNode>(initialNodes);
+  const [nodes, setNodes] = useNodesState<FlowNode>(initialNodes);
   const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
   const reactFlow = useReactFlow();
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -62,7 +59,9 @@ function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
     deleteSelectedNodes,
     groupSelectedNodes,
     hasSelectedNodes,
+    onNodesChange,
     selectedGroupNodes,
+    selectedGroupedNodes,
     selectedTopLevelNodes,
     selectAllNodes,
     ungroupSelectedNodes,
@@ -89,8 +88,11 @@ function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
     },
     context: {
       canvasFocus: true,
-      canGroupNodes: selectedTopLevelNodes.length >= 2,
-      canUngroupNodes: selectedGroupNodes.length > 0,
+      canGroupNodes:
+        selectedTopLevelNodes.length >= 2 ||
+        (selectedTopLevelNodes.length >= 1 &&
+          (selectedGroupedNodes.length > 0 || selectedGroupNodes.length > 0)),
+      canUngroupNodes: selectedGroupedNodes.length > 0,
       inputFocus: isInputFocused(),
       nodeSelected: hasSelectedNodes,
       terminalFocus: terminalOpen,
