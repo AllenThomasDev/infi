@@ -72,6 +72,26 @@ function Canvas() {
     ungroupSelectedNodes,
   } = useCanvasNodeActions({ nodes, reactFlow, setNodes });
 
+  const onSelectionChange = useCallback(
+    ({ nodes: selectedNodes }: { nodes: FlowNode[] }) => {
+      if (
+        selectedNodes.length === 1 &&
+        selectedNodes[0].type === "terminal"
+      ) {
+        const node = selectedNodes[0];
+        const width = node.measured?.width ?? TERMINAL_DEFAULT_WIDTH;
+        const height = node.measured?.height ?? TERMINAL_DEFAULT_HEIGHT;
+
+        reactFlow.setCenter(
+          node.position.x + width / 2,
+          node.position.y + height / 2,
+          { duration: 300, zoom: reactFlow.getZoom() }
+        );
+      }
+    },
+    [reactFlow]
+  );
+
   const isInputFocused = useCallback(
     () =>
       document.activeElement?.tagName === "INPUT" ||
@@ -111,6 +131,7 @@ function Canvas() {
         terminalNode,
       ];
     });
+
   }, [reactFlow, setNodes]);
 
   const commandHandlers: CommandHandlerMap = {
@@ -166,6 +187,7 @@ function Canvas() {
         nodes={nodes}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
+        onSelectionChange={onSelectionChange}
         panOnDrag={[1, 2]}
         proOptions={{ hideAttribution: true }}
         snapGrid={[24, 24]}
