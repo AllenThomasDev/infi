@@ -2,21 +2,25 @@ import type { ComponentProps } from "react";
 
 import { cn } from "@/utils/tailwind";
 
-export function BaseNode({ className, ...props }: ComponentProps<"div">) {
+interface BaseNodeProps extends ComponentProps<"div"> {
+  selected?: boolean;
+}
+
+export function BaseNode({
+  className,
+  selected = false,
+  ...props
+}: BaseNodeProps) {
   return (
     <div
       className={cn(
-        "relative flex flex-col rounded-md border bg-card text-card-foreground",
-        "hover:ring-1",
-        // React Flow displays node elements inside of a `NodeWrapper` component,
-        // which compiles down to a div with the class `react-flow__node`.
-        // When a node is selected, the class `selected` is added to the
-        // `react-flow__node` element. This allows us to style the node when it
-        // is selected, using Tailwind's `&` selector.
-        "[.react-flow\\_\\_node.selected_&]:border-muted-foreground",
-        "[.react-flow\\_\\_node.selected_&]:shadow-lg",
+        "relative flex flex-col rounded-[4px] border border-border bg-card text-card-foreground shadow-sm transition-[background-color,border-color,box-shadow]",
+        "hover:border-accent-foreground/25 hover:bg-card hover:shadow-md",
+        "data-[selected=true]:border-primary/40 data-[selected=true]:bg-card data-[selected=true]:shadow-lg",
+        "data-[selected=true]:hover:border-primary/50 data-[selected=true]:hover:bg-card",
         className
       )}
+      data-selected={selected}
       data-slot="base-node"
       {...props}
     />

@@ -13,9 +13,12 @@ export interface WindowNodeData extends Record<string, unknown> {
 
 export type WindowFlowNode = Node<WindowNodeData, "window">;
 
-export default function WindowNode({ data }: NodeProps<WindowFlowNode>) {
+export default function WindowNode({
+  data,
+  selected,
+}: NodeProps<WindowFlowNode>) {
   return (
-    <BaseNode className="w-64 shadow-sm">
+    <BaseNode className="w-64" selected={selected}>
       <BaseNodeHeader className="border-b">
         <BaseNodeHeaderTitle>{data.title}</BaseNodeHeaderTitle>
       </BaseNodeHeader>
