@@ -11,11 +11,11 @@ import {
 } from "@xyflow/react";
 import { useCallback, useMemo, useState } from "react";
 import WindowNode, { type WindowFlowNode } from "@/components/flow/window-node";
+import ModeToggle from "@/components/mode-toggle";
 import TerminalDrawer, {
   type TerminalSession,
 } from "@/components/terminal/terminal-drawer";
 import { useTheme } from "@/components/theme-provider";
-import ToggleTheme from "@/components/toggle-theme";
 import { ipc } from "@/ipc/manager";
 import { useKeybindings } from "@/keybindings/useKeybindings";
 
@@ -141,7 +141,7 @@ function HomePage() {
     <section className="relative flex h-full flex-col overflow-hidden bg-background">
       <div className="relative min-h-0 flex-1">
         <div className="absolute top-4 right-4 z-10">
-          <ToggleTheme />
+          <ModeToggle />
         </div>
         <ReactFlowProvider>
           <Canvas
