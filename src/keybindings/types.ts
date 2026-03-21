@@ -4,6 +4,8 @@ export const KEYBINDING_COMMANDS = [
   "canvas.fitView",
   "canvas.selectAll",
   "canvas.deleteSelected",
+  "canvas.groupSelected",
+  "canvas.ungroupSelected",
   "canvas.undo",
   "canvas.redo",
   "canvas.copy",
@@ -17,17 +19,17 @@ export const KEYBINDING_COMMANDS = [
 export type KeybindingCommand = (typeof KEYBINDING_COMMANDS)[number];
 
 export interface KeybindingShortcut {
+  altKey: boolean;
+  ctrlKey: boolean;
   key: string;
   metaKey: boolean;
-  ctrlKey: boolean;
-  shiftKey: boolean;
-  altKey: boolean;
   modKey: boolean;
+  shiftKey: boolean;
 }
 
 export interface KeybindingRule {
-  key: string;
   command: KeybindingCommand;
+  key: string;
   when?: string;
 }
 

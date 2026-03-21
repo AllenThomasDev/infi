@@ -1,6 +1,6 @@
 import type { KeybindingRule } from "./types";
 
-export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
+export const DEFAULT_KEYBINDINGS: readonly KeybindingRule[] = [
   { key: "mod+=", command: "canvas.zoomIn" },
   { key: "mod+-", command: "canvas.zoomOut" },
   { key: "mod+0", command: "canvas.fitView" },
@@ -14,6 +14,16 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
     key: "delete",
     command: "canvas.deleteSelected",
     when: "canvasFocus && !inputFocus",
+  },
+  {
+    key: "mod+g",
+    command: "canvas.groupSelected",
+    when: "canvasFocus && canGroupNodes && !inputFocus",
+  },
+  {
+    key: "mod+shift+g",
+    command: "canvas.ungroupSelected",
+    when: "canvasFocus && canUngroupNodes && !inputFocus",
   },
   { key: "mod+z", command: "canvas.undo" },
   { key: "mod+shift+z", command: "canvas.redo" },

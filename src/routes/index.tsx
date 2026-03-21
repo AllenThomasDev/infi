@@ -3,13 +3,16 @@ import {
   Background,
   BackgroundVariant,
   Controls,
-  type NodeTypes,
   ReactFlow,
   ReactFlowProvider,
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
 import { useCallback, useMemo, useState } from "react";
+import {
+  type FlowNode,
+  useCanvasNodeActions,
+} from "@/components/flow/use-canvas-node-actions";
 import WindowNode, { type WindowFlowNode } from "@/components/flow/window-node";
 import ModeToggle from "@/components/mode-toggle";
 import TerminalDrawer, {
@@ -40,7 +43,7 @@ const initialNodes: WindowFlowNode[] = [
   },
 ];
 
-const nodeTypes: NodeTypes = {
+const nodeTypes = {
   window: WindowNode,
 };
 
@@ -50,10 +53,20 @@ interface CanvasProps {
 }
 
 function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes, onNodesChange] =
+    useNodesState<FlowNode>(initialNodes);
   const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
   const reactFlow = useReactFlow();
   const { resolvedTheme, toggleTheme } = useTheme();
+  const {
+    deleteSelectedNodes,
+    groupSelectedNodes,
+    hasSelectedNodes,
+    selectedGroupNodes,
+    selectedTopLevelNodes,
+    selectAllNodes,
+    ungroupSelectedNodes,
+  } = useCanvasNodeActions({ nodes, reactFlow, setNodes });
 
   const isInputFocused = useCallback(
     () =>
@@ -62,27 +75,24 @@ function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
     []
   );
 
-  const hasSelectedNodes = useCallback(
-    () => nodes.some((n) => n.selected),
-    [nodes]
-  );
-
   useKeybindings({
     handlers: {
       "canvas.fitView": () => reactFlow.fitView(),
       "canvas.zoomIn": () => reactFlow.zoomIn(),
       "canvas.zoomOut": () => reactFlow.zoomOut(),
-      "canvas.selectAll": () =>
-        setNodes((nds) => nds.map((n) => ({ ...n, selected: true }))),
-      "canvas.deleteSelected": () =>
-        setNodes((nds) => nds.filter((n) => !n.selected)),
+      "canvas.selectAll": selectAllNodes,
+      "canvas.deleteSelected": deleteSelectedNodes,
+      "canvas.groupSelected": groupSelectedNodes,
+      "canvas.ungroupSelected": ungroupSelectedNodes,
       "terminal.toggle": onCreateTerminal,
       "theme.toggle": toggleTheme,
     },
     context: {
       canvasFocus: true,
+      canGroupNodes: selectedTopLevelNodes.length >= 2,
+      canUngroupNodes: selectedGroupNodes.length > 0,
       inputFocus: isInputFocused(),
-      nodeSelected: hasSelectedNodes(),
+      nodeSelected: hasSelectedNodes,
       terminalFocus: terminalOpen,
     },
   });
