@@ -2,12 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getKeybindings } from "@/actions/keybindings";
 import { resolveShortcutCommand } from "./match";
 import type {
-  KeybindingCommand,
+  CommandHandlerMap,
   ResolvedKeybindingsConfig,
   ShortcutMatchContext,
 } from "./types";
-
-type CommandHandlerMap = Partial<Record<KeybindingCommand, () => void>>;
 
 interface UseKeybindingsOptions {
   handlers: CommandHandlerMap;

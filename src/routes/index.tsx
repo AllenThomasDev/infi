@@ -18,6 +18,8 @@ import TerminalDrawer, {
 } from "@/components/terminal/terminal-drawer";
 import { useTheme } from "@/components/theme-provider";
 import { ipc } from "@/ipc/manager";
+import { CommandPalette } from "@/components/command-palette";
+import type { CommandHandlerMap } from "@/keybindings/types";
 import { useKeybindings } from "@/keybindings/useKeybindings";
 
 const initialNodes: WindowFlowNode[] = [
@@ -52,6 +54,7 @@ interface CanvasProps {
 
 function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
   const [nodes, setNodes] = useNodesState<FlowNode>(initialNodes);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
   const reactFlow = useReactFlow();
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -74,49 +77,64 @@ function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
     []
   );
 
-  useKeybindings({
+  const commandHandlers: CommandHandlerMap = {
+    "canvas.fitView": () => reactFlow.fitView(),
+    "canvas.zoomIn": () => reactFlow.zoomIn(),
+    "canvas.zoomOut": () => reactFlow.zoomOut(),
+    "canvas.selectAll": selectAllNodes,
+    "canvas.deleteSelected": deleteSelectedNodes,
+    "canvas.groupSelected": groupSelectedNodes,
+    "canvas.ungroupSelected": ungroupSelectedNodes,
+    "terminal.toggle": onCreateTerminal,
+    "theme.toggle": toggleTheme,
+  };
+
+  const keybindingContext = {
+    canvasFocus: true,
+    canGroupNodes:
+      selectedTopLevelNodes.length >= 2 ||
+      (selectedTopLevelNodes.length >= 1 &&
+        (selectedGroupedNodes.length > 0 || selectedGroupNodes.length > 0)),
+    canUngroupNodes: selectedGroupedNodes.length > 0,
+    inputFocus: isInputFocused() || commandPaletteOpen,
+    nodeSelected: hasSelectedNodes,
+    terminalFocus: terminalOpen,
+  };
+
+  const { keybindings } = useKeybindings({
     handlers: {
-      "canvas.fitView": () => reactFlow.fitView(),
-      "canvas.zoomIn": () => reactFlow.zoomIn(),
-      "canvas.zoomOut": () => reactFlow.zoomOut(),
-      "canvas.selectAll": selectAllNodes,
-      "canvas.deleteSelected": deleteSelectedNodes,
-      "canvas.groupSelected": groupSelectedNodes,
-      "canvas.ungroupSelected": ungroupSelectedNodes,
-      "terminal.toggle": onCreateTerminal,
-      "theme.toggle": toggleTheme,
+      ...commandHandlers,
+      "app.commandPalette": () => setCommandPaletteOpen((prev) => !prev),
     },
-    context: {
-      canvasFocus: true,
-      canGroupNodes:
-        selectedTopLevelNodes.length >= 2 ||
-        (selectedTopLevelNodes.length >= 1 &&
-          (selectedGroupedNodes.length > 0 || selectedGroupNodes.length > 0)),
-      canUngroupNodes: selectedGroupedNodes.length > 0,
-      inputFocus: isInputFocused(),
-      nodeSelected: hasSelectedNodes,
-      terminalFocus: terminalOpen,
-    },
+    context: keybindingContext,
   });
 
   return (
-    <ReactFlow
-      colorMode={resolvedTheme}
-      defaultEdgeOptions={defaultEdgeOptions}
-      fitView
-      maxZoom={1.8}
-      minZoom={0.5}
-      nodes={nodes}
-      nodeTypes={nodeTypes}
-      onNodesChange={onNodesChange}
-      panOnDrag={[1, 2]}
-      proOptions={{ hideAttribution: true }}
-      snapGrid={[24, 24]}
-      snapToGrid
-    >
-      <Background gap={24} size={1} variant={BackgroundVariant.Dots} />
-      <Controls position="bottom-right" showInteractive={false} />
-    </ReactFlow>
+    <>
+      <ReactFlow
+        colorMode={resolvedTheme}
+        defaultEdgeOptions={defaultEdgeOptions}
+        fitView
+        maxZoom={1.8}
+        minZoom={0.5}
+        nodes={nodes}
+        nodeTypes={nodeTypes}
+        onNodesChange={onNodesChange}
+        panOnDrag={[1, 2]}
+        proOptions={{ hideAttribution: true }}
+        snapGrid={[24, 24]}
+        snapToGrid
+      >
+        <Background gap={24} size={1} variant={BackgroundVariant.Dots} />
+        <Controls position="bottom-right" showInteractive={false} />
+      </ReactFlow>
+      <CommandPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        handlers={commandHandlers}
+        keybindings={keybindings}
+      />
+    </>
   );
 }
 

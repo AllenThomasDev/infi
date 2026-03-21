@@ -18,6 +18,8 @@ export const KEYBINDING_COMMANDS = [
 
 export type KeybindingCommand = (typeof KEYBINDING_COMMANDS)[number];
 
+export type CommandHandlerMap = Partial<Record<KeybindingCommand, () => void>>;
+
 export interface KeybindingShortcut {
   altKey: boolean;
   ctrlKey: boolean;
@@ -30,6 +32,7 @@ export interface KeybindingShortcut {
 export interface KeybindingRule {
   command: KeybindingCommand;
   key: string;
+  label?: string;
   when?: string;
 }
 
@@ -41,6 +44,7 @@ export type KeybindingWhenNode =
 
 export interface ResolvedKeybindingRule {
   command: KeybindingCommand;
+  label?: string;
   shortcut: KeybindingShortcut;
   whenAst?: KeybindingWhenNode;
 }

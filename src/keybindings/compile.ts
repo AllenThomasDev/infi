@@ -15,10 +15,10 @@ export function compileResolvedKeybindingRule(
   if (rule.when !== undefined) {
     const whenAst = parseKeybindingWhenExpression(rule.when);
     if (!whenAst) return null;
-    return { command: rule.command, shortcut, whenAst };
+    return { command: rule.command, label: rule.label, shortcut, whenAst };
   }
 
-  return { command: rule.command, shortcut };
+  return { command: rule.command, label: rule.label, shortcut };
 }
 
 export function compileResolvedKeybindingsConfig(
