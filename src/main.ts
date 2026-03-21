@@ -4,6 +4,7 @@ import { app, BrowserWindow, session } from "electron";
 import { ipcMain } from "electron/main";
 import { UpdateSourceType, updateElectronApp } from "update-electron-app";
 import { ipcContext } from "@/ipc/context";
+import { setTerminalWindow, killAllTerminals } from "@/ipc/terminal/pty-manager";
 import { IPC_CHANNELS } from "./constants";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -25,6 +26,7 @@ function createWindow() {
     },
   });
   ipcContext.setMainWindow(mainWindow);
+  setTerminalWindow(mainWindow);
 
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -90,6 +92,7 @@ app.whenReady().then(async () => {
 
 //osX only
 app.on("window-all-closed", () => {
+  killAllTerminals();
   if (process.platform !== "darwin") {
     app.quit();
   }

@@ -24,6 +24,7 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
     command: "canvas.duplicate",
     when: "canvasFocus && nodeSelected",
   },
+  { key: "mod+j", command: "terminal.toggle" },
   { key: "mod+shift+l", command: "theme.toggle" },
   { key: "mod+k", command: "app.commandPalette" },
 ];

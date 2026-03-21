@@ -94,6 +94,7 @@ function resolveContext(
     canvasFocus: false,
     inputFocus: false,
     nodeSelected: false,
+    terminalFocus: false,
     ...options?.context,
   };
 }

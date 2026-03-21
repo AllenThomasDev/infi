@@ -9,6 +9,7 @@ export const KEYBINDING_COMMANDS = [
   "canvas.copy",
   "canvas.paste",
   "canvas.duplicate",
+  "terminal.toggle",
   "theme.toggle",
   "app.commandPalette",
 ] as const;
@@ -48,6 +49,7 @@ export interface ShortcutMatchContext {
   canvasFocus: boolean;
   inputFocus: boolean;
   nodeSelected: boolean;
+  terminalFocus: boolean;
   [key: string]: boolean;
 }
 

@@ -9,8 +9,11 @@ import {
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
-import { useCallback, useMemo } from "react";
-import WindowNode, { type WindowFlowNode } from "@/components/flow/window-node";
+import { useCallback, useMemo, useState } from "react";
+import WindowNode, {
+  type WindowFlowNode,
+} from "@/components/flow/window-node";
+import TerminalDrawer from "@/components/terminal/terminal-drawer";
 import ToggleTheme from "@/components/toggle-theme";
 import { toggleTheme } from "@/actions/theme";
 import { useKeybindings } from "@/keybindings/useKeybindings";
@@ -40,7 +43,12 @@ const nodeTypes: NodeTypes = {
   window: WindowNode,
 };
 
-function Canvas() {
+interface CanvasProps {
+  onToggleTerminal: () => void;
+  terminalOpen: boolean;
+}
+
+function Canvas({ onToggleTerminal, terminalOpen }: CanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
   const reactFlow = useReactFlow();
@@ -66,12 +74,14 @@ function Canvas() {
         setNodes((nds) => nds.map((n) => ({ ...n, selected: true }))),
       "canvas.deleteSelected": () =>
         setNodes((nds) => nds.filter((n) => !n.selected)),
+      "terminal.toggle": onToggleTerminal,
       "theme.toggle": () => toggleTheme(),
     },
     context: {
       canvasFocus: true,
       inputFocus: isInputFocused(),
       nodeSelected: hasSelectedNodes(),
+      terminalFocus: terminalOpen,
     },
   });
 
@@ -96,14 +106,26 @@ function Canvas() {
 }
 
 function HomePage() {
+  const [terminalOpen, setTerminalOpen] = useState(false);
+
+  const handleToggleTerminal = useCallback(() => {
+    setTerminalOpen((prev) => !prev);
+  }, []);
+
   return (
-    <section className="relative h-full overflow-hidden bg-background">
-      <div className="absolute top-4 right-4 z-10">
-        <ToggleTheme />
+    <section className="flex h-full flex-col overflow-hidden bg-background">
+      <div className="relative min-h-0 flex-1">
+        <div className="absolute top-4 right-4 z-10">
+          <ToggleTheme />
+        </div>
+        <ReactFlowProvider>
+          <Canvas
+            onToggleTerminal={handleToggleTerminal}
+            terminalOpen={terminalOpen}
+          />
+        </ReactFlowProvider>
       </div>
-      <ReactFlowProvider>
-        <Canvas />
-      </ReactFlowProvider>
+      <TerminalDrawer open={terminalOpen} />
     </section>
   );
 }
