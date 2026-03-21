@@ -17,7 +17,6 @@ const initialNodes: WindowFlowNode[] = [
     type: "window",
     position: { x: 80, y: 120 },
     data: {
-      accent: "oklch(0.74 0.15 205)",
       subtitle: "Renderer viewport ready",
       title: "Main Workspace",
     },
@@ -27,7 +26,6 @@ const initialNodes: WindowFlowNode[] = [
     type: "window",
     position: { x: 420, y: 240 },
     data: {
-      accent: "oklch(0.78 0.17 145)",
       subtitle: "Custom node component",
       title: "Preview Panel",
     },
@@ -43,7 +41,7 @@ function HomePage() {
   const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
 
   return (
-    <section className="relative h-full overflow-hidden bg-[radial-gradient(circle_at_top_left,color-mix(in_oklab,var(--primary)_16%,transparent),transparent_32%),linear-gradient(180deg,color-mix(in_oklab,var(--background)_86%,var(--foreground)_4%),color-mix(in_oklab,var(--background)_96%,black_4%))]">
+    <section className="relative h-full overflow-hidden bg-background">
       <div className="absolute top-4 right-4 z-10">
         <ToggleTheme />
       </div>
@@ -60,12 +58,7 @@ function HomePage() {
         snapGrid={[24, 24]}
         snapToGrid
       >
-        <Background
-          color="color-mix(in oklab, var(--foreground) 14%, transparent)"
-          gap={24}
-          size={1.1}
-          variant={BackgroundVariant.Dots}
-        />
+        <Background gap={24} size={1} variant={BackgroundVariant.Dots} />
         <Controls position="bottom-right" showInteractive={false} />
       </ReactFlow>
     </section>
