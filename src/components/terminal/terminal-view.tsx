@@ -1,10 +1,8 @@
-import { useEffect, useRef } from "react";
-import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { Terminal } from "@xterm/xterm";
+import { useEffect, useRef } from "react";
 import { ipc } from "@/ipc/manager";
 import "@xterm/xterm/css/xterm.css";
-
-const TERMINAL_ID = "default";
 
 function getTerminalTheme(): Record<string, string> {
   const isDark = document.documentElement.classList.contains("dark");
@@ -25,17 +23,23 @@ function getTerminalTheme(): Record<string, string> {
 }
 
 interface TerminalViewProps {
+  terminalId: string;
   visible: boolean;
 }
 
-export default function TerminalView({ visible }: TerminalViewProps) {
+export default function TerminalView({
+  terminalId,
+  visible,
+}: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const spawnedRef = useRef(false);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) {
+      return;
+    }
 
     const terminal = new Terminal({
       cursorBlink: true,
@@ -56,25 +60,23 @@ export default function TerminalView({ visible }: TerminalViewProps) {
 
     // Send user input to PTY
     const inputDisposable = terminal.onData((data) => {
-      ipc.client.terminal
-        .write({ id: TERMINAL_ID, data })
-        .catch(console.error);
+      ipc.client.terminal.write({ id: terminalId, data }).catch(console.error);
     });
 
     // Receive PTY output
     const removeDataListener = window.terminalBridge.onData((id, data) => {
-      if (id === TERMINAL_ID) {
+      if (id === terminalId) {
         terminal.write(data);
       }
     });
 
     const removeExitListener = window.terminalBridge.onExit(
       (id, exitCode, _signal) => {
-        if (id === TERMINAL_ID) {
+        if (id === terminalId) {
           terminal.writeln(`\r\n[Process exited with code ${exitCode}]`);
           spawnedRef.current = false;
         }
-      },
+      }
     );
 
     // Theme sync
@@ -95,11 +97,13 @@ export default function TerminalView({ visible }: TerminalViewProps) {
       terminalRef.current = null;
       fitAddonRef.current = null;
     };
-  }, []);
+  }, [terminalId]);
 
   // Spawn PTY on first show
   useEffect(() => {
-    if (!visible || spawnedRef.current || !terminalRef.current) return;
+    if (!visible || spawnedRef.current || !terminalRef.current) {
+      return;
+    }
 
     const terminal = terminalRef.current;
     const fitAddon = fitAddonRef.current;
@@ -107,7 +111,7 @@ export default function TerminalView({ visible }: TerminalViewProps) {
     spawnedRef.current = true;
     ipc.client.terminal
       .spawn({
-        id: TERMINAL_ID,
+        id: terminalId,
         cols: terminal.cols,
         rows: terminal.rows,
       })
@@ -123,11 +127,13 @@ export default function TerminalView({ visible }: TerminalViewProps) {
     if (fitAddon) {
       requestAnimationFrame(() => fitAddon.fit());
     }
-  }, [visible]);
+  }, [terminalId, visible]);
 
   // Refit on visibility change and resize
   useEffect(() => {
-    if (!visible || !fitAddonRef.current) return;
+    if (!(visible && fitAddonRef.current)) {
+      return;
+    }
 
     const fitAddon = fitAddonRef.current;
     const terminal = terminalRef.current;
@@ -138,7 +144,7 @@ export default function TerminalView({ visible }: TerminalViewProps) {
         if (terminal) {
           ipc.client.terminal
             .resize({
-              id: TERMINAL_ID,
+              id: terminalId,
               cols: terminal.cols,
               rows: terminal.rows,
             })
@@ -156,7 +162,7 @@ export default function TerminalView({ visible }: TerminalViewProps) {
     }
 
     return () => resizeObserver.disconnect();
-  }, [visible]);
+  }, [terminalId, visible]);
 
   // Focus terminal when visible
   useEffect(() => {
@@ -167,8 +173,8 @@ export default function TerminalView({ visible }: TerminalViewProps) {
 
   return (
     <div
-      ref={containerRef}
       className="h-full w-full"
+      ref={containerRef}
       style={{ display: visible ? "block" : "none" }}
     />
   );

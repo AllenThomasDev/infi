@@ -10,12 +10,13 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import { useCallback, useMemo, useState } from "react";
-import WindowNode, {
-  type WindowFlowNode,
-} from "@/components/flow/window-node";
-import TerminalDrawer from "@/components/terminal/terminal-drawer";
-import ToggleTheme from "@/components/toggle-theme";
 import { toggleTheme } from "@/actions/theme";
+import WindowNode, { type WindowFlowNode } from "@/components/flow/window-node";
+import TerminalDrawer, {
+  type TerminalSession,
+} from "@/components/terminal/terminal-drawer";
+import ToggleTheme from "@/components/toggle-theme";
+import { ipc } from "@/ipc/manager";
 import { useKeybindings } from "@/keybindings/useKeybindings";
 
 const initialNodes: WindowFlowNode[] = [
@@ -44,11 +45,11 @@ const nodeTypes: NodeTypes = {
 };
 
 interface CanvasProps {
-  onToggleTerminal: () => void;
+  onCreateTerminal: () => void;
   terminalOpen: boolean;
 }
 
-function Canvas({ onToggleTerminal, terminalOpen }: CanvasProps) {
+function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
   const reactFlow = useReactFlow();
@@ -57,12 +58,12 @@ function Canvas({ onToggleTerminal, terminalOpen }: CanvasProps) {
     () =>
       document.activeElement?.tagName === "INPUT" ||
       document.activeElement?.tagName === "TEXTAREA",
-    [],
+    []
   );
 
   const hasSelectedNodes = useCallback(
     () => nodes.some((n) => n.selected),
-    [nodes],
+    [nodes]
   );
 
   useKeybindings({
@@ -74,7 +75,7 @@ function Canvas({ onToggleTerminal, terminalOpen }: CanvasProps) {
         setNodes((nds) => nds.map((n) => ({ ...n, selected: true }))),
       "canvas.deleteSelected": () =>
         setNodes((nds) => nds.filter((n) => !n.selected)),
-      "terminal.toggle": onToggleTerminal,
+      "terminal.toggle": onCreateTerminal,
       "theme.toggle": () => toggleTheme(),
     },
     context: {
@@ -105,27 +106,54 @@ function Canvas({ onToggleTerminal, terminalOpen }: CanvasProps) {
   );
 }
 
-function HomePage() {
-  const [terminalOpen, setTerminalOpen] = useState(false);
+function createTerminalId() {
+  return `terminal-${crypto.randomUUID()}`;
+}
 
-  const handleToggleTerminal = useCallback(() => {
-    setTerminalOpen((prev) => !prev);
+function HomePage() {
+  const [terminals, setTerminals] = useState<TerminalSession[]>([]);
+  const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null);
+
+  const handleCreateTerminal = useCallback(() => {
+    const id = createTerminalId();
+
+    setTerminals((prev) => {
+      const nextIndex = prev.length + 1;
+      return [...prev, { id, title: `Terminal ${nextIndex}` }];
+    });
+    setActiveTerminalId(id);
+  }, []);
+
+  const handleCloseTerminal = useCallback((id: string) => {
+    ipc.client.terminal.kill({ id }).catch(console.error);
+
+    setTerminals((prev) => {
+      const next = prev.filter((terminal) => terminal.id !== id);
+      setActiveTerminalId((current) =>
+        current === id ? (next.at(-1)?.id ?? null) : current
+      );
+      return next;
+    });
   }, []);
 
   return (
-    <section className="flex h-full flex-col overflow-hidden bg-background">
+    <section className="relative flex h-full flex-col overflow-hidden bg-background">
       <div className="relative min-h-0 flex-1">
         <div className="absolute top-4 right-4 z-10">
           <ToggleTheme />
         </div>
         <ReactFlowProvider>
           <Canvas
-            onToggleTerminal={handleToggleTerminal}
-            terminalOpen={terminalOpen}
+            onCreateTerminal={handleCreateTerminal}
+            terminalOpen={terminals.length > 0}
           />
         </ReactFlowProvider>
       </div>
-      <TerminalDrawer open={terminalOpen} />
+      <TerminalDrawer
+        activeTerminalId={activeTerminalId}
+        onCloseTerminal={handleCloseTerminal}
+        terminals={terminals}
+      />
     </section>
   );
 }
