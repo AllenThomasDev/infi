@@ -272,6 +272,15 @@ export function useCanvasNodeActions({
     });
   }, [setNodes]);
 
+  const deleteTerminalNode = useCallback(
+    (nodeId: string) => {
+      setNodes((currentNodes) =>
+        currentNodes.filter((node) => node.id !== nodeId)
+      );
+    },
+    [setNodes]
+  );
+
   const onNodesChange = useCallback(
     (changes: NodeChange<FlowNode>[]) => {
       setNodes((curr) => applyNodeChanges(changes, curr));
@@ -281,6 +290,7 @@ export function useCanvasNodeActions({
 
   return {
     deleteSelectedNodes,
+    deleteTerminalNode,
     groupSelectedNodes,
     hasSelectedNodes,
     onNodesChange,

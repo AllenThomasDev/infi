@@ -24,22 +24,23 @@ function getTerminalTheme(): Record<string, string> {
 
 interface TerminalViewProps {
   terminalId: string;
-  visible: boolean;
 }
 
-export default function TerminalView({
-  terminalId,
-  visible,
-}: TerminalViewProps) {
+export default function TerminalView({ terminalId }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
-  const spawnedRef = useRef(false);
+  // Incremented on each mount so a stale cleanup's deferred kill is cancelled
+  // when strict mode remounts the component.
+  const mountGenRef = useRef(0);
 
+  // Initialize terminal, spawn PTY, wire up listeners
   useEffect(() => {
     if (!containerRef.current) {
       return;
     }
+
+    const currentGen = ++mountGenRef.current;
 
     const terminal = new Terminal({
       cursorBlink: true,
@@ -58,12 +59,10 @@ export default function TerminalView({
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
-    // Send user input to PTY
     const inputDisposable = terminal.onData((data) => {
       ipc.client.terminal.write({ id: terminalId, data }).catch(console.error);
     });
 
-    // Receive PTY output
     const removeDataListener = window.terminalBridge.onData((id, data) => {
       if (id === terminalId) {
         terminal.write(data);
@@ -74,12 +73,10 @@ export default function TerminalView({
       (id, exitCode, _signal) => {
         if (id === terminalId) {
           terminal.writeln(`\r\n[Process exited with code ${exitCode}]`);
-          spawnedRef.current = false;
         }
       }
     );
 
-    // Theme sync
     const themeObserver = new MutationObserver(() => {
       terminal.options.theme = getTerminalTheme();
     });
@@ -88,27 +85,6 @@ export default function TerminalView({
       attributeFilter: ["class"],
     });
 
-    return () => {
-      themeObserver.disconnect();
-      inputDisposable.dispose();
-      removeDataListener();
-      removeExitListener();
-      terminal.dispose();
-      terminalRef.current = null;
-      fitAddonRef.current = null;
-    };
-  }, [terminalId]);
-
-  // Spawn PTY on first show
-  useEffect(() => {
-    if (!visible || spawnedRef.current || !terminalRef.current) {
-      return;
-    }
-
-    const terminal = terminalRef.current;
-    const fitAddon = fitAddonRef.current;
-
-    spawnedRef.current = true;
     ipc.client.terminal
       .spawn({
         id: terminalId,
@@ -120,18 +96,32 @@ export default function TerminalView({
       })
       .catch((err) => {
         terminal.writeln(`\r\n[Failed to spawn terminal: ${err}]`);
-        spawnedRef.current = false;
       });
 
-    // Fit after becoming visible
-    if (fitAddon) {
-      requestAnimationFrame(() => fitAddon.fit());
-    }
-  }, [terminalId, visible]);
+    return () => {
+      themeObserver.disconnect();
+      inputDisposable.dispose();
+      removeDataListener();
+      removeExitListener();
+      terminal.dispose();
+      terminalRef.current = null;
+      fitAddonRef.current = null;
 
-  // Refit on visibility change and resize
+      // Defer PTY kill so a strict-mode remount can reclaim the session
+      // before this fires. If mountGenRef has advanced, a new mount took
+      // over and we skip the kill.
+      const gen = currentGen;
+      setTimeout(() => {
+        if (mountGenRef.current === gen) {
+          ipc.client.terminal.kill({ id: terminalId }).catch(console.error);
+        }
+      }, 50);
+    };
+  }, [terminalId]);
+
+  // Refit on resize
   useEffect(() => {
-    if (!(visible && fitAddonRef.current)) {
+    if (!fitAddonRef.current) {
       return;
     }
 
@@ -153,7 +143,6 @@ export default function TerminalView({
       });
     };
 
-    // Fit immediately
     handleResize();
 
     const resizeObserver = new ResizeObserver(handleResize);
@@ -162,20 +151,7 @@ export default function TerminalView({
     }
 
     return () => resizeObserver.disconnect();
-  }, [terminalId, visible]);
+  }, [terminalId]);
 
-  // Focus terminal when visible
-  useEffect(() => {
-    if (visible && terminalRef.current) {
-      requestAnimationFrame(() => terminalRef.current?.focus());
-    }
-  }, [visible]);
-
-  return (
-    <div
-      className="h-full w-full"
-      ref={containerRef}
-      style={{ display: visible ? "block" : "none" }}
-    />
-  );
+  return <div className="h-full w-full" ref={containerRef} />;
 }

@@ -9,15 +9,17 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import { useCallback, useMemo, useState } from "react";
-import type { FlowNode, WindowFlowNode } from "@/components/flow/types";
+import type {
+  FlowNode,
+  TerminalFlowNode,
+  WindowFlowNode,
+} from "@/components/flow/types";
 import { useCanvasNodeActions } from "@/components/flow/use-canvas-node-actions";
+import { DeleteTerminalNodeContext } from "@/components/flow/use-delete-terminal-node";
+import TerminalNode from "@/components/flow/terminal-node";
 import WindowNode from "@/components/flow/window-node";
 import ModeToggle from "@/components/mode-toggle";
-import TerminalDrawer, {
-  type TerminalSession,
-} from "@/components/terminal/terminal-drawer";
 import { useTheme } from "@/components/theme-provider";
-import { ipc } from "@/ipc/manager";
 import { CommandPalette } from "@/components/command-palette";
 import type { CommandHandlerMap } from "@/keybindings/types";
 import { useKeybindings } from "@/keybindings/useKeybindings";
@@ -45,14 +47,13 @@ const initialNodes: WindowFlowNode[] = [
 
 const nodeTypes = {
   window: WindowNode,
+  terminal: TerminalNode,
 };
 
-interface CanvasProps {
-  onCreateTerminal: () => void;
-  terminalOpen: boolean;
-}
+const TERMINAL_DEFAULT_WIDTH = 640;
+const TERMINAL_DEFAULT_HEIGHT = 380;
 
-function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
+function Canvas() {
   const [nodes, setNodes] = useNodesState<FlowNode>(initialNodes);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
@@ -60,6 +61,7 @@ function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const {
     deleteSelectedNodes,
+    deleteTerminalNode,
     groupSelectedNodes,
     hasSelectedNodes,
     onNodesChange,
@@ -77,6 +79,40 @@ function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
     []
   );
 
+  const createTerminalNode = useCallback(() => {
+    const terminalId = `terminal-${crypto.randomUUID()}`;
+    const nodeId = `terminal-node-${crypto.randomUUID()}`;
+
+    const center = reactFlow.screenToFlowPosition({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+    });
+
+    const snappedX = Math.round((center.x - TERMINAL_DEFAULT_WIDTH / 2) / 24) * 24;
+    const snappedY = Math.round((center.y - TERMINAL_DEFAULT_HEIGHT / 2) / 24) * 24;
+
+    setNodes((prev) => {
+      const terminalCount = prev.filter((n) => n.type === "terminal").length;
+
+      const terminalNode: TerminalFlowNode = {
+        id: nodeId,
+        type: "terminal",
+        position: { x: snappedX, y: snappedY },
+        style: { width: TERMINAL_DEFAULT_WIDTH, height: TERMINAL_DEFAULT_HEIGHT },
+        selected: true,
+        data: {
+          terminalId,
+          title: `Terminal ${terminalCount + 1}`,
+        },
+      };
+
+      return [
+        ...prev.map((n) => (n.selected ? { ...n, selected: false } : n)),
+        terminalNode,
+      ];
+    });
+  }, [reactFlow, setNodes]);
+
   const commandHandlers: CommandHandlerMap = {
     "canvas.fitView": () => reactFlow.fitView(),
     "canvas.zoomIn": () => reactFlow.zoomIn(),
@@ -85,32 +121,42 @@ function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
     "canvas.deleteSelected": deleteSelectedNodes,
     "canvas.groupSelected": groupSelectedNodes,
     "canvas.ungroupSelected": ungroupSelectedNodes,
-    "terminal.toggle": onCreateTerminal,
+    "terminal.create": createTerminalNode,
     "theme.toggle": toggleTheme,
   };
 
-  const keybindingContext = {
-    canvasFocus: true,
-    canGroupNodes:
-      selectedTopLevelNodes.length >= 2 ||
-      (selectedTopLevelNodes.length >= 1 &&
-        (selectedGroupedNodes.length > 0 || selectedGroupNodes.length > 0)),
-    canUngroupNodes: selectedGroupedNodes.length > 0,
-    inputFocus: isInputFocused() || commandPaletteOpen,
-    nodeSelected: hasSelectedNodes,
-    terminalFocus: terminalOpen,
-  };
+  const getKeybindingContext = useCallback(
+    () => ({
+      canvasFocus: true,
+      canGroupNodes:
+        selectedTopLevelNodes.length >= 2 ||
+        (selectedTopLevelNodes.length >= 1 &&
+          (selectedGroupedNodes.length > 0 || selectedGroupNodes.length > 0)),
+      canUngroupNodes: selectedGroupedNodes.length > 0,
+      inputFocus: isInputFocused() || commandPaletteOpen,
+      nodeSelected: hasSelectedNodes,
+      terminalFocus: isInputFocused(),
+    }),
+    [
+      commandPaletteOpen,
+      hasSelectedNodes,
+      isInputFocused,
+      selectedGroupNodes.length,
+      selectedGroupedNodes.length,
+      selectedTopLevelNodes.length,
+    ]
+  );
 
   const { keybindings } = useKeybindings({
     handlers: {
       ...commandHandlers,
       "app.commandPalette": () => setCommandPaletteOpen((prev) => !prev),
     },
-    context: keybindingContext,
+    context: getKeybindingContext,
   });
 
   return (
-    <>
+    <DeleteTerminalNodeContext.Provider value={deleteTerminalNode}>
       <ReactFlow
         colorMode={resolvedTheme}
         defaultEdgeOptions={defaultEdgeOptions}
@@ -134,40 +180,11 @@ function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
         handlers={commandHandlers}
         keybindings={keybindings}
       />
-    </>
+    </DeleteTerminalNodeContext.Provider>
   );
 }
 
-function createTerminalId() {
-  return `terminal-${crypto.randomUUID()}`;
-}
-
 function HomePage() {
-  const [terminals, setTerminals] = useState<TerminalSession[]>([]);
-  const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null);
-
-  const handleCreateTerminal = useCallback(() => {
-    const id = createTerminalId();
-
-    setTerminals((prev) => {
-      const nextIndex = prev.length + 1;
-      return [...prev, { id, title: `Terminal ${nextIndex}` }];
-    });
-    setActiveTerminalId(id);
-  }, []);
-
-  const handleCloseTerminal = useCallback((id: string) => {
-    ipc.client.terminal.kill({ id }).catch(console.error);
-
-    setTerminals((prev) => {
-      const next = prev.filter((terminal) => terminal.id !== id);
-      setActiveTerminalId((current) =>
-        current === id ? (next.at(-1)?.id ?? null) : current
-      );
-      return next;
-    });
-  }, []);
-
   return (
     <section className="relative flex h-full flex-col overflow-hidden bg-background">
       <div className="relative min-h-0 flex-1">
@@ -175,17 +192,9 @@ function HomePage() {
           <ModeToggle />
         </div>
         <ReactFlowProvider>
-          <Canvas
-            onCreateTerminal={handleCreateTerminal}
-            terminalOpen={terminals.length > 0}
-          />
+          <Canvas />
         </ReactFlowProvider>
       </div>
-      <TerminalDrawer
-        activeTerminalId={activeTerminalId}
-        onCloseTerminal={handleCloseTerminal}
-        terminals={terminals}
-      />
     </section>
   );
 }

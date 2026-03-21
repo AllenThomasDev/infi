@@ -9,7 +9,7 @@ import type {
 
 interface UseKeybindingsOptions {
   handlers: CommandHandlerMap;
-  context?: Partial<ShortcutMatchContext>;
+  context?: Partial<ShortcutMatchContext> | (() => Partial<ShortcutMatchContext>);
   enabled?: boolean;
 }
 
@@ -34,8 +34,11 @@ export function useKeybindings({
     if (!enabled || keybindings.length === 0) return;
 
     function handleKeyDown(event: KeyboardEvent) {
+      const ctx = contextRef.current;
+      const resolved = typeof ctx === "function" ? ctx() : ctx;
+
       const command = resolveShortcutCommand(event, keybindings, {
-        context: contextRef.current,
+        context: resolved,
       });
       if (!command) return;
 

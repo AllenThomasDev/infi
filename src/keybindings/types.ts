@@ -11,7 +11,7 @@ export const KEYBINDING_COMMANDS = [
   "canvas.copy",
   "canvas.paste",
   "canvas.duplicate",
-  "terminal.toggle",
+  "terminal.create",
   "theme.toggle",
   "app.commandPalette",
 ] as const;

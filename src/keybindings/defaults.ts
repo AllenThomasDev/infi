@@ -40,7 +40,7 @@ export const DEFAULT_KEYBINDINGS: readonly KeybindingRule[] = [
   // { key: "mod+c", command: "canvas.copy", label: "Copy", when: "canvasFocus" },
   // { key: "mod+v", command: "canvas.paste", label: "Paste", when: "canvasFocus" },
   // { key: "mod+d", command: "canvas.duplicate", label: "Duplicate", when: "canvasFocus && nodeSelected" },
-  { key: "mod+j", command: "terminal.toggle", label: "Toggle Terminal" },
+  { key: "mod+j", command: "terminal.create", label: "New Terminal" },
   { key: "mod+shift+l", command: "theme.toggle", label: "Toggle Theme" },
   { key: "mod+k", command: "app.commandPalette" },
 ];
