@@ -19,9 +19,28 @@ const isSelectedGrouped = (node: FlowNode) =>
 const isSelectedGroup = (node: FlowNode) =>
   node.selected && isGroupNode(node);
 
-function reparentNode(node: FlowNode, parentId: string): FlowNode {
+function toRelativePosition(
+  position: { x: number; y: number },
+  parentPosition: { x: number; y: number }
+) {
+  return { x: position.x - parentPosition.x, y: position.y - parentPosition.y };
+}
+
+function toAbsolutePosition(
+  position: { x: number; y: number },
+  parentPosition: { x: number; y: number }
+) {
+  return { x: position.x + parentPosition.x, y: position.y + parentPosition.y };
+}
+
+function moveNodeToGroup(
+  node: FlowNode,
+  parentId: string,
+  parentPosition: { x: number; y: number }
+): FlowNode {
   return {
     ...node,
+    position: toRelativePosition(node.position, parentPosition),
     expandParent: true,
     parentId,
     extent: "parent" as const,
@@ -182,7 +201,9 @@ export function useCanvasNodeActions({
 
         const addIds = new Set(topLevel.map((node) => node.id));
         return currentNodes.map((node) =>
-          addIds.has(node.id) ? reparentNode(node, targetGroupId) : node
+          addIds.has(node.id)
+            ? moveNodeToGroup(node, targetGroupId, group.position)
+            : node
         );
       }
 
@@ -209,7 +230,9 @@ export function useCanvasNodeActions({
 
       const selectedIds = new Set(topLevel.map((node) => node.id));
       const nextNodes = currentNodes.map((node) =>
-        selectedIds.has(node.id) ? reparentNode(node, groupId) : node
+        selectedIds.has(node.id)
+          ? moveNodeToGroup(node, groupId, groupPosition)
+          : node
       );
 
       return [groupNode, ...nextNodes];
@@ -224,12 +247,25 @@ export function useCanvasNodeActions({
 
       if (ungroupIds.size === 0) return currentNodes;
 
+      const parentPositions = new Map<string, { x: number; y: number }>();
+      for (const node of currentNodes) {
+        if (isGroupNode(node)) {
+          parentPositions.set(node.id, node.position);
+        }
+      }
+
       return currentNodes.map((node) => {
         if (!ungroupIds.has(node.id)) return node;
 
-        const { expandParent: _, parentId: __, extent: ___, ...rest } = node;
+        const parentPos = node.parentId
+          ? parentPositions.get(node.parentId)
+          : undefined;
+        const { expandParent: _ep, parentId: _pid, extent: _ext, ...rest } = node;
         return {
           ...rest,
+          position: parentPos
+            ? toAbsolutePosition(node.position, parentPos)
+            : node.position,
           selected: false,
         };
       });
