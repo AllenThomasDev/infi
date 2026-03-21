@@ -124,6 +124,7 @@ export function useCanvasNodeActions({
 
         return {
           ...node,
+          expandParent: true,
           parentId: groupId,
           extent: "parent" as const,
           position: {
@@ -166,6 +167,7 @@ export function useCanvasNodeActions({
         return [
           {
             ...node,
+            expandParent: undefined,
             parentId: undefined,
             extent: undefined,
             position: {
