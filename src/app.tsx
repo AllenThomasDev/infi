@@ -3,8 +3,9 @@ import React, { useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 import "@xyflow/react/dist/style.css";
+import { ThemeProvider } from "@/components/theme-provider";
+import { LOCAL_STORAGE_KEYS } from "@/constants";
 import { updateAppLanguage } from "./actions/language";
-import { syncWithLocalTheme } from "./actions/theme";
 import { router } from "./utils/routes";
 import "./localization/i18n";
 
@@ -12,11 +13,14 @@ export default function App() {
   const { i18n } = useTranslation();
 
   useEffect(() => {
-    syncWithLocalTheme();
     updateAppLanguage(i18n);
   }, [i18n]);
 
-  return <RouterProvider router={router} />;
+  return (
+    <ThemeProvider defaultTheme="dark" storageKey={LOCAL_STORAGE_KEYS.THEME}>
+      <RouterProvider router={router} />
+    </ThemeProvider>
+  );
 }
 
 const container = document.getElementById("app");

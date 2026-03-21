@@ -10,11 +10,11 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import { useCallback, useMemo, useState } from "react";
-import { toggleTheme } from "@/actions/theme";
 import WindowNode, { type WindowFlowNode } from "@/components/flow/window-node";
 import TerminalDrawer, {
   type TerminalSession,
 } from "@/components/terminal/terminal-drawer";
+import { useTheme } from "@/components/theme-provider";
 import ToggleTheme from "@/components/toggle-theme";
 import { ipc } from "@/ipc/manager";
 import { useKeybindings } from "@/keybindings/useKeybindings";
@@ -53,6 +53,7 @@ function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
   const reactFlow = useReactFlow();
+  const { toggleTheme } = useTheme();
 
   const isInputFocused = useCallback(
     () =>
@@ -76,7 +77,7 @@ function Canvas({ onCreateTerminal, terminalOpen }: CanvasProps) {
       "canvas.deleteSelected": () =>
         setNodes((nds) => nds.filter((n) => !n.selected)),
       "terminal.toggle": onCreateTerminal,
-      "theme.toggle": () => toggleTheme(),
+      "theme.toggle": toggleTheme,
     },
     context: {
       canvasFocus: true,
