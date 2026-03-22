@@ -7,14 +7,14 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 interface TerminalBridge {
   onData: (callback: (id: string, data: string) => void) => () => void;
   onExit: (
-    callback: (id: string, exitCode: number, signal: number) => void,
+    callback: (id: string, exitCode: number, signal: number) => void
   ) => () => void;
 }
 
 interface WebviewBridge {
+  onEscape: (callback: (webContentsId: number) => void) => () => void;
   registerWebview: (webContentsId: number) => void;
   unregisterWebview: (webContentsId: number) => void;
-  onEscape: (callback: (webContentsId: number) => void) => () => void;
 }
 
 interface Window {

@@ -254,7 +254,7 @@ export default function BrowserNode({
             ref={handleWebviewRef}
             src={data.url || DEFAULT_URL}
           />
-          {!webviewFocused ? (
+          {webviewFocused ? null : (
             <div
               className="absolute inset-0 cursor-pointer"
               onClick={() => {
@@ -262,7 +262,7 @@ export default function BrowserNode({
                 setWebviewFocused(true);
               }}
             />
-          ) : null}
+          )}
           {loadError ? (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/90 p-4 text-center">
               <div className="max-w-sm space-y-2 rounded-lg border bg-card p-4 shadow-sm">

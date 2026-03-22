@@ -17,10 +17,11 @@ contextBridge.exposeInMainWorld("webviewBridge", {
   onEscape: (callback: (webContentsId: number) => void) => {
     const listener = (
       _event: Electron.IpcRendererEvent,
-      webContentsId: number,
+      webContentsId: number
     ) => callback(webContentsId);
     ipcRenderer.on(IPC_CHANNELS.WEBVIEW_ESCAPE, listener);
-    return () => ipcRenderer.removeListener(IPC_CHANNELS.WEBVIEW_ESCAPE, listener);
+    return () =>
+      ipcRenderer.removeListener(IPC_CHANNELS.WEBVIEW_ESCAPE, listener);
   },
 });
 
@@ -29,19 +30,19 @@ contextBridge.exposeInMainWorld("terminalBridge", {
     const listener = (
       _event: Electron.IpcRendererEvent,
       id: string,
-      data: string,
+      data: string
     ) => callback(id, data);
     ipcRenderer.on("terminal:data", listener);
     return () => ipcRenderer.removeListener("terminal:data", listener);
   },
   onExit: (
-    callback: (id: string, exitCode: number, signal: number) => void,
+    callback: (id: string, exitCode: number, signal: number) => void
   ) => {
     const listener = (
       _event: Electron.IpcRendererEvent,
       id: string,
       exitCode: number,
-      signal: number,
+      signal: number
     ) => callback(id, exitCode, signal);
     ipcRenderer.on("terminal:exit", listener);
     return () => ipcRenderer.removeListener("terminal:exit", listener);

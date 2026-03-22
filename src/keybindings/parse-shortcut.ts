@@ -1,17 +1,29 @@
 import type { KeybindingShortcut } from "./types";
 
 function normalizeKeyToken(token: string): string {
-  if (token === "space") return " ";
-  if (token === "esc") return "escape";
-  if (token === "left") return "arrowleft";
-  if (token === "right") return "arrowright";
-  if (token === "up") return "arrowup";
-  if (token === "down") return "arrowdown";
+  if (token === "space") {
+    return " ";
+  }
+  if (token === "esc") {
+    return "escape";
+  }
+  if (token === "left") {
+    return "arrowleft";
+  }
+  if (token === "right") {
+    return "arrowright";
+  }
+  if (token === "up") {
+    return "arrowup";
+  }
+  if (token === "down") {
+    return "arrowdown";
+  }
   return token;
 }
 
 export function parseKeybindingShortcut(
-  value: string,
+  value: string
 ): KeybindingShortcut | null {
   const rawTokens = value
     .toLowerCase()
@@ -31,7 +43,9 @@ export function parseKeybindingShortcut(
   if (tokens.some((token) => token.length === 0)) {
     return null;
   }
-  if (tokens.length === 0) return null;
+  if (tokens.length === 0) {
+    return null;
+  }
 
   let key: string | null = null;
   let metaKey = false;
@@ -61,12 +75,16 @@ export function parseKeybindingShortcut(
         modKey = true;
         break;
       default: {
-        if (key !== null) return null;
+        if (key !== null) {
+          return null;
+        }
         key = normalizeKeyToken(token);
       }
     }
   }
 
-  if (key === null) return null;
+  if (key === null) {
+    return null;
+  }
   return { key, metaKey, ctrlKey, shiftKey, altKey, modKey };
 }

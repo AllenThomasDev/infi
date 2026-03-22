@@ -7,14 +7,18 @@ import type {
 } from "./types";
 
 export function compileResolvedKeybindingRule(
-  rule: KeybindingRule,
+  rule: KeybindingRule
 ): ResolvedKeybindingRule | null {
   const shortcut = parseKeybindingShortcut(rule.key);
-  if (!shortcut) return null;
+  if (!shortcut) {
+    return null;
+  }
 
   if (rule.when !== undefined) {
     const whenAst = parseKeybindingWhenExpression(rule.when);
-    if (!whenAst) return null;
+    if (!whenAst) {
+      return null;
+    }
     return { command: rule.command, label: rule.label, shortcut, whenAst };
   }
 
@@ -22,7 +26,7 @@ export function compileResolvedKeybindingRule(
 }
 
 export function compileResolvedKeybindingsConfig(
-  config: ReadonlyArray<KeybindingRule>,
+  config: ReadonlyArray<KeybindingRule>
 ): ResolvedKeybindingsConfig {
   const compiled: ResolvedKeybindingsConfig = [];
   for (const rule of config) {

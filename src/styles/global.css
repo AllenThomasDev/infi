@@ -86,8 +86,8 @@
       var(--color-muted) 35%,
       transparent
     );
-    border-radius: 8px;
     border: 1px dashed var(--color-border);
+    border-radius: 8px;
   }
 }
 

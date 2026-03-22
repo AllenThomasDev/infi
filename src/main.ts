@@ -4,7 +4,10 @@ import { app, BrowserWindow, session, webContents } from "electron";
 import { ipcMain } from "electron/main";
 import { UpdateSourceType, updateElectronApp } from "update-electron-app";
 import { ipcContext } from "@/ipc/context";
-import { setTerminalWindow, killAllTerminals } from "@/ipc/terminal/pty-manager";
+import {
+  killAllTerminals,
+  setTerminalWindow,
+} from "@/ipc/terminal/pty-manager";
 import { IPC_CHANNELS } from "./constants";
 
 const __filename = fileURLToPath(import.meta.url);

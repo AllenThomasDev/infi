@@ -14,7 +14,9 @@ function tokenizeWhenExpression(expression: string): WhenToken[] | null {
 
   while (index < expression.length) {
     const current = expression[index];
-    if (!current) break;
+    if (!current) {
+      break;
+    }
 
     if (/\s/.test(current)) {
       index += 1;
@@ -47,7 +49,7 @@ function tokenizeWhenExpression(expression: string): WhenToken[] | null {
     }
 
     const identifier = /^[A-Za-z_][A-Za-z0-9_.-]*/.exec(
-      expression.slice(index),
+      expression.slice(index)
     );
     if (!identifier) {
       return null;
@@ -60,16 +62,22 @@ function tokenizeWhenExpression(expression: string): WhenToken[] | null {
 }
 
 export function parseKeybindingWhenExpression(
-  expression: string,
+  expression: string
 ): KeybindingWhenNode | null {
   const tokens = tokenizeWhenExpression(expression);
-  if (!tokens || tokens.length === 0) return null;
+  if (!tokens || tokens.length === 0) {
+    return null;
+  }
   let index = 0;
 
   const parsePrimary = (depth: number): KeybindingWhenNode | null => {
-    if (depth > MAX_WHEN_EXPRESSION_DEPTH) return null;
+    if (depth > MAX_WHEN_EXPRESSION_DEPTH) {
+      return null;
+    }
     const token = tokens[index];
-    if (!token) return null;
+    if (!token) {
+      return null;
+    }
 
     if (token.type === "identifier") {
       index += 1;
@@ -80,7 +88,7 @@ export function parseKeybindingWhenExpression(
       index += 1;
       const expressionNode = parseOr(depth + 1);
       const closeToken = tokens[index];
-      if (!expressionNode || !closeToken || closeToken.type !== "rparen") {
+      if (!(expressionNode && closeToken) || closeToken.type !== "rparen") {
         return null;
       }
       index += 1;
@@ -95,11 +103,15 @@ export function parseKeybindingWhenExpression(
     while (tokens[index]?.type === "not") {
       index += 1;
       notCount += 1;
-      if (notCount > MAX_WHEN_EXPRESSION_DEPTH) return null;
+      if (notCount > MAX_WHEN_EXPRESSION_DEPTH) {
+        return null;
+      }
     }
 
     let node = parsePrimary(depth);
-    if (!node) return null;
+    if (!node) {
+      return null;
+    }
 
     while (notCount > 0) {
       node = { type: "not", node };
@@ -111,12 +123,16 @@ export function parseKeybindingWhenExpression(
 
   const parseAnd = (depth: number): KeybindingWhenNode | null => {
     let left = parseUnary(depth);
-    if (!left) return null;
+    if (!left) {
+      return null;
+    }
 
     while (tokens[index]?.type === "and") {
       index += 1;
       const right = parseUnary(depth);
-      if (!right) return null;
+      if (!right) {
+        return null;
+      }
       left = { type: "and", left, right };
     }
 
@@ -125,12 +141,16 @@ export function parseKeybindingWhenExpression(
 
   const parseOr = (depth: number): KeybindingWhenNode | null => {
     let left = parseAnd(depth);
-    if (!left) return null;
+    if (!left) {
+      return null;
+    }
 
     while (tokens[index]?.type === "or") {
       index += 1;
       const right = parseAnd(depth);
-      if (!right) return null;
+      if (!right) {
+        return null;
+      }
       left = { type: "or", left, right };
     }
 
@@ -138,6 +158,8 @@ export function parseKeybindingWhenExpression(
   };
 
   const ast = parseOr(0);
-  if (!ast || index !== tokens.length) return null;
+  if (!ast || index !== tokens.length) {
+    return null;
+  }
   return ast;
 }

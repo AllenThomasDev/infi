@@ -17,7 +17,7 @@ export function useCanvasNodeActions({
 }: UseCanvasNodeActionsOptions) {
   const hasSelectedNodes = useMemo(
     () => nodes.some((node) => node.selected),
-    [nodes],
+    [nodes]
   );
 
   const selectAllNodes = useCallback(() => {
@@ -27,9 +27,7 @@ export function useCanvasNodeActions({
   }, [setNodes]);
 
   const deleteSelectedNodes = useCallback(() => {
-    setNodes((currentNodes) =>
-      currentNodes.filter((node) => !node.selected)
-    );
+    setNodes((currentNodes) => currentNodes.filter((node) => !node.selected));
   }, [setNodes]);
 
   const onNodesChange = useCallback(
