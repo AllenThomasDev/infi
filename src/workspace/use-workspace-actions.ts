@@ -1,160 +1,146 @@
 import path from "pathe";
 import { useCallback } from "react";
+import type { BranchPickerSelection } from "@/components/branch-picker";
 import { ipc } from "@/ipc/manager";
 import { useWorkspaceStore } from "@/workspace/workspace-store";
 
-interface CreateCanvasFromBranchOptions {
-  branch: string;
-  currentBranch: string | null;
-  projectId: string;
-  worktreePath: string | null;
+interface UseWorkspaceActionsOptions {
+  confirm: (options: {
+    confirmLabel?: string;
+    description: string;
+    title: string;
+    variant?: "default" | "destructive";
+  }) => Promise<boolean>;
+}
+
+function getWorktreeRoot(directory: string) {
+  return `${directory}-worktrees`;
 }
 
 function getProjectWorktreePath(directory: string, branch: string) {
-  return path.join(`${directory}-worktrees`, branch);
+  return path.join(getWorktreeRoot(directory), branch);
 }
 
-function getDefaultCanvasName(
-  branch: string,
-  existingNames: readonly string[]
-) {
-  if (!existingNames.includes(branch)) {
-    return branch;
-  }
-
-  let nextSuffix = 2;
-  while (existingNames.includes(`${branch} (${nextSuffix})`)) {
-    nextSuffix += 1;
-  }
-
-  return `${branch} (${nextSuffix})`;
+function isManagedWorktree(directory: string, worktreePath: string) {
+  return worktreePath.startsWith(getWorktreeRoot(directory) + path.sep);
 }
 
-async function removeWorktreeOrThrow(cwd: string, worktreePath: string) {
-  try {
-    await ipc.client.git.removeWorktree({
-      cwd,
-      path: worktreePath,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to remove worktree at ${worktreePath}: ${message}`);
+function getOrphanedWorktreePath(
+  projects: readonly {
+    canvases: readonly { id: string; worktreePath: string | null }[];
+    directory: string;
+  }[],
+  canvasId: string
+): { projectDirectory: string; worktreePath: string } | null {
+  for (const project of projects) {
+    const canvas = project.canvases.find((c) => c.id === canvasId);
+    if (!canvas) {
+      continue;
+    }
+
+    if (
+      !canvas.worktreePath ||
+      !isManagedWorktree(project.directory, canvas.worktreePath)
+    ) {
+      return null;
+    }
+
+    const isShared = project.canvases.some(
+      (other) =>
+        other.id !== canvasId && other.worktreePath === canvas.worktreePath
+    );
+
+    return isShared
+      ? null
+      : { projectDirectory: project.directory, worktreePath: canvas.worktreePath };
   }
+
+  return null;
 }
 
-export function useWorkspaceActions() {
+export function useWorkspaceActions({ confirm }: UseWorkspaceActionsOptions) {
   const projects = useWorkspaceStore((s) => s.projects);
-  const createCanvas = useWorkspaceStore((s) => s.createCanvas);
-  const closeCanvas = useWorkspaceStore((s) => s.closeCanvas);
-  const closeProject = useWorkspaceStore((s) => s.closeProject);
+  const createCanvasAction = useWorkspaceStore((s) => s.createCanvas);
+  const closeCanvasAction = useWorkspaceStore((s) => s.closeCanvas);
+  const switchCanvasAction = useWorkspaceStore((s) => s.switchCanvas);
 
-  const closeCanvasWithCleanup = useCallback(
+  const closeCanvas = useCallback(
     async (canvasId: string) => {
-      const project = projects.find((candidate) =>
-        candidate.canvases.some((canvas) => canvas.id === canvasId)
-      );
-      const canvas = project?.canvases.find(
-        (candidate) => candidate.id === canvasId
-      );
-      if (!(project && canvas)) {
-        return;
-      }
+      const orphan = getOrphanedWorktreePath(projects, canvasId);
 
-      if (canvas.managedWorktree && canvas.worktreePath) {
-        await removeWorktreeOrThrow(project.directory, canvas.worktreePath);
-      }
+      if (orphan) {
+        const shouldRemove = await confirm({
+          title: "Delete Worktree?",
+          description: `This canvas is the only one linked to the worktree at "${path.basename(orphan.worktreePath)}". Delete the worktree too?`,
+          confirmLabel: "Delete Worktree",
+          variant: "destructive",
+        });
 
-      closeCanvas(canvasId);
-    },
-    [closeCanvas, projects]
-  );
-
-  const closeProjectWithCleanup = useCallback(
-    async (projectId: string) => {
-      const project = projects.find((candidate) => candidate.id === projectId);
-      if (!project) {
-        return;
-      }
-
-      for (const canvas of project.canvases) {
-        if (!(canvas.managedWorktree && canvas.worktreePath)) {
-          continue;
+        if (shouldRemove) {
+          try {
+            await ipc.client.git.removeWorktree({
+              cwd: orphan.projectDirectory,
+              path: orphan.worktreePath,
+            });
+          } catch (error) {
+            console.error("Failed to remove worktree", error);
+          }
         }
-
-        await removeWorktreeOrThrow(project.directory, canvas.worktreePath);
       }
 
-      closeProject(projectId);
+      closeCanvasAction(canvasId);
     },
-    [closeProject, projects]
+    [closeCanvasAction, confirm, projects]
   );
 
-  const createCanvasFromBranch = useCallback(
-    async ({
-      branch,
-      currentBranch,
-      projectId,
-      worktreePath: existingWorktreePath,
-    }: CreateCanvasFromBranchOptions) => {
-      const project = projects.find((candidate) => candidate.id === projectId);
+  const openBranch = useCallback(
+    async (
+      projectId: string,
+      selection: BranchPickerSelection
+    ) => {
+      const project = projects.find((p) => p.id === projectId);
       if (!project) {
-        return "";
+        return;
       }
 
-      const canvasName = getDefaultCanvasName(
-        branch,
-        project.canvases.map((canvas) => canvas.name)
+      const existingCanvas = project.canvases.find(
+        (c) => c.branch === selection.branch
       );
-
-      if (branch === currentBranch) {
-        return createCanvas(projectId, {
-          branch,
-          managedWorktree: false,
-          name: canvasName,
-          worktreePath: null,
-        });
+      if (existingCanvas) {
+        switchCanvasAction(existingCanvas.id);
+        return;
       }
 
-      if (existingWorktreePath) {
-        return createCanvas(projectId, {
-          branch,
-          managedWorktree: false,
-          name: canvasName,
-          worktreePath: existingWorktreePath,
+      if (
+        selection.branch === selection.currentBranch ||
+        selection.worktreePath
+      ) {
+        createCanvasAction(projectId, {
+          branch: selection.branch,
+          name: selection.branch,
+          worktreePath: selection.worktreePath ?? null,
         });
+        return;
       }
 
-      const worktreePath = getProjectWorktreePath(project.directory, branch);
+      const worktreePath = getProjectWorktreePath(
+        project.directory,
+        selection.branch
+      );
       const result = await ipc.client.git.createWorktree({
-        branch,
+        branch: selection.branch,
         cwd: project.directory,
         path: worktreePath,
       });
 
-      try {
-        const canvasId = createCanvas(projectId, {
-          branch,
-          managedWorktree: true,
-          name: canvasName,
-          worktreePath: result.path,
-        });
-        if (!canvasId) {
-          throw new Error(`Failed to create canvas for branch ${branch}`);
-        }
-        return canvasId;
-      } catch (error) {
-        await removeWorktreeOrThrow(project.directory, result.path).catch(
-          console.error
-        );
-        throw error;
-      }
+      createCanvasAction(projectId, {
+        branch: selection.branch,
+        name: selection.branch,
+        worktreePath: result.path,
+      });
     },
-    [createCanvas, projects]
+    [createCanvasAction, projects, switchCanvasAction]
   );
 
-  return {
-    closeCanvasWithCleanup,
-    closeProjectWithCleanup,
-    createCanvasFromBranch,
-  };
+  return { closeCanvas, openBranch };
 }

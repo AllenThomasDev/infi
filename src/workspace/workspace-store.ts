@@ -4,7 +4,6 @@ import type { Canvas, Project } from "./types";
 
 interface CreateCanvasOptions {
   branch?: string | null;
-  managedWorktree?: boolean;
   name?: string;
   worktreePath?: string | null;
 }
@@ -85,12 +84,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return "";
     }
 
-    const canvasNumber = project.canvases.length + 1;
     const canvas: Canvas = {
       id: canvasId,
-      name: options?.name ?? `Canvas ${canvasNumber}`,
+      name: options?.name ?? "Canvas",
       branch: options?.branch ?? null,
-      managedWorktree: options?.managedWorktree ?? false,
       worktreePath: options?.worktreePath ?? null,
       createdAt: now,
       lastActiveAt: now,

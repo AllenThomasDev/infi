@@ -1,5 +1,5 @@
 import { GitBranch, Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Command,
   CommandDialog,
@@ -17,13 +17,14 @@ interface BranchListItem {
   worktreePath: string | null;
 }
 
-interface BranchPickerSelection {
+export interface BranchPickerSelection {
   branch: string;
   currentBranch: string | null;
   worktreePath: string | null;
 }
 
 interface BranchPickerProps {
+  canvasByBranch?: ReadonlyMap<string, string>;
   directory?: string;
   onOpenChange: (open: boolean) => void;
   onSelectBranch: (selection: BranchPickerSelection) => Promise<void>;
@@ -32,6 +33,7 @@ interface BranchPickerProps {
 }
 
 export function BranchPicker({
+  canvasByBranch,
   directory,
   onOpenChange,
   onSelectBranch,
@@ -97,17 +99,15 @@ export function BranchPicker({
   const hasExactMatch = branches.some(
     (branch) => branch.name === normalizedQuery
   );
+  const isInUse = canvasByBranch?.has(normalizedQuery) ?? false;
   const showCreateOption =
-    normalizedQuery.length > 0 && !hasExactMatch && !loading;
+    normalizedQuery.length > 0 && !hasExactMatch && !isInUse && !loading;
 
-  const title = useMemo(() => {
-    if (!projectName) {
-      return "Create Canvas from Branch";
-    }
-    return `Create Canvas in ${projectName}`;
-  }, [projectName]);
+  const title = projectName
+    ? `Create Canvas in ${projectName}`
+    : "Create Canvas from Branch";
 
-  async function handleSelect(branchName: string) {
+  function handleSelect(branchName: string) {
     if (!branchName || submitting) {
       return;
     }
@@ -119,18 +119,18 @@ export function BranchPicker({
     setSubmitting(true);
     setError(null);
 
-    try {
-      await onSelectBranch({
-        branch: branchName,
-        currentBranch,
-        worktreePath: selectedBranch?.worktreePath ?? null,
+    onSelectBranch({
+      branch: branchName,
+      currentBranch,
+      worktreePath: selectedBranch?.worktreePath ?? null,
+    })
+      .then(() => onOpenChange(false))
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        setSubmitting(false);
       });
-      onOpenChange(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSubmitting(false);
-    }
   }
 
   return (
@@ -174,27 +174,35 @@ export function BranchPicker({
               ) : null}
               {branches.length > 0 ? (
                 <CommandGroup heading="Branches">
-                  {branches.map((branch) => (
-                    <CommandItem
-                      disabled={submitting}
-                      key={branch.name}
-                      onSelect={() => handleSelect(branch.name)}
-                      value={branch.name}
-                    >
-                      <GitBranch />
-                      <span>{branch.name}</span>
-                      {branch.worktreePath && !branch.current ? (
-                        <span className="text-[0.625rem] text-muted-foreground uppercase tracking-[0.2em]">
-                          reuse
-                        </span>
-                      ) : null}
-                      {branch.current ? (
-                        <span className="ml-auto text-[0.625rem] text-muted-foreground uppercase tracking-[0.2em]">
-                          current
-                        </span>
-                      ) : null}
-                    </CommandItem>
-                  ))}
+                  {branches.map((branch) => {
+                    const hasCanvas = canvasByBranch?.has(branch.name) ?? false;
+
+                    return (
+                      <CommandItem
+                        className={hasCanvas ? "opacity-50" : undefined}
+                        disabled={submitting}
+                        key={branch.name}
+                        onSelect={() => handleSelect(branch.name)}
+                        value={branch.name}
+                      >
+                        <GitBranch />
+                        <span>{branch.name}</span>
+                        {hasCanvas ? (
+                          <span className="ml-auto text-[0.625rem] text-muted-foreground uppercase tracking-[0.2em]">
+                            open
+                          </span>
+                        ) : branch.current ? (
+                          <span className="ml-auto text-[0.625rem] text-muted-foreground uppercase tracking-[0.2em]">
+                            current
+                          </span>
+                        ) : branch.worktreePath ? (
+                          <span className="text-[0.625rem] text-muted-foreground uppercase tracking-[0.2em]">
+                            reuse
+                          </span>
+                        ) : null}
+                      </CommandItem>
+                    );
+                  })}
                 </CommandGroup>
               ) : null}
             </>

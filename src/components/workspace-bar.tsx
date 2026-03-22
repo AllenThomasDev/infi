@@ -5,7 +5,7 @@ import { useWorkspaceStore } from "@/workspace/workspace-store";
 
 interface WorkspaceBarProps {
   onCloseCanvas: (canvasId: string) => void | Promise<void>;
-  onCloseProject: (projectId: string) => void | Promise<void>;
+  onCloseProject: (projectId: string) => void;
   onCreateCanvas: () => void;
   onOpenProject: () => void | Promise<void>;
 }
@@ -114,9 +114,7 @@ export function WorkspaceBar({
             key={project.id}
             name={project.name}
             onClick={() => switchProject(project.id)}
-            onClose={() => {
-              Promise.resolve(onCloseProject(project.id)).catch(console.error);
-            }}
+            onClose={() => onCloseProject(project.id)}
           />
         ))}
         <Button

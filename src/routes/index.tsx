@@ -11,7 +11,10 @@ import {
 } from "@xyflow/react";
 import { FolderOpen } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BranchPicker } from "@/components/branch-picker";
+import {
+  BranchPicker,
+  type BranchPickerSelection,
+} from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
 import {
   flowNodeTypes,
@@ -33,6 +36,7 @@ import type {
 } from "@/keybindings/types";
 import { useKeybindings } from "@/keybindings/useKeybindings";
 import { useTilingLayout } from "@/layout/use-tiling-layout";
+import { useConfirm } from "@/hooks/use-confirm";
 import { useWorkspaceActions } from "@/workspace/use-workspace-actions";
 import { useWorkspaceStore } from "@/workspace/workspace-store";
 
@@ -328,7 +332,7 @@ function WorkspaceContainer({
 }
 
 interface WorkspaceCommandHandlersOptions {
-  onCloseCanvas: (canvasId: string) => Promise<void>;
+  onCloseCanvas: (canvasId: string) => void | Promise<void>;
   onCreateCanvas: () => void;
   onOpenProject: () => Promise<void>;
 }
@@ -380,7 +384,9 @@ function useWorkspaceCommandHandlers({
       },
       "workspace.closeCanvas": () => {
         if (activeProject?.activeCanvasId) {
-          onCloseCanvas(activeProject.activeCanvasId).catch(console.error);
+          Promise.resolve(onCloseCanvas(activeProject.activeCanvasId)).catch(
+            console.error
+          );
         }
       },
       "workspace.prevProject": () => switchProjectByOffset(-1),
@@ -411,12 +417,12 @@ function useWorkspaceCommandHandlers({
 function HomePage() {
   const projects = useWorkspaceStore((s) => s.projects);
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
+  const closeProject = useWorkspaceStore((s) => s.closeProject);
   const hasProjects = projects.length > 0;
-  const {
-    closeCanvasWithCleanup,
-    closeProjectWithCleanup,
-    createCanvasFromBranch,
-  } = useWorkspaceActions();
+
+  const { confirm, confirmDialog } = useConfirm();
+  const { closeCanvas, openBranch } = useWorkspaceActions({ confirm });
+
   const [branchPickerOpen, setBranchPickerOpen] = useState(false);
   const [branchPickerProjectId, setBranchPickerProjectId] = useState<
     string | null
@@ -455,31 +461,17 @@ function HomePage() {
   }, []);
 
   const handleBranchSelected = useCallback(
-    async ({
-      branch,
-      currentBranch,
-      worktreePath,
-    }: {
-      branch: string;
-      currentBranch: string | null;
-      worktreePath: string | null;
-    }) => {
+    async (selection: BranchPickerSelection) => {
       if (!branchPickerProjectId) {
         return;
       }
-
-      await createCanvasFromBranch({
-        branch,
-        currentBranch,
-        projectId: branchPickerProjectId,
-        worktreePath,
-      });
+      await openBranch(branchPickerProjectId, selection);
     },
-    [branchPickerProjectId, createCanvasFromBranch]
+    [branchPickerProjectId, openBranch]
   );
 
   const workspaceHandlers = useWorkspaceCommandHandlers({
-    onCloseCanvas: closeCanvasWithCleanup,
+    onCloseCanvas: closeCanvas,
     onCreateCanvas: openBranchPicker,
     onOpenProject: openProjectAndPromptForBranch,
   });
@@ -487,6 +479,19 @@ function HomePage() {
   const branchPickerProject = projects.find(
     (project) => project.id === branchPickerProjectId
   );
+
+  const canvasByBranch = useMemo(() => {
+    if (!branchPickerProject) {
+      return undefined;
+    }
+    const map = new Map<string, string>();
+    for (const canvas of branchPickerProject.canvases) {
+      if (canvas.branch) {
+        map.set(canvas.branch, canvas.id);
+      }
+    }
+    return map;
+  }, [branchPickerProject]);
 
   const commandHandlers = useMemo<CommandHandlerMap>(
     () => ({
@@ -506,8 +511,8 @@ function HomePage() {
     <section className="relative flex h-full flex-col overflow-hidden bg-background">
       {hasProjects ? (
         <WorkspaceBar
-          onCloseCanvas={closeCanvasWithCleanup}
-          onCloseProject={closeProjectWithCleanup}
+          onCloseCanvas={closeCanvas}
+          onCloseProject={closeProject}
           onCreateCanvas={openBranchPicker}
           onOpenProject={openProjectAndPromptForBranch}
         />
@@ -532,12 +537,14 @@ function HomePage() {
           open={commandPaletteOpen}
         />
         <BranchPicker
+          canvasByBranch={canvasByBranch}
           directory={branchPickerProject?.directory}
           onOpenChange={handleBranchPickerOpenChange}
           onSelectBranch={handleBranchSelected}
           open={branchPickerOpen}
           projectName={branchPickerProject?.name}
         />
+        {confirmDialog}
       </div>
     </section>
   );
