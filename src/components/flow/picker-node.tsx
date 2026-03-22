@@ -1,10 +1,10 @@
 import type { NodeProps } from "@xyflow/react";
-import { AppWindow, Plus, Terminal } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { Plus } from "lucide-react";
+import { useCallback, useEffect, useRef } from "react";
 import { BaseNode } from "@/components/base-node";
-import type { NodeType } from "@/components/flow/node-factories";
+import { pickerNodeOptions } from "@/components/flow/node-registry";
 import type { PickerFlowNode } from "@/components/flow/types";
-import { useTileActions } from "@/components/flow/use-tile-actions";
+import { useNodeActions } from "@/components/flow/use-node-actions";
 import {
   Command,
   CommandEmpty,
@@ -18,55 +18,65 @@ export default function PickerNode({
   id,
   selected,
 }: NodeProps<PickerFlowNode>) {
-  const { remove, replace } = useTileActions();
+  const { removeSelf, replaceSelf } = useNodeActions(id);
   const containerRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(false);
 
-  const cancelRef = useRef<(() => void) | null>(null);
-  cancelRef.current = () => {
+  const cancel = useCallback(() => {
     if (doneRef.current) {
       return;
     }
     doneRef.current = true;
-    remove(id);
-  };
+    removeSelf();
+  }, [removeSelf]);
 
-  const confirmRef = useRef<((type: NodeType) => void) | null>(null);
-  confirmRef.current = (type: NodeType) => {
-    if (doneRef.current) {
-      return;
-    }
-    doneRef.current = true;
-    replace(id, type);
-  };
+  const confirm = useCallback(
+    (type: (typeof pickerNodeOptions)[number]["type"]) => {
+      if (doneRef.current) {
+        return;
+      }
+      doneRef.current = true;
+      replaceSelf(type);
+    },
+    [replaceSelf]
+  );
 
-  useEffect(() => {
-    const input = containerRef.current?.querySelector("input");
-    const timer = setTimeout(() => input?.focus(), 0);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Kill on deselection (covers keyboard navigation away)
+  // Defer focus until the CommandInput is mounted
   useEffect(() => {
     if (!selected) {
-      cancelRef.current?.();
-    }
-  }, [selected]);
-
-  // Kill on DOM focus leaving the node
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) {
       return;
     }
-    const handleFocusOut = (e: FocusEvent) => {
-      if (!(e.relatedTarget && el.contains(e.relatedTarget as Node))) {
-        cancelRef.current?.();
+    const timer = window.setTimeout(() => {
+      const container = containerRef.current;
+      const target = container?.querySelector<HTMLElement>("input");
+      if (target && !container?.contains(document.activeElement)) {
+        target.focus();
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [selected]);
+
+  // Cancel when deselected or focus leaves the node
+  useEffect(() => {
+    if (!selected) {
+      cancel();
+      return;
+    }
+
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const handleFocusOut = (event: FocusEvent) => {
+      if (!container.contains(event.relatedTarget as Node)) {
+        cancel();
       }
     };
-    el.addEventListener("focusout", handleFocusOut);
-    return () => el.removeEventListener("focusout", handleFocusOut);
-  }, []);
+
+    container.addEventListener("focusout", handleFocusOut);
+    return () => container.removeEventListener("focusout", handleFocusOut);
+  }, [cancel, selected]);
 
   return (
     <div className="nodrag nowheel h-full w-full" ref={containerRef}>
@@ -83,24 +93,24 @@ export default function PickerNode({
             <div className="w-full max-w-md rounded-xl border border-primary/30 border-dashed bg-background/80 p-3 shadow-sm">
               <Command className="rounded-lg border-0 bg-transparent shadow-none">
                 <CommandInput
-                  onKeyDown={(e) => e.key === "Escape" && cancelRef.current?.()}
+                  onKeyDown={(e) => e.key === "Escape" && cancel()}
                   placeholder="Choose what to open here..."
                 />
                 <CommandList>
                   <CommandEmpty>No types found.</CommandEmpty>
                   <CommandGroup>
-                    <CommandItem
-                      onSelect={() => confirmRef.current?.("terminal")}
-                    >
-                      <Terminal className="mr-2 h-4 w-4" />
-                      Terminal
-                    </CommandItem>
-                    <CommandItem
-                      onSelect={() => confirmRef.current?.("window")}
-                    >
-                      <AppWindow className="mr-2 h-4 w-4" />
-                      Window
-                    </CommandItem>
+                    {pickerNodeOptions.map((option) => {
+                      const Icon = option.icon;
+                      return (
+                        <CommandItem
+                          key={option.type}
+                          onSelect={() => confirm(option.type)}
+                        >
+                          <Icon className="mr-2 h-4 w-4" />
+                          {option.label}
+                        </CommandItem>
+                      );
+                    })}
                   </CommandGroup>
                 </CommandList>
               </Command>

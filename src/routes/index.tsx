@@ -11,24 +11,19 @@ import {
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CommandPalette } from "@/components/command-palette";
-import { makeNodeFactory } from "@/components/flow/node-factories";
-import PickerNode from "@/components/flow/picker-node";
-import TerminalNode from "@/components/flow/terminal-node";
+import {
+  flowNodeTypes,
+  nodeRegistry,
+  type NodeType,
+} from "@/components/flow/node-registry";
 import type { FlowNode } from "@/components/flow/types";
 import { useCanvasNodeActions } from "@/components/flow/use-canvas-node-actions";
 import { TileActionsContext } from "@/components/flow/use-tile-actions";
-import WindowNode from "@/components/flow/window-node";
 import ModeToggle from "@/components/mode-toggle";
 import { useTheme } from "@/components/theme-provider";
 import type { CommandHandlerMap } from "@/keybindings/types";
 import { useKeybindings } from "@/keybindings/useKeybindings";
 import { useTilingLayout } from "@/layout/use-tiling-layout";
-
-const nodeTypes = {
-  window: WindowNode,
-  terminal: TerminalNode,
-  picker: PickerNode,
-};
 
 function Canvas() {
   const [nodes, setNodes] = useNodesState<FlowNode>([]);
@@ -37,26 +32,20 @@ function Canvas() {
   const reactFlow = useReactFlow();
   const { resolvedTheme, toggleTheme } = useTheme();
 
-  const { create, remove, replace, focus, move } = useTilingLayout(setNodes);
-
-  const terminalCounterRef = useRef(0);
-  const nextTerminalCount = useCallback(() => ++terminalCounterRef.current, []);
-  const makeTerminalFactory = useCallback(
-    () => makeNodeFactory("terminal", nextTerminalCount()),
-    [nextTerminalCount]
+  const createNode = useCallback(
+    (type: string, col: number, row: number, nodes: readonly FlowNode[]) =>
+      nodeRegistry[type as NodeType].create(col, row, nodes),
+    []
   );
-  const makePickerFactory = useCallback(() => makeNodeFactory("picker", 0), []);
+
+  const { create, remove, replace, focus, move } = useTilingLayout(
+    setNodes,
+    createNode
+  );
 
   const tileActions = useMemo(
-    () => ({
-      remove,
-      replace: (nodeId: string, type: "terminal" | "window" | "picker") =>
-        replace(
-          nodeId,
-          makeNodeFactory(type, type === "terminal" ? nextTerminalCount() : 0)
-        ),
-    }),
-    [nextTerminalCount, remove, replace]
+    () => ({ remove, replace }),
+    [remove, replace]
   );
 
   const lastFocusedId = useRef<string | null>(null);
@@ -117,14 +106,14 @@ function Canvas() {
     "canvas.zoomOut": () => reactFlow.zoomOut(),
     "canvas.selectAll": selectAllNodes,
     "canvas.deleteSelected": deleteSelectedNodes,
-    "tiling.createLeft": () => create(-1, 0, makeTerminalFactory()),
-    "tiling.createRight": () => create(1, 0, makeTerminalFactory()),
-    "tiling.createUp": () => create(0, -1, makeTerminalFactory()),
-    "tiling.createDown": () => create(0, 1, makeTerminalFactory()),
-    "tiling.insertLeft": () => create(-1, 0, makePickerFactory()),
-    "tiling.insertRight": () => create(1, 0, makePickerFactory()),
-    "tiling.insertUp": () => create(0, -1, makePickerFactory()),
-    "tiling.insertDown": () => create(0, 1, makePickerFactory()),
+    "tiling.createLeft": () => create(-1, 0, "terminal"),
+    "tiling.createRight": () => create(1, 0, "terminal"),
+    "tiling.createUp": () => create(0, -1, "terminal"),
+    "tiling.createDown": () => create(0, 1, "terminal"),
+    "tiling.insertLeft": () => create(-1, 0, "picker"),
+    "tiling.insertRight": () => create(1, 0, "picker"),
+    "tiling.insertUp": () => create(0, -1, "picker"),
+    "tiling.insertDown": () => create(0, 1, "picker"),
     "tiling.focusLeft": () => focus(-1, 0),
     "tiling.focusRight": () => focus(1, 0),
     "tiling.focusUp": () => focus(0, -1),
@@ -191,7 +180,7 @@ function Canvas() {
         maxZoom={1.8}
         minZoom={0.1}
         nodes={nodes}
-        nodeTypes={nodeTypes}
+        nodeTypes={flowNodeTypes}
         onNodesChange={onNodesChange}
         onSelectionChange={onSelectionChange}
         panOnDrag={[1, 2]}

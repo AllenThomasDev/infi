@@ -134,10 +134,16 @@ function moveRight(nodes: FlowNode[], sel: FlowNode): FlowNode[] {
   return appendSelected(shifted, tile(sel, targetCol, 0));
 }
 
-export type NodeFactory = (col: number, row: number) => FlowNode;
+export type CreateNode = (
+  type: string,
+  col: number,
+  row: number,
+  nodes: readonly FlowNode[]
+) => FlowNode;
 
 export function useTilingLayout(
-  setNodes: React.Dispatch<React.SetStateAction<FlowNode[]>>
+  setNodes: React.Dispatch<React.SetStateAction<FlowNode[]>>,
+  createNode: CreateNode
 ) {
   const update = useCallback(
     (fn: (prev: FlowNode[]) => FlowNode[]) =>
@@ -146,13 +152,12 @@ export function useTilingLayout(
   );
 
   const create = useCallback(
-    (dc: number, dr: number, factory: NodeFactory) => {
+    (dc: number, dr: number, type: string) => {
       update((nodes) => {
         const sel = nodes.find((n) => n.selected);
         if (!sel) {
           const col = columnCount(nodes);
-          const newNode = factory(col, 0);
-          return appendSelected(nodes, newNode);
+          return appendSelected(nodes, createNode(type, col, 0, nodes));
         }
 
         let col = sel.data.col;
@@ -175,11 +180,10 @@ export function useTilingLayout(
           );
         }
 
-        const newNode = factory(col, row);
-        return appendSelected(pushed, newNode);
+        return appendSelected(pushed, createNode(type, col, row, nodes));
       });
     },
-    [update]
+    [createNode, update]
   );
 
   const remove = useCallback(
@@ -206,13 +210,13 @@ export function useTilingLayout(
   );
 
   const replace = useCallback(
-    (nodeId: string, factory: NodeFactory) => {
+    (nodeId: string, type: string) => {
       update((nodes) => {
         const target = nodes.find((n) => n.id === nodeId);
         if (!target) {
           return nodes;
         }
-        const newNode = factory(target.data.col, target.data.row);
+        const newNode = createNode(type, target.data.col, target.data.row, nodes);
         return nodes.map((n) =>
           n.id === nodeId
             ? ({ ...newNode, selected: n.selected } as FlowNode)
@@ -220,7 +224,7 @@ export function useTilingLayout(
         );
       });
     },
-    [update]
+    [createNode, update]
   );
 
   const focus = useCallback(
