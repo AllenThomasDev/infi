@@ -1,8 +1,10 @@
 import { FitAddon } from "@xterm/addon-fit";
+import { WebglAddon } from "@xterm/addon-webgl";
 import { Terminal } from "@xterm/xterm";
 import { useEffect, useRef } from "react";
 import { ipc } from "@/ipc/manager";
 import "@xterm/xterm/css/xterm.css";
+import "@/assets/fonts/jetbrains-mono-nerd.css";
 
 function getTerminalTheme(): Record<string, string> {
   const isDark = document.documentElement.classList.contains("dark");
@@ -47,13 +49,18 @@ export default function TerminalView({ terminalId }: TerminalViewProps) {
       fontSize: 13,
       lineHeight: 1.2,
       scrollback: 5000,
-      fontFamily: '"Geist Mono", monospace',
+      fontFamily: '"JetBrainsMono Nerd Font Mono", "JetBrains Mono", monospace',
       theme: getTerminalTheme(),
     });
 
     const fitAddon = new FitAddon();
     terminal.loadAddon(fitAddon);
     terminal.open(containerRef.current);
+    try {
+      terminal.loadAddon(new WebglAddon());
+    } catch {
+      // WebGL not available; fall back to default canvas renderer
+    }
     fitAddon.fit();
 
     terminalRef.current = terminal;

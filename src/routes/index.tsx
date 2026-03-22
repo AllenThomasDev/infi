@@ -8,7 +8,7 @@ import {
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type {
   FlowNode,
   TerminalFlowNode,
@@ -56,6 +56,7 @@ const TERMINAL_DEFAULT_HEIGHT = 380;
 function Canvas() {
   const [nodes, setNodes] = useNodesState<FlowNode>(initialNodes);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const terminalCounterRef = useRef(0);
   const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
   const reactFlow = useReactFlow();
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -71,26 +72,6 @@ function Canvas() {
     selectAllNodes,
     ungroupSelectedNodes,
   } = useCanvasNodeActions({ nodes, reactFlow, setNodes });
-
-  const onSelectionChange = useCallback(
-    ({ nodes: selectedNodes }: { nodes: FlowNode[] }) => {
-      if (
-        selectedNodes.length === 1 &&
-        selectedNodes[0].type === "terminal"
-      ) {
-        const node = selectedNodes[0];
-        const width = node.measured?.width ?? TERMINAL_DEFAULT_WIDTH;
-        const height = node.measured?.height ?? TERMINAL_DEFAULT_HEIGHT;
-
-        reactFlow.setCenter(
-          node.position.x + width / 2,
-          node.position.y + height / 2,
-          { duration: 300, zoom: reactFlow.getZoom() }
-        );
-      }
-    },
-    [reactFlow]
-  );
 
   const isInputFocused = useCallback(
     () =>
@@ -111,9 +92,9 @@ function Canvas() {
     const snappedX = Math.round((center.x - TERMINAL_DEFAULT_WIDTH / 2) / 24) * 24;
     const snappedY = Math.round((center.y - TERMINAL_DEFAULT_HEIGHT / 2) / 24) * 24;
 
-    setNodes((prev) => {
-      const terminalCount = prev.filter((n) => n.type === "terminal").length;
+    const terminalNumber = ++terminalCounterRef.current;
 
+    setNodes((prev) => {
       const terminalNode: TerminalFlowNode = {
         id: nodeId,
         type: "terminal",
@@ -122,7 +103,7 @@ function Canvas() {
         selected: true,
         data: {
           terminalId,
-          title: `Terminal ${terminalCount + 1}`,
+          title: `Terminal ${terminalNumber}`,
         },
       };
 
@@ -183,11 +164,10 @@ function Canvas() {
         defaultEdgeOptions={defaultEdgeOptions}
         fitView
         maxZoom={1.8}
-        minZoom={0}
+        minZoom={0.1}
         nodes={nodes}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
-        onSelectionChange={onSelectionChange}
         panOnDrag={[1, 2]}
         proOptions={{ hideAttribution: true }}
         snapGrid={[24, 24]}
