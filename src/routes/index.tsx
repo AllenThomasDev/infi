@@ -183,7 +183,7 @@ function Canvas() {
         defaultEdgeOptions={defaultEdgeOptions}
         fitView
         maxZoom={1.8}
-        minZoom={0.5}
+        minZoom={0}
         nodes={nodes}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
