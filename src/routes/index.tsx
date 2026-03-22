@@ -26,19 +26,33 @@ import { Button } from "@/components/ui/button";
 import { WorkspaceContext } from "@/components/workspace/workspace-context";
 import { WorkspaceBar } from "@/components/workspace-bar";
 import { ipc } from "@/ipc/manager";
-import type { CommandHandlerMap } from "@/keybindings/types";
+import type {
+  CommandHandlerMap,
+  ShortcutMatchContext,
+} from "@/keybindings/types";
 import { useKeybindings } from "@/keybindings/useKeybindings";
 import { useTilingLayout } from "@/layout/use-tiling-layout";
 import { useWorkspaceStore } from "@/workspace/workspace-store";
 
-interface CanvasProps {
-  directory?: string;
-  isActive?: boolean;
+interface CanvasKeybindingState {
+  context: () => Partial<ShortcutMatchContext>;
+  handlers: CommandHandlerMap;
 }
 
-function Canvas({ directory, isActive = true }: CanvasProps) {
+interface CanvasProps {
+  commandPaletteOpen: boolean;
+  directory?: string;
+  isActive?: boolean;
+  onKeybindingStateChange: (state: CanvasKeybindingState | null) => void;
+}
+
+function Canvas({
+  commandPaletteOpen,
+  directory,
+  isActive = true,
+  onKeybindingStateChange,
+}: CanvasProps) {
   const [nodes, setNodes] = useNodesState<FlowNode>([]);
-  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
   const reactFlow = useReactFlow();
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -108,58 +122,70 @@ function Canvas({ directory, isActive = true }: CanvasProps) {
     []
   );
 
-  const commandHandlers: CommandHandlerMap = {
-    "canvas.fitView": () => reactFlow.fitView(),
-    "canvas.zoomIn": () => reactFlow.zoomIn(),
-    "canvas.zoomOut": () => reactFlow.zoomOut(),
-    "canvas.selectAll": selectAllNodes,
-    "canvas.deleteSelected": deleteSelectedNodes,
-    "tiling.createLeft": () => create(-1, 0, "terminal"),
-    "tiling.createRight": () => create(1, 0, "terminal"),
-    "tiling.createUp": () => create(0, -1, "terminal"),
-    "tiling.createDown": () => create(0, 1, "terminal"),
-    "tiling.insertLeft": () => create(-1, 0, "picker"),
-    "tiling.insertRight": () => create(1, 0, "picker"),
-    "tiling.insertUp": () => create(0, -1, "picker"),
-    "tiling.insertDown": () => create(0, 1, "picker"),
-    "tiling.focusLeft": () => focus(-1, 0),
-    "tiling.focusRight": () => focus(1, 0),
-    "tiling.focusUp": () => focus(0, -1),
-    "tiling.focusDown": () => focus(0, 1),
-    "tiling.moveLeft": () => {
-      const selectedNode = nodes.find((node) => node.selected);
-      if (!selectedNode) {
-        return;
-      }
-      pendingMoveViewportId.current = selectedNode.id;
-      move(-1, 0);
-    },
-    "tiling.moveRight": () => {
-      const selectedNode = nodes.find((node) => node.selected);
-      if (!selectedNode) {
-        return;
-      }
-      pendingMoveViewportId.current = selectedNode.id;
-      move(1, 0);
-    },
-    "tiling.moveUp": () => {
-      const selectedNode = nodes.find((node) => node.selected);
-      if (!selectedNode) {
-        return;
-      }
-      pendingMoveViewportId.current = selectedNode.id;
-      move(0, -1);
-    },
-    "tiling.moveDown": () => {
-      const selectedNode = nodes.find((node) => node.selected);
-      if (!selectedNode) {
-        return;
-      }
-      pendingMoveViewportId.current = selectedNode.id;
-      move(0, 1);
-    },
-    "theme.toggle": toggleTheme,
-  };
+  const canvasHandlers = useMemo<CommandHandlerMap>(
+    () => ({
+      "canvas.fitView": () => reactFlow.fitView(),
+      "canvas.zoomIn": () => reactFlow.zoomIn(),
+      "canvas.zoomOut": () => reactFlow.zoomOut(),
+      "canvas.selectAll": selectAllNodes,
+      "canvas.deleteSelected": deleteSelectedNodes,
+      "tiling.createLeft": () => create(-1, 0, "terminal"),
+      "tiling.createRight": () => create(1, 0, "terminal"),
+      "tiling.createUp": () => create(0, -1, "terminal"),
+      "tiling.createDown": () => create(0, 1, "terminal"),
+      "tiling.insertLeft": () => create(-1, 0, "picker"),
+      "tiling.insertRight": () => create(1, 0, "picker"),
+      "tiling.insertUp": () => create(0, -1, "picker"),
+      "tiling.insertDown": () => create(0, 1, "picker"),
+      "tiling.focusLeft": () => focus(-1, 0),
+      "tiling.focusRight": () => focus(1, 0),
+      "tiling.focusUp": () => focus(0, -1),
+      "tiling.focusDown": () => focus(0, 1),
+      "tiling.moveLeft": () => {
+        const selectedNode = nodes.find((node) => node.selected);
+        if (!selectedNode) {
+          return;
+        }
+        pendingMoveViewportId.current = selectedNode.id;
+        move(-1, 0);
+      },
+      "tiling.moveRight": () => {
+        const selectedNode = nodes.find((node) => node.selected);
+        if (!selectedNode) {
+          return;
+        }
+        pendingMoveViewportId.current = selectedNode.id;
+        move(1, 0);
+      },
+      "tiling.moveUp": () => {
+        const selectedNode = nodes.find((node) => node.selected);
+        if (!selectedNode) {
+          return;
+        }
+        pendingMoveViewportId.current = selectedNode.id;
+        move(0, -1);
+      },
+      "tiling.moveDown": () => {
+        const selectedNode = nodes.find((node) => node.selected);
+        if (!selectedNode) {
+          return;
+        }
+        pendingMoveViewportId.current = selectedNode.id;
+        move(0, 1);
+      },
+      "theme.toggle": toggleTheme,
+    }),
+    [
+      create,
+      deleteSelectedNodes,
+      focus,
+      move,
+      nodes,
+      reactFlow,
+      selectAllNodes,
+      toggleTheme,
+    ]
+  );
 
   const getKeybindingContext = useCallback(() => {
     const selectedNode = nodes.find((node) => node.selected);
@@ -174,14 +200,29 @@ function Canvas({ directory, isActive = true }: CanvasProps) {
     };
   }, [commandPaletteOpen, isInputFocused, nodes]);
 
-  const { keybindings } = useKeybindings({
-    enabled: isActive,
-    handlers: {
-      ...commandHandlers,
-      "app.commandPalette": () => setCommandPaletteOpen((prev) => !prev),
-    },
-    context: getKeybindingContext,
-  });
+  const keybindingState = useMemo<CanvasKeybindingState>(
+    () => ({
+      context: getKeybindingContext,
+      handlers: canvasHandlers,
+    }),
+    [canvasHandlers, getKeybindingContext]
+  );
+
+  useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+
+    onKeybindingStateChange(keybindingState);
+  }, [isActive, keybindingState, onKeybindingStateChange]);
+
+  useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+
+    return () => onKeybindingStateChange(null);
+  }, [isActive, onKeybindingStateChange]);
 
   return (
     <WorkspaceContext.Provider value={{ directory }}>
@@ -201,12 +242,6 @@ function Canvas({ directory, isActive = true }: CanvasProps) {
           <Background gap={24} size={1} variant={BackgroundVariant.Dots} />
           <Controls position="bottom-right" showInteractive={false} />
         </ReactFlow>
-        <CommandPalette
-          handlers={commandHandlers}
-          keybindings={keybindings}
-          onOpenChange={setCommandPaletteOpen}
-          open={commandPaletteOpen}
-        />
       </TileActionsContext.Provider>
     </WorkspaceContext.Provider>
   );
@@ -234,7 +269,15 @@ function WelcomeScreen() {
   );
 }
 
-function WorkspaceContainer() {
+interface WorkspaceContainerProps {
+  commandPaletteOpen: boolean;
+  onKeybindingStateChange: (state: CanvasKeybindingState | null) => void;
+}
+
+function WorkspaceContainer({
+  commandPaletteOpen,
+  onKeybindingStateChange,
+}: WorkspaceContainerProps) {
   const projects = useWorkspaceStore((s) => s.projects);
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
   const canvases = useWorkspaceStore((s) => s.canvases);
@@ -260,8 +303,10 @@ function WorkspaceContainer() {
             >
               <ReactFlowProvider>
                 <Canvas
+                  commandPaletteOpen={commandPaletteOpen}
                   directory={effectiveDirectory}
                   isActive={isCanvasActive}
+                  onKeybindingStateChange={onKeybindingStateChange}
                 />
               </ReactFlowProvider>
             </div>
@@ -272,7 +317,7 @@ function WorkspaceContainer() {
   );
 }
 
-function useWorkspaceKeybindings() {
+function useWorkspaceCommandHandlers() {
   const projects = useWorkspaceStore((s) => s.projects);
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
   const createProject = useWorkspaceStore((s) => s.createProject);
@@ -351,14 +396,30 @@ function useWorkspaceKeybindings() {
     ]
   );
 
-  useKeybindings({ handlers });
+  return handlers;
 }
 
 function HomePage() {
   const projects = useWorkspaceStore((s) => s.projects);
   const hasProjects = projects.length > 0;
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const workspaceHandlers = useWorkspaceCommandHandlers();
+  const [canvasKeybindingState, setCanvasKeybindingState] =
+    useState<CanvasKeybindingState | null>(null);
 
-  useWorkspaceKeybindings();
+  const commandHandlers = useMemo<CommandHandlerMap>(
+    () => ({
+      "app.commandPalette": () => setCommandPaletteOpen((prev) => !prev),
+      ...workspaceHandlers,
+      ...canvasKeybindingState?.handlers,
+    }),
+    [canvasKeybindingState?.handlers, workspaceHandlers]
+  );
+
+  const { keybindings } = useKeybindings({
+    handlers: commandHandlers,
+    context: canvasKeybindingState?.context,
+  });
 
   return (
     <section className="relative flex h-full flex-col overflow-hidden bg-background">
@@ -367,7 +428,20 @@ function HomePage() {
         <div className="absolute top-4 right-4 z-10">
           <ModeToggle />
         </div>
-        {hasProjects ? <WorkspaceContainer /> : <WelcomeScreen />}
+        {hasProjects ? (
+          <WorkspaceContainer
+            commandPaletteOpen={commandPaletteOpen}
+            onKeybindingStateChange={setCanvasKeybindingState}
+          />
+        ) : (
+          <WelcomeScreen />
+        )}
+        <CommandPalette
+          handlers={commandHandlers}
+          keybindings={keybindings}
+          onOpenChange={setCommandPaletteOpen}
+          open={commandPaletteOpen}
+        />
       </div>
     </section>
   );
