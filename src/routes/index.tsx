@@ -42,6 +42,7 @@ interface CanvasKeybindingState {
 }
 
 interface CanvasProps {
+  branchPickerOpen: boolean;
   canvasId: string;
   commandPaletteOpen: boolean;
   directory?: string;
@@ -50,6 +51,7 @@ interface CanvasProps {
 }
 
 function Canvas({
+  branchPickerOpen,
   canvasId,
   commandPaletteOpen,
   directory,
@@ -197,12 +199,12 @@ function Canvas({
     return {
       browserSelected: selectedType === "browser",
       canvasFocus: true,
-      inputFocus: isInputFocused() || commandPaletteOpen,
+      inputFocus: isInputFocused() || commandPaletteOpen || branchPickerOpen,
       pickerSelected: selectedType === "picker",
       terminalSelected: selectedType === "terminal",
       windowSelected: selectedType === "window",
     };
-  }, [commandPaletteOpen, isInputFocused, nodes]);
+  }, [branchPickerOpen, commandPaletteOpen, isInputFocused, nodes]);
 
   const keybindingState = useMemo<CanvasKeybindingState>(
     () => ({
@@ -266,6 +268,7 @@ function WelcomeScreen({ onOpenProject }: { onOpenProject: () => void }) {
 }
 
 interface WorkspaceContainerProps {
+  branchPickerOpen: boolean;
   commandPaletteOpen: boolean;
   onKeybindingStateChange: (state: CanvasKeybindingState | null) => void;
 }
@@ -279,6 +282,7 @@ function EmptyCanvasState() {
 }
 
 function WorkspaceContainer({
+  branchPickerOpen,
   commandPaletteOpen,
   onKeybindingStateChange,
 }: WorkspaceContainerProps) {
@@ -307,6 +311,7 @@ function WorkspaceContainer({
             >
               <ReactFlowProvider>
                 <Canvas
+                  branchPickerOpen={branchPickerOpen}
                   canvasId={canvas.id}
                   commandPaletteOpen={commandPaletteOpen}
                   directory={effectiveDirectory}
@@ -510,6 +515,7 @@ function HomePage() {
         </div>
         {hasProjects ? (
           <WorkspaceContainer
+            branchPickerOpen={branchPickerOpen}
             commandPaletteOpen={commandPaletteOpen}
             onKeybindingStateChange={setCanvasKeybindingState}
           />

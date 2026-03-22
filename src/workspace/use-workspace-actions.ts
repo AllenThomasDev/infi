@@ -13,6 +13,18 @@ function getProjectWorktreePath(directory: string, branch: string) {
   return path.join(`${directory}-worktrees`, branch);
 }
 
+async function removeWorktreeOrThrow(cwd: string, worktreePath: string) {
+  try {
+    await ipc.client.git.removeWorktree({
+      cwd,
+      path: worktreePath,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to remove worktree at ${worktreePath}: ${message}`);
+  }
+}
+
 export function useWorkspaceActions() {
   const projects = useWorkspaceStore((s) => s.projects);
   const createCanvas = useWorkspaceStore((s) => s.createCanvas);
@@ -32,10 +44,7 @@ export function useWorkspaceActions() {
       }
 
       if (canvas.worktreePath) {
-        await ipc.client.git.removeWorktree({
-          cwd: project.directory,
-          path: canvas.worktreePath,
-        });
+        await removeWorktreeOrThrow(project.directory, canvas.worktreePath);
       }
 
       closeCanvas(canvasId);
@@ -55,10 +64,7 @@ export function useWorkspaceActions() {
           continue;
         }
 
-        await ipc.client.git.removeWorktree({
-          cwd: project.directory,
-          path: canvas.worktreePath,
-        });
+        await removeWorktreeOrThrow(project.directory, canvas.worktreePath);
       }
 
       closeProject(projectId);
@@ -92,11 +98,22 @@ export function useWorkspaceActions() {
         path: worktreePath,
       });
 
-      return createCanvas(projectId, {
-        branch,
-        name: branch,
-        worktreePath: result.path,
-      });
+      try {
+        const canvasId = createCanvas(projectId, {
+          branch,
+          name: branch,
+          worktreePath: result.path,
+        });
+        if (!canvasId) {
+          throw new Error(`Failed to create canvas for branch ${branch}`);
+        }
+        return canvasId;
+      } catch (error) {
+        await removeWorktreeOrThrow(project.directory, result.path).catch(
+          console.error
+        );
+        throw error;
+      }
     },
     [createCanvas, projects]
   );

@@ -34,6 +34,8 @@ export default function TerminalView({ terminalId }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  // A terminal should spawn in the workspace directory that existed when this
+  // view mounted; later context changes should not retarget an existing PTY.
   const spawnDirectoryRef = useRef(directory);
   // Incremented on each mount so a stale cleanup's deferred kill is cancelled
   // when strict mode remounts the component.

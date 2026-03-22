@@ -1,3 +1,4 @@
+import type { ExecFileException } from "node:child_process";
 import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { promisify } from "node:util";
@@ -37,8 +38,12 @@ async function branchExists(cwd: string, branch: string) {
       `refs/heads/${branch}`,
     ]);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    const execError = error as ExecFileException;
+    if (execError.code === 1) {
+      return false;
+    }
+    throw error;
   }
 }
 
