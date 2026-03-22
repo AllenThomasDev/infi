@@ -46,7 +46,7 @@ export default function TerminalNode({
         className="nodrag nowheel nokey min-h-0 flex-1 cursor-text p-1"
         ref={containerRef}
       >
-        <TerminalView cwd={data.cwd} terminalId={data.terminalId} />
+        <TerminalView terminalId={data.terminalId} />
       </div>
     </BaseNode>
   );

@@ -2,6 +2,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { Terminal } from "@xterm/xterm";
 import { useEffect, useRef } from "react";
+import { useWorkspaceContext } from "@/components/workspace/workspace-context";
 import { ipc } from "@/ipc/manager";
 import "@xterm/xterm/css/xterm.css";
 import "@/assets/fonts/jetbrains-mono-nerd.css";
@@ -25,14 +26,15 @@ function getTerminalTheme(): Record<string, string> {
 }
 
 interface TerminalViewProps {
-  cwd?: string;
   terminalId: string;
 }
 
-export default function TerminalView({ cwd, terminalId }: TerminalViewProps) {
+export default function TerminalView({ terminalId }: TerminalViewProps) {
+  const { directory } = useWorkspaceContext();
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const spawnDirectoryRef = useRef(directory);
   // Incremented on each mount so a stale cleanup's deferred kill is cancelled
   // when strict mode remounts the component.
   const mountGenRef = useRef(0);
@@ -98,7 +100,7 @@ export default function TerminalView({ cwd, terminalId }: TerminalViewProps) {
         id: terminalId,
         cols: terminal.cols,
         rows: terminal.rows,
-        cwd,
+        cwd: spawnDirectoryRef.current,
       })
       .then(() => {
         terminal.focus();

@@ -12,7 +12,6 @@ import {
 import { FolderOpen } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CommandPalette } from "@/components/command-palette";
-import type { NodeCreateContext } from "@/components/flow/node-registry";
 import {
   flowNodeTypes,
   type NodeType,
@@ -24,6 +23,7 @@ import { TileActionsContext } from "@/components/flow/use-tile-actions";
 import ModeToggle from "@/components/mode-toggle";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
+import { WorkspaceContext } from "@/components/workspace/workspace-context";
 import { WorkspaceBar } from "@/components/workspace-bar";
 import { ipc } from "@/ipc/manager";
 import type { CommandHandlerMap } from "@/keybindings/types";
@@ -44,18 +44,9 @@ function Canvas({ directory, isActive = true }: CanvasProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
 
   const createNode = useCallback(
-    (
-      type: string,
-      col: number,
-      row: number,
-      nodes: readonly FlowNode[],
-      ctx?: NodeCreateContext
-    ) =>
-      nodeRegistry[type as NodeType].create(col, row, nodes, {
-        cwd: directory,
-        ...ctx,
-      }),
-    [directory]
+    (type: string, col: number, row: number, nodes: readonly FlowNode[]) =>
+      nodeRegistry[type as NodeType].create(col, row, nodes),
+    []
   );
 
   const { create, remove, replace, focus, move } = useTilingLayout(
@@ -193,29 +184,31 @@ function Canvas({ directory, isActive = true }: CanvasProps) {
   });
 
   return (
-    <TileActionsContext.Provider value={tileActions}>
-      <ReactFlow
-        colorMode={resolvedTheme}
-        defaultEdgeOptions={defaultEdgeOptions}
-        maxZoom={1.8}
-        minZoom={0.1}
-        nodes={nodes}
-        nodeTypes={flowNodeTypes}
-        onNodesChange={onNodesChange}
-        onSelectionChange={onSelectionChange}
-        panOnDrag={[1, 2]}
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background gap={24} size={1} variant={BackgroundVariant.Dots} />
-        <Controls position="bottom-right" showInteractive={false} />
-      </ReactFlow>
-      <CommandPalette
-        handlers={commandHandlers}
-        keybindings={keybindings}
-        onOpenChange={setCommandPaletteOpen}
-        open={commandPaletteOpen}
-      />
-    </TileActionsContext.Provider>
+    <WorkspaceContext.Provider value={{ directory }}>
+      <TileActionsContext.Provider value={tileActions}>
+        <ReactFlow
+          colorMode={resolvedTheme}
+          defaultEdgeOptions={defaultEdgeOptions}
+          maxZoom={1.8}
+          minZoom={0.1}
+          nodes={nodes}
+          nodeTypes={flowNodeTypes}
+          onNodesChange={onNodesChange}
+          onSelectionChange={onSelectionChange}
+          panOnDrag={[1, 2]}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background gap={24} size={1} variant={BackgroundVariant.Dots} />
+          <Controls position="bottom-right" showInteractive={false} />
+        </ReactFlow>
+        <CommandPalette
+          handlers={commandHandlers}
+          keybindings={keybindings}
+          onOpenChange={setCommandPaletteOpen}
+          open={commandPaletteOpen}
+        />
+      </TileActionsContext.Provider>
+    </WorkspaceContext.Provider>
   );
 }
 
