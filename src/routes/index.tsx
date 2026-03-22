@@ -40,6 +40,7 @@ interface CanvasKeybindingState {
 }
 
 interface CanvasProps {
+  canvasId: string;
   commandPaletteOpen: boolean;
   directory?: string;
   isActive?: boolean;
@@ -47,6 +48,7 @@ interface CanvasProps {
 }
 
 function Canvas({
+  canvasId,
   commandPaletteOpen,
   directory,
   isActive = true,
@@ -230,6 +232,7 @@ function Canvas({
         <ReactFlow
           colorMode={resolvedTheme}
           defaultEdgeOptions={defaultEdgeOptions}
+          id={canvasId}
           maxZoom={1.8}
           minZoom={0.1}
           nodes={nodes}
@@ -297,6 +300,7 @@ function WorkspaceContainer({
             >
               <ReactFlowProvider>
                 <Canvas
+                  canvasId={canvas.id}
                   commandPaletteOpen={commandPaletteOpen}
                   directory={effectiveDirectory}
                   isActive={isCanvasActive}

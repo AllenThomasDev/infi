@@ -144,10 +144,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         (canvas) => canvas.id !== canvasId
       );
 
-      // Don't close the last canvas — close the project instead
+      // Closing the last canvas closes the whole project.
       if (nextCanvases.length === 0) {
-        get().closeProject(project.id);
-        return state;
+        const remainingProjects = state.projects.filter(
+          (p) => p.id !== project.id
+        );
+        return {
+          projects: remainingProjects,
+          activeProjectId:
+            state.activeProjectId === project.id
+              ? (remainingProjects.at(-1)?.id ?? null)
+              : state.activeProjectId,
+        };
       }
 
       const newActiveCanvasId =
