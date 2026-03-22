@@ -39,6 +39,7 @@ export function makeNodeFactory(
           id: `picker-node-${crypto.randomUUID()}`,
           type: "picker",
           position: { x: 0, y: 0 },
+          style: { width: TILE_WIDTH, height: TILE_HEIGHT },
           draggable: false,
           data: { col, row },
         }) as FlowNode;

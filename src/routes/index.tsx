@@ -67,7 +67,7 @@ function Canvas() {
       reactFlow.fitView({
         nodes: [{ id: nodeId }],
         duration: 300,
-        maxZoom: 1,
+        maxZoom: 1.4,
         padding: 0.1,
       });
     },
@@ -168,8 +168,11 @@ function Canvas() {
     () => ({
       canvasFocus: true,
       inputFocus: isInputFocused() || commandPaletteOpen,
+      pickerSelected: nodes.some(
+        (node) => node.selected && node.type === "picker"
+      ),
     }),
-    [commandPaletteOpen, isInputFocused]
+    [commandPaletteOpen, isInputFocused, nodes]
   );
 
   const { keybindings } = useKeybindings({
