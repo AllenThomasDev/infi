@@ -14,6 +14,22 @@ function getProjectWorktreePath(directory: string, branch: string) {
   return path.join(`${directory}-worktrees`, branch);
 }
 
+function getDefaultCanvasName(
+  branch: string,
+  existingNames: readonly string[]
+) {
+  if (!existingNames.includes(branch)) {
+    return branch;
+  }
+
+  let nextSuffix = 2;
+  while (existingNames.includes(`${branch} (${nextSuffix})`)) {
+    nextSuffix += 1;
+  }
+
+  return `${branch} (${nextSuffix})`;
+}
+
 async function removeWorktreeOrThrow(cwd: string, worktreePath: string) {
   try {
     await ipc.client.git.removeWorktree({
@@ -85,11 +101,16 @@ export function useWorkspaceActions() {
         return "";
       }
 
+      const canvasName = getDefaultCanvasName(
+        branch,
+        project.canvases.map((canvas) => canvas.name)
+      );
+
       if (branch === currentBranch) {
         return createCanvas(projectId, {
           branch,
           managedWorktree: false,
-          name: branch,
+          name: canvasName,
           worktreePath: null,
         });
       }
@@ -98,7 +119,7 @@ export function useWorkspaceActions() {
         return createCanvas(projectId, {
           branch,
           managedWorktree: false,
-          name: branch,
+          name: canvasName,
           worktreePath: existingWorktreePath,
         });
       }
@@ -114,7 +135,7 @@ export function useWorkspaceActions() {
         const canvasId = createCanvas(projectId, {
           branch,
           managedWorktree: true,
-          name: branch,
+          name: canvasName,
           worktreePath: result.path,
         });
         if (!canvasId) {
