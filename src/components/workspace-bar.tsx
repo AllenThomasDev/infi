@@ -1,9 +1,14 @@
 import { FolderOpen, Plus, X } from "lucide-react";
-import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { ipc } from "@/ipc/manager";
 import { cn } from "@/utils/tailwind";
 import { useWorkspaceStore } from "@/workspace/workspace-store";
+
+interface WorkspaceBarProps {
+  onCloseCanvas: (canvasId: string) => void | Promise<void>;
+  onCloseProject: (projectId: string) => void | Promise<void>;
+  onCreateCanvas: () => void;
+  onOpenProject: () => void | Promise<void>;
+}
 
 function ProjectTab({
   active,
@@ -82,31 +87,19 @@ function CanvasTab({
   );
 }
 
-export function WorkspaceBar() {
+export function WorkspaceBar({
+  onCloseCanvas,
+  onCloseProject,
+  onCreateCanvas,
+  onOpenProject,
+}: WorkspaceBarProps) {
   const projects = useWorkspaceStore((s) => s.projects);
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
-  const createProject = useWorkspaceStore((s) => s.createProject);
   const switchProject = useWorkspaceStore((s) => s.switchProject);
-  const closeProject = useWorkspaceStore((s) => s.closeProject);
-  const createCanvas = useWorkspaceStore((s) => s.createCanvas);
   const switchCanvas = useWorkspaceStore((s) => s.switchCanvas);
-  const closeCanvas = useWorkspaceStore((s) => s.closeCanvas);
 
   const activeProject = projects.find((p) => p.id === activeProjectId);
   const activeCanvases = activeProject?.canvases ?? [];
-
-  const handleNewProject = useCallback(async () => {
-    const result = await ipc.client.workspace.openDirectory();
-    if (result.directory) {
-      createProject(result.directory);
-    }
-  }, [createProject]);
-
-  const handleNewCanvas = useCallback(() => {
-    if (activeProjectId) {
-      createCanvas(activeProjectId);
-    }
-  }, [activeProjectId, createCanvas]);
 
   if (projects.length === 0) {
     return null;
@@ -121,13 +114,17 @@ export function WorkspaceBar() {
             key={project.id}
             name={project.name}
             onClick={() => switchProject(project.id)}
-            onClose={() => closeProject(project.id)}
+            onClose={() => {
+              Promise.resolve(onCloseProject(project.id)).catch(console.error);
+            }}
           />
         ))}
         <Button
           aria-label="Open project"
           className="mx-1 self-center"
-          onClick={handleNewProject}
+          onClick={() => {
+            Promise.resolve(onOpenProject()).catch(console.error);
+          }}
           size="icon-xs"
           variant="ghost"
         >
@@ -142,13 +139,15 @@ export function WorkspaceBar() {
             key={canvas.id}
             name={canvas.name}
             onClick={() => switchCanvas(canvas.id)}
-            onClose={() => closeCanvas(canvas.id)}
+            onClose={() => {
+              Promise.resolve(onCloseCanvas(canvas.id)).catch(console.error);
+            }}
           />
         ))}
         <Button
           aria-label="New canvas"
           className="mx-1 self-center"
-          onClick={handleNewCanvas}
+          onClick={onCreateCanvas}
           size="icon-xs"
           variant="ghost"
         >

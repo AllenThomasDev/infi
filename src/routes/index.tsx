@@ -11,6 +11,7 @@ import {
 } from "@xyflow/react";
 import { FolderOpen } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BranchPicker } from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
 import {
   flowNodeTypes,
@@ -32,6 +33,7 @@ import type {
 } from "@/keybindings/types";
 import { useKeybindings } from "@/keybindings/useKeybindings";
 import { useTilingLayout } from "@/layout/use-tiling-layout";
+import { useWorkspaceActions } from "@/workspace/use-workspace-actions";
 import { useWorkspaceStore } from "@/workspace/workspace-store";
 
 interface CanvasKeybindingState {
@@ -250,21 +252,12 @@ function Canvas({
   );
 }
 
-function WelcomeScreen() {
-  const createProject = useWorkspaceStore((s) => s.createProject);
-
-  const handleOpen = useCallback(async () => {
-    const result = await ipc.client.workspace.openDirectory();
-    if (result.directory) {
-      createProject(result.directory);
-    }
-  }, [createProject]);
-
+function WelcomeScreen({ onOpenProject }: { onOpenProject: () => void }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
       <FolderOpen className="size-12 opacity-40" />
       <p className="text-sm">Open a project to get started</p>
-      <Button onClick={handleOpen} size="lg" variant="outline">
+      <Button onClick={onOpenProject} size="lg" variant="outline">
         <FolderOpen className="mr-2 size-4" />
         Open Project
       </Button>
@@ -277,15 +270,29 @@ interface WorkspaceContainerProps {
   onKeybindingStateChange: (state: CanvasKeybindingState | null) => void;
 }
 
+function EmptyCanvasState() {
+  return (
+    <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+      Select a branch or create a new one to get started.
+    </div>
+  );
+}
+
 function WorkspaceContainer({
   commandPaletteOpen,
   onKeybindingStateChange,
 }: WorkspaceContainerProps) {
   const projects = useWorkspaceStore((s) => s.projects);
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
+  const activeProject = projects.find(
+    (project) => project.id === activeProjectId
+  );
 
   return (
     <>
+      {activeProject && activeProject.canvases.length === 0 ? (
+        <EmptyCanvasState />
+      ) : null}
       {projects.flatMap((project) =>
         project.canvases.map((canvas) => {
           const isProjectActive = project.id === activeProjectId;
@@ -315,14 +322,21 @@ function WorkspaceContainer({
   );
 }
 
-function useWorkspaceCommandHandlers() {
+interface WorkspaceCommandHandlersOptions {
+  onCloseCanvas: (canvasId: string) => Promise<void>;
+  onCreateCanvas: () => void;
+  onOpenProject: () => Promise<void>;
+}
+
+function useWorkspaceCommandHandlers({
+  onCloseCanvas,
+  onCreateCanvas,
+  onOpenProject,
+}: WorkspaceCommandHandlersOptions) {
   const projects = useWorkspaceStore((s) => s.projects);
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
-  const createProject = useWorkspaceStore((s) => s.createProject);
   const switchProject = useWorkspaceStore((s) => s.switchProject);
-  const createCanvas = useWorkspaceStore((s) => s.createCanvas);
   const switchCanvas = useWorkspaceStore((s) => s.switchCanvas);
-  const closeCanvas = useWorkspaceStore((s) => s.closeCanvas);
 
   const activeProject = projects.find((p) => p.id === activeProjectId);
 
@@ -355,20 +369,13 @@ function useWorkspaceCommandHandlers() {
 
   const handlers: CommandHandlerMap = useMemo(
     () => ({
-      "workspace.newCanvas": () => {
-        if (activeProjectId) {
-          createCanvas(activeProjectId);
-        }
-      },
-      "workspace.openProject": async () => {
-        const result = await ipc.client.workspace.openDirectory();
-        if (result.directory) {
-          createProject(result.directory);
-        }
+      "workspace.newCanvas": onCreateCanvas,
+      "workspace.openProject": () => {
+        onOpenProject().catch(console.error);
       },
       "workspace.closeCanvas": () => {
-        if (activeProject) {
-          closeCanvas(activeProject.activeCanvasId);
+        if (activeProject?.activeCanvasId) {
+          onCloseCanvas(activeProject.activeCanvasId).catch(console.error);
         }
       },
       "workspace.prevProject": () => switchProjectByOffset(-1),
@@ -385,10 +392,9 @@ function useWorkspaceCommandHandlers() {
     }),
     [
       activeProject,
-      activeProjectId,
-      closeCanvas,
-      createCanvas,
-      createProject,
+      onCloseCanvas,
+      onCreateCanvas,
+      onOpenProject,
       switchProjectByOffset,
       switchToCanvasByIndex,
     ]
@@ -399,11 +405,80 @@ function useWorkspaceCommandHandlers() {
 
 function HomePage() {
   const projects = useWorkspaceStore((s) => s.projects);
+  const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
   const hasProjects = projects.length > 0;
+  const {
+    closeCanvasWithCleanup,
+    closeProjectWithCleanup,
+    createCanvasFromBranch,
+  } = useWorkspaceActions();
+  const [branchPickerOpen, setBranchPickerOpen] = useState(false);
+  const [branchPickerProjectId, setBranchPickerProjectId] = useState<
+    string | null
+  >(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const workspaceHandlers = useWorkspaceCommandHandlers();
   const [canvasKeybindingState, setCanvasKeybindingState] =
     useState<CanvasKeybindingState | null>(null);
+
+  const openProjectAndPromptForBranch = useCallback(async () => {
+    const result = await ipc.client.workspace.openDirectory();
+    if (!result.directory) {
+      return;
+    }
+
+    const projectId = useWorkspaceStore
+      .getState()
+      .createProject(result.directory);
+    setBranchPickerProjectId(projectId);
+    setBranchPickerOpen(true);
+  }, []);
+
+  const openBranchPicker = useCallback(() => {
+    if (!activeProjectId) {
+      return;
+    }
+
+    setBranchPickerProjectId(activeProjectId);
+    setBranchPickerOpen(true);
+  }, [activeProjectId]);
+
+  const handleBranchPickerOpenChange = useCallback((open: boolean) => {
+    setBranchPickerOpen(open);
+    if (!open) {
+      setBranchPickerProjectId(null);
+    }
+  }, []);
+
+  const handleBranchSelected = useCallback(
+    async ({
+      branch,
+      currentBranch,
+    }: {
+      branch: string;
+      currentBranch: string | null;
+    }) => {
+      if (!branchPickerProjectId) {
+        return;
+      }
+
+      await createCanvasFromBranch({
+        branch,
+        currentBranch,
+        projectId: branchPickerProjectId,
+      });
+    },
+    [branchPickerProjectId, createCanvasFromBranch]
+  );
+
+  const workspaceHandlers = useWorkspaceCommandHandlers({
+    onCloseCanvas: closeCanvasWithCleanup,
+    onCreateCanvas: openBranchPicker,
+    onOpenProject: openProjectAndPromptForBranch,
+  });
+
+  const branchPickerProject = projects.find(
+    (project) => project.id === branchPickerProjectId
+  );
 
   const commandHandlers = useMemo<CommandHandlerMap>(
     () => ({
@@ -421,7 +496,14 @@ function HomePage() {
 
   return (
     <section className="relative flex h-full flex-col overflow-hidden bg-background">
-      {hasProjects && <WorkspaceBar />}
+      {hasProjects ? (
+        <WorkspaceBar
+          onCloseCanvas={closeCanvasWithCleanup}
+          onCloseProject={closeProjectWithCleanup}
+          onCreateCanvas={openBranchPicker}
+          onOpenProject={openProjectAndPromptForBranch}
+        />
+      ) : null}
       <div className="relative min-h-0 flex-1">
         <div className="absolute top-4 right-4 z-10">
           <ModeToggle />
@@ -432,13 +514,20 @@ function HomePage() {
             onKeybindingStateChange={setCanvasKeybindingState}
           />
         ) : (
-          <WelcomeScreen />
+          <WelcomeScreen onOpenProject={openProjectAndPromptForBranch} />
         )}
         <CommandPalette
           handlers={commandHandlers}
           keybindings={keybindings}
           onOpenChange={setCommandPaletteOpen}
           open={commandPaletteOpen}
+        />
+        <BranchPicker
+          directory={branchPickerProject?.directory}
+          onOpenChange={handleBranchPickerOpenChange}
+          onSelectBranch={handleBranchSelected}
+          open={branchPickerOpen}
+          projectName={branchPickerProject?.name}
         />
       </div>
     </section>

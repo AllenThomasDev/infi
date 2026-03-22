@@ -2,12 +2,18 @@ import path from "pathe";
 import { create } from "zustand";
 import type { Canvas, Project } from "./types";
 
+interface CreateCanvasOptions {
+  branch?: string | null;
+  name?: string;
+  worktreePath?: string | null;
+}
+
 interface WorkspaceState {
   activeProjectId: string | null;
   closeCanvas: (canvasId: string) => void;
   closeProject: (projectId: string) => void;
 
-  createCanvas: (projectId: string, name?: string) => string;
+  createCanvas: (projectId: string, options?: CreateCanvasOptions) => string;
 
   createProject: (directory: string) => string;
   projects: Project[];
@@ -22,23 +28,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   createProject: (directory: string) => {
     const now = Date.now();
     const projectId = crypto.randomUUID();
-    const canvasId = crypto.randomUUID();
-
-    const canvas: Canvas = {
-      id: canvasId,
-      name: "Canvas 1",
-      branch: null,
-      worktreePath: null,
-      createdAt: now,
-      lastActiveAt: now,
-    };
 
     const project: Project = {
       id: projectId,
       name: path.basename(directory),
       directory,
-      canvases: [canvas],
-      activeCanvasId: canvasId,
+      canvases: [],
+      activeCanvasId: null,
       createdAt: now,
       lastActiveAt: now,
     };
@@ -80,7 +76,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     });
   },
 
-  createCanvas: (projectId: string, name?: string) => {
+  createCanvas: (projectId: string, options) => {
     const now = Date.now();
     const canvasId = crypto.randomUUID();
     const project = get().projects.find((p) => p.id === projectId);
@@ -91,9 +87,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const canvasNumber = project.canvases.length + 1;
     const canvas: Canvas = {
       id: canvasId,
-      name: name ?? `Canvas ${canvasNumber}`,
-      branch: null,
-      worktreePath: null,
+      name: options?.name ?? `Canvas ${canvasNumber}`,
+      branch: options?.branch ?? null,
+      worktreePath: options?.worktreePath ?? null,
       createdAt: now,
       lastActiveAt: now,
     };
@@ -144,25 +140,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         (canvas) => canvas.id !== canvasId
       );
 
-      // Closing the last canvas closes the whole project.
-      if (nextCanvases.length === 0) {
-        const remainingProjects = state.projects.filter(
-          (p) => p.id !== project.id
-        );
-        return {
-          projects: remainingProjects,
-          activeProjectId:
-            state.activeProjectId === project.id
-              ? (remainingProjects.at(-1)?.id ?? null)
-              : state.activeProjectId,
-        };
-      }
-
       const newActiveCanvasId =
         project.activeCanvasId === canvasId
-          ? (nextCanvases.at(-1)?.id ??
-            nextCanvases[0]?.id ??
-            project.activeCanvasId)
+          ? (nextCanvases.at(-1)?.id ?? nextCanvases[0]?.id ?? null)
           : project.activeCanvasId;
 
       return {
