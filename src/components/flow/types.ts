@@ -15,9 +15,19 @@ export interface TerminalNodeData extends TileData {
   title: string;
 }
 
+export interface BrowserNodeData extends TileData {
+  title: string;
+  url: string;
+}
+
 export type PickerNodeData = TileData;
 
 export type WindowFlowNode = Node<WindowNodeData, "window">;
 export type TerminalFlowNode = Node<TerminalNodeData, "terminal">;
+export type BrowserFlowNode = Node<BrowserNodeData, "browser">;
 export type PickerFlowNode = Node<PickerNodeData, "picker">;
-export type FlowNode = WindowFlowNode | TerminalFlowNode | PickerFlowNode;
+export type FlowNode =
+  | WindowFlowNode
+  | TerminalFlowNode
+  | BrowserFlowNode
+  | PickerFlowNode;

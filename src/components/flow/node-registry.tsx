@@ -1,6 +1,7 @@
 import type { NodeTypes } from "@xyflow/react";
 import type { LucideIcon } from "lucide-react";
-import { AppWindow, Terminal } from "lucide-react";
+import { AppWindow, Globe, Terminal } from "lucide-react";
+import BrowserNode from "@/components/flow/browser-node";
 import TerminalNode from "@/components/flow/terminal-node";
 import type { FlowNode } from "@/components/flow/types";
 import WindowNode from "@/components/flow/window-node";
@@ -21,7 +22,7 @@ interface NodeDefinition {
   picker?: PickerOptionDefinition;
 }
 
-export type NodeType = "picker" | "terminal" | "window";
+export type NodeType = "browser" | "picker" | "terminal" | "window";
 
 function nextNumber(nodes: readonly FlowNode[], prefix: string) {
   let max = 0;
@@ -35,6 +36,26 @@ function nextNumber(nodes: readonly FlowNode[], prefix: string) {
 }
 
 export const nodeRegistry: Record<NodeType, NodeDefinition> = {
+  browser: {
+    create: (col, row, nodes) =>
+      ({
+        id: `browser-node-${crypto.randomUUID()}`,
+        type: "browser",
+        position: { x: 0, y: 0 },
+        style: { width: TILE_WIDTH, height: TILE_HEIGHT },
+        draggable: false,
+        data: {
+          col,
+          row,
+          title: `Browser ${nextNumber(nodes, "Browser")}`,
+          url: "https://google.com",
+        },
+      }) as FlowNode,
+    picker: {
+      icon: Globe,
+      label: "Browser",
+    },
+  },
   terminal: {
     create: (col, row, nodes) =>
       ({
@@ -88,6 +109,7 @@ export const nodeRegistry: Record<NodeType, NodeDefinition> = {
 };
 
 export const flowNodeTypes = {
+  browser: BrowserNode,
   picker: PickerNode,
   terminal: TerminalNode,
   window: WindowNode,

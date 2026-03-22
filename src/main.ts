@@ -21,6 +21,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: true,
       nodeIntegrationInSubFrames: false,
+      webviewTag: true,
 
       preload,
     },
