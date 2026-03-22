@@ -13,6 +13,7 @@ export interface Canvas {
   createdAt: number;
   id: string;
   lastActiveAt: number;
+  managedWorktree: boolean;
   name: string;
   worktreePath: string | null;
 }

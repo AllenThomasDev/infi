@@ -458,9 +458,11 @@ function HomePage() {
     async ({
       branch,
       currentBranch,
+      worktreePath,
     }: {
       branch: string;
       currentBranch: string | null;
+      worktreePath: string | null;
     }) => {
       if (!branchPickerProjectId) {
         return;
@@ -470,6 +472,7 @@ function HomePage() {
         branch,
         currentBranch,
         projectId: branchPickerProjectId,
+        worktreePath,
       });
     },
     [branchPickerProjectId, createCanvasFromBranch]

@@ -7,6 +7,7 @@ interface CreateCanvasFromBranchOptions {
   branch: string;
   currentBranch: string | null;
   projectId: string;
+  worktreePath: string | null;
 }
 
 function getProjectWorktreePath(directory: string, branch: string) {
@@ -43,7 +44,7 @@ export function useWorkspaceActions() {
         return;
       }
 
-      if (canvas.worktreePath) {
+      if (canvas.managedWorktree && canvas.worktreePath) {
         await removeWorktreeOrThrow(project.directory, canvas.worktreePath);
       }
 
@@ -60,7 +61,7 @@ export function useWorkspaceActions() {
       }
 
       for (const canvas of project.canvases) {
-        if (!canvas.worktreePath) {
+        if (!(canvas.managedWorktree && canvas.worktreePath)) {
           continue;
         }
 
@@ -77,6 +78,7 @@ export function useWorkspaceActions() {
       branch,
       currentBranch,
       projectId,
+      worktreePath: existingWorktreePath,
     }: CreateCanvasFromBranchOptions) => {
       const project = projects.find((candidate) => candidate.id === projectId);
       if (!project) {
@@ -86,8 +88,18 @@ export function useWorkspaceActions() {
       if (branch === currentBranch) {
         return createCanvas(projectId, {
           branch,
+          managedWorktree: false,
           name: branch,
           worktreePath: null,
+        });
+      }
+
+      if (existingWorktreePath) {
+        return createCanvas(projectId, {
+          branch,
+          managedWorktree: false,
+          name: branch,
+          worktreePath: existingWorktreePath,
         });
       }
 
@@ -101,6 +113,7 @@ export function useWorkspaceActions() {
       try {
         const canvasId = createCanvas(projectId, {
           branch,
+          managedWorktree: true,
           name: branch,
           worktreePath: result.path,
         });

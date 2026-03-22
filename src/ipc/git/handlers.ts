@@ -11,11 +11,12 @@ import {
 } from "./schemas";
 
 const execFileAsync = promisify(execFile);
-const BRANCH_PREFIX_PATTERN = /^[*\s]+/;
+const BRANCH_PREFIX_PATTERN = /^[*+\s]+/;
 
 export interface GitBranch {
   current: boolean;
   name: string;
+  worktreePath: string | null;
 }
 
 interface GitResult {
@@ -58,8 +59,32 @@ function parseBranches(output: string): GitBranch[] {
       return {
         name,
         current,
+        worktreePath: null,
       };
     });
+}
+
+function parseWorktrees(output: string) {
+  const worktreeMap = new Map<string, string>();
+  let currentPath: string | null = null;
+
+  for (const line of output.split("\n")) {
+    if (line.startsWith("worktree ")) {
+      currentPath = line.slice("worktree ".length);
+      continue;
+    }
+
+    if (line.startsWith("branch refs/heads/") && currentPath) {
+      worktreeMap.set(line.slice("branch refs/heads/".length), currentPath);
+      continue;
+    }
+
+    if (line === "") {
+      currentPath = null;
+    }
+  }
+
+  return worktreeMap;
 }
 
 function isNotGitRepositoryError(result: GitResult | Error) {
@@ -74,9 +99,13 @@ export const listBranches = os
   .input(listBranchesInputSchema)
   .handler(async ({ input }) => {
     let stdout: string;
+    let worktreeStdout = "";
 
     try {
-      ({ stdout } = await runGit(input.cwd, ["branch", "--no-color"]));
+      [{ stdout }, { stdout: worktreeStdout }] = await Promise.all([
+        runGit(input.cwd, ["branch", "--no-color"]),
+        runGit(input.cwd, ["worktree", "list", "--porcelain"]),
+      ]);
     } catch (error) {
       if (
         isNotGitRepositoryError(
@@ -91,7 +120,11 @@ export const listBranches = os
       throw error;
     }
 
-    const branches = parseBranches(stdout);
+    const worktreeMap = parseWorktrees(worktreeStdout);
+    const branches = parseBranches(stdout).map((branch) => ({
+      ...branch,
+      worktreePath: worktreeMap.get(branch.name) ?? null,
+    }));
 
     return {
       branches,

@@ -14,11 +14,13 @@ import { ipc } from "@/ipc/manager";
 interface BranchListItem {
   current: boolean;
   name: string;
+  worktreePath: string | null;
 }
 
 interface BranchPickerSelection {
   branch: string;
   currentBranch: string | null;
+  worktreePath: string | null;
 }
 
 interface BranchPickerProps {
@@ -105,16 +107,24 @@ export function BranchPicker({
     return `Create Canvas in ${projectName}`;
   }, [projectName]);
 
-  async function handleSelect(branch: string) {
-    if (!branch || submitting) {
+  async function handleSelect(branchName: string) {
+    if (!branchName || submitting) {
       return;
     }
+
+    const selectedBranch = branches.find(
+      (branch) => branch.name === branchName
+    );
 
     setSubmitting(true);
     setError(null);
 
     try {
-      await onSelectBranch({ branch, currentBranch });
+      await onSelectBranch({
+        branch: branchName,
+        currentBranch,
+        worktreePath: selectedBranch?.worktreePath ?? null,
+      });
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -173,6 +183,11 @@ export function BranchPicker({
                     >
                       <GitBranch />
                       <span>{branch.name}</span>
+                      {branch.worktreePath && !branch.current ? (
+                        <span className="text-[0.625rem] text-muted-foreground uppercase tracking-[0.2em]">
+                          reuse
+                        </span>
+                      ) : null}
                       {branch.current ? (
                         <span className="ml-auto text-[0.625rem] text-muted-foreground uppercase tracking-[0.2em]">
                           current
