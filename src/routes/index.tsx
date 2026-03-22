@@ -9,7 +9,7 @@ import {
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CommandPalette } from "@/components/command-palette";
 import { makeNodeFactory } from "@/components/flow/node-factories";
 import PickerNode from "@/components/flow/picker-node";
@@ -40,42 +40,66 @@ function Canvas() {
   const { create, remove, replace, focus, move } = useTilingLayout(setNodes);
 
   const terminalCounterRef = useRef(0);
-  const terminalFactory = useMemo(
-    () => makeNodeFactory("terminal", () => ++terminalCounterRef.current),
-    [],
+  const nextTerminalCount = useCallback(() => ++terminalCounterRef.current, []);
+  const makeTerminalFactory = useCallback(
+    () => makeNodeFactory("terminal", nextTerminalCount()),
+    [nextTerminalCount]
   );
-  const pickerFactory = useMemo(
-    () => makeNodeFactory("picker", () => 0),
-    [],
-  );
+  const makePickerFactory = useCallback(() => makeNodeFactory("picker", 0), []);
 
   const tileActions = useMemo(
     () => ({
       remove,
       replace: (nodeId: string, type: "terminal" | "window" | "picker") =>
-        replace(nodeId, makeNodeFactory(type, () => ++terminalCounterRef.current)),
+        replace(
+          nodeId,
+          makeNodeFactory(type, type === "terminal" ? nextTerminalCount() : 0)
+        ),
     }),
-    [remove, replace],
+    [nextTerminalCount, remove, replace]
   );
 
   const lastFocusedId = useRef<string | null>(null);
+  const pendingMoveViewportId = useRef<string | null>(null);
+  const fitNodeIntoView = useCallback(
+    (nodeId: string) => {
+      lastFocusedId.current = nodeId;
+      reactFlow.fitView({
+        nodes: [{ id: nodeId }],
+        duration: 300,
+        maxZoom: 1,
+        padding: 0.1,
+      });
+    },
+    [reactFlow]
+  );
   const onSelectionChange: OnSelectionChangeFunc = useCallback(
     ({ nodes: sel }) => {
       if (sel.length !== 1) {
         lastFocusedId.current = null;
         return;
       }
-      if (sel[0].id === lastFocusedId.current) return;
-      lastFocusedId.current = sel[0].id;
-      reactFlow.fitView({
-        nodes: [{ id: sel[0].id }],
-        duration: 300,
-        maxZoom: 1,
-        padding: 0.1,
-      });
+      if (sel[0].id === lastFocusedId.current) {
+        return;
+      }
+      fitNodeIntoView(sel[0].id);
     },
-    [reactFlow],
+    [fitNodeIntoView]
   );
+
+  useEffect(() => {
+    if (!pendingMoveViewportId.current) {
+      return;
+    }
+
+    const selectedNode = nodes.find((node) => node.selected);
+    if (!selectedNode || selectedNode.id !== pendingMoveViewportId.current) {
+      return;
+    }
+
+    pendingMoveViewportId.current = null;
+    fitNodeIntoView(selectedNode.id);
+  }, [fitNodeIntoView, nodes]);
 
   const {
     deleteSelectedNodes,
@@ -97,22 +121,50 @@ function Canvas() {
     "canvas.zoomOut": () => reactFlow.zoomOut(),
     "canvas.selectAll": selectAllNodes,
     "canvas.deleteSelected": deleteSelectedNodes,
-    "tiling.createLeft": () => create(-1, 0, terminalFactory),
-    "tiling.createRight": () => create(1, 0, terminalFactory),
-    "tiling.createUp": () => create(0, -1, terminalFactory),
-    "tiling.createDown": () => create(0, 1, terminalFactory),
-    "tiling.insertLeft": () => create(-1, 0, pickerFactory),
-    "tiling.insertRight": () => create(1, 0, pickerFactory),
-    "tiling.insertUp": () => create(0, -1, pickerFactory),
-    "tiling.insertDown": () => create(0, 1, pickerFactory),
+    "tiling.createLeft": () => create(-1, 0, makeTerminalFactory()),
+    "tiling.createRight": () => create(1, 0, makeTerminalFactory()),
+    "tiling.createUp": () => create(0, -1, makeTerminalFactory()),
+    "tiling.createDown": () => create(0, 1, makeTerminalFactory()),
+    "tiling.insertLeft": () => create(-1, 0, makePickerFactory()),
+    "tiling.insertRight": () => create(1, 0, makePickerFactory()),
+    "tiling.insertUp": () => create(0, -1, makePickerFactory()),
+    "tiling.insertDown": () => create(0, 1, makePickerFactory()),
     "tiling.focusLeft": () => focus(-1, 0),
     "tiling.focusRight": () => focus(1, 0),
     "tiling.focusUp": () => focus(0, -1),
     "tiling.focusDown": () => focus(0, 1),
-    "tiling.moveLeft": () => move(-1, 0),
-    "tiling.moveRight": () => move(1, 0),
-    "tiling.moveUp": () => move(0, -1),
-    "tiling.moveDown": () => move(0, 1),
+    "tiling.moveLeft": () => {
+      const selectedNode = nodes.find((node) => node.selected);
+      if (!selectedNode) {
+        return;
+      }
+      pendingMoveViewportId.current = selectedNode.id;
+      move(-1, 0);
+    },
+    "tiling.moveRight": () => {
+      const selectedNode = nodes.find((node) => node.selected);
+      if (!selectedNode) {
+        return;
+      }
+      pendingMoveViewportId.current = selectedNode.id;
+      move(1, 0);
+    },
+    "tiling.moveUp": () => {
+      const selectedNode = nodes.find((node) => node.selected);
+      if (!selectedNode) {
+        return;
+      }
+      pendingMoveViewportId.current = selectedNode.id;
+      move(0, -1);
+    },
+    "tiling.moveDown": () => {
+      const selectedNode = nodes.find((node) => node.selected);
+      if (!selectedNode) {
+        return;
+      }
+      pendingMoveViewportId.current = selectedNode.id;
+      move(0, 1);
+    },
     "theme.toggle": toggleTheme,
   };
 
@@ -123,11 +175,7 @@ function Canvas() {
       nodeSelected: hasSelectedNodes,
       terminalFocus: isInputFocused(),
     }),
-    [
-      commandPaletteOpen,
-      hasSelectedNodes,
-      isInputFocused,
-    ]
+    [commandPaletteOpen, hasSelectedNodes, isInputFocused]
   );
 
   const { keybindings } = useKeybindings({
