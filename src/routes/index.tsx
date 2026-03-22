@@ -280,26 +280,20 @@ function WorkspaceContainer({
 }: WorkspaceContainerProps) {
   const projects = useWorkspaceStore((s) => s.projects);
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
-  const canvases = useWorkspaceStore((s) => s.canvases);
 
   return (
     <>
       {projects.flatMap((project) =>
-        project.canvasIds.map((canvasId) => {
-          const canvas = canvases[canvasId];
-          if (!canvas) {
-            return null;
-          }
-
+        project.canvases.map((canvas) => {
           const isProjectActive = project.id === activeProjectId;
           const isCanvasActive =
-            isProjectActive && canvasId === project.activeCanvasId;
+            isProjectActive && canvas.id === project.activeCanvasId;
           const effectiveDirectory = canvas.worktreePath ?? project.directory;
 
           return (
             <div
               className={isCanvasActive ? "absolute inset-0" : "hidden"}
-              key={canvasId}
+              key={canvas.id}
             >
               <ReactFlowProvider>
                 <Canvas
@@ -333,7 +327,7 @@ function useWorkspaceCommandHandlers() {
       if (!activeProject) {
         return;
       }
-      const canvasId = activeProject.canvasIds[index];
+      const canvasId = activeProject.canvases[index]?.id;
       if (canvasId) {
         switchCanvas(canvasId);
       }

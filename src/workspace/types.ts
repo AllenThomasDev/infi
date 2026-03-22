@@ -1,6 +1,6 @@
 export interface Project {
   activeCanvasId: string;
-  canvasIds: string[];
+  canvases: Canvas[];
   createdAt: number;
   directory: string;
   id: string;
@@ -14,6 +14,5 @@ export interface Canvas {
   id: string;
   lastActiveAt: number;
   name: string;
-  projectId: string;
   worktreePath: string | null;
 }

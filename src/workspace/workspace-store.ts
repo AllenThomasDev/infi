@@ -4,7 +4,6 @@ import type { Canvas, Project } from "./types";
 
 interface WorkspaceState {
   activeProjectId: string | null;
-  canvases: Record<string, Canvas>;
   closeCanvas: (canvasId: string) => void;
   closeProject: (projectId: string) => void;
 
@@ -19,7 +18,6 @@ interface WorkspaceState {
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   projects: [],
   activeProjectId: null,
-  canvases: {},
 
   createProject: (directory: string) => {
     const now = Date.now();
@@ -28,7 +26,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
     const canvas: Canvas = {
       id: canvasId,
-      projectId,
       name: "Canvas 1",
       branch: null,
       worktreePath: null,
@@ -40,7 +37,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       id: projectId,
       name: path.basename(directory),
       directory,
-      canvasIds: [canvasId],
+      canvases: [canvas],
       activeCanvasId: canvasId,
       createdAt: now,
       lastActiveAt: now,
@@ -49,7 +46,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     set((state) => ({
       projects: [...state.projects, project],
       activeProjectId: projectId,
-      canvases: { ...state.canvases, [canvasId]: canvas },
     }));
 
     return projectId;
@@ -71,11 +67,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         return state;
       }
 
-      const newCanvases = { ...state.canvases };
-      for (const cid of project.canvasIds) {
-        delete newCanvases[cid];
-      }
-
       const remaining = state.projects.filter((p) => p.id !== projectId);
       const newActiveId =
         state.activeProjectId === projectId
@@ -85,7 +76,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return {
         projects: remaining,
         activeProjectId: newActiveId,
-        canvases: newCanvases,
       };
     });
   },
@@ -98,10 +88,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return "";
     }
 
-    const canvasNumber = project.canvasIds.length + 1;
+    const canvasNumber = project.canvases.length + 1;
     const canvas: Canvas = {
       id: canvasId,
-      projectId,
       name: name ?? `Canvas ${canvasNumber}`,
       branch: null,
       worktreePath: null,
@@ -114,73 +103,70 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         p.id === projectId
           ? {
               ...p,
-              canvasIds: [...p.canvasIds, canvasId],
+              canvases: [...p.canvases, canvas],
               activeCanvasId: canvasId,
             }
           : p
       ),
-      canvases: { ...state.canvases, [canvasId]: canvas },
     }));
 
     return canvasId;
   },
 
   switchCanvas: (canvasId: string) => {
-    const canvas = get().canvases[canvasId];
-    if (!canvas) {
-      return;
-    }
-
     set((state) => ({
       projects: state.projects.map((p) =>
-        p.id === canvas.projectId ? { ...p, activeCanvasId: canvasId } : p
+        p.canvases.some((canvas) => canvas.id === canvasId)
+          ? {
+              ...p,
+              activeCanvasId: canvasId,
+              canvases: p.canvases.map((canvas) =>
+                canvas.id === canvasId
+                  ? { ...canvas, lastActiveAt: Date.now() }
+                  : canvas
+              ),
+            }
+          : p
       ),
-      canvases: {
-        ...state.canvases,
-        [canvasId]: { ...canvas, lastActiveAt: Date.now() },
-      },
     }));
   },
 
   closeCanvas: (canvasId: string) => {
-    const canvas = get().canvases[canvasId];
-    if (!canvas) {
-      return;
-    }
-
     set((state) => {
-      const project = state.projects.find((p) => p.id === canvas.projectId);
+      const project = state.projects.find((p) =>
+        p.canvases.some((canvas) => canvas.id === canvasId)
+      );
       if (!project) {
         return state;
       }
 
-      const newCanvasIds = project.canvasIds.filter((id) => id !== canvasId);
+      const nextCanvases = project.canvases.filter(
+        (canvas) => canvas.id !== canvasId
+      );
 
       // Don't close the last canvas — close the project instead
-      if (newCanvasIds.length === 0) {
-        get().closeProject(canvas.projectId);
+      if (nextCanvases.length === 0) {
+        get().closeProject(project.id);
         return state;
       }
 
       const newActiveCanvasId =
         project.activeCanvasId === canvasId
-          ? (newCanvasIds.at(-1) ?? newCanvasIds[0])
+          ? (nextCanvases.at(-1)?.id ??
+            nextCanvases[0]?.id ??
+            project.activeCanvasId)
           : project.activeCanvasId;
-
-      const newCanvases = { ...state.canvases };
-      delete newCanvases[canvasId];
 
       return {
         projects: state.projects.map((p) =>
-          p.id === canvas.projectId
+          p.id === project.id
             ? {
                 ...p,
-                canvasIds: newCanvasIds,
+                canvases: nextCanvases,
                 activeCanvasId: newActiveCanvasId,
               }
             : p
         ),
-        canvases: newCanvases,
       };
     });
   },

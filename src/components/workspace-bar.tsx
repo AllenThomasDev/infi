@@ -85,7 +85,6 @@ function CanvasTab({
 export function WorkspaceBar() {
   const projects = useWorkspaceStore((s) => s.projects);
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
-  const canvases = useWorkspaceStore((s) => s.canvases);
   const createProject = useWorkspaceStore((s) => s.createProject);
   const switchProject = useWorkspaceStore((s) => s.switchProject);
   const closeProject = useWorkspaceStore((s) => s.closeProject);
@@ -94,9 +93,7 @@ export function WorkspaceBar() {
   const closeCanvas = useWorkspaceStore((s) => s.closeCanvas);
 
   const activeProject = projects.find((p) => p.id === activeProjectId);
-  const activeCanvases = activeProject
-    ? activeProject.canvasIds.map((id) => canvases[id]).filter(Boolean)
-    : [];
+  const activeCanvases = activeProject?.canvases ?? [];
 
   const handleNewProject = useCallback(async () => {
     const result = await ipc.client.workspace.openDirectory();
