@@ -1,16 +1,23 @@
 import type { Node } from "@xyflow/react";
 
-export interface WindowNodeData extends Record<string, unknown> {
+interface TileData extends Record<string, unknown> {
+  col: number;
+  row: number;
+}
+
+export interface WindowNodeData extends TileData {
   subtitle: string;
   title: string;
 }
 
-export interface TerminalNodeData extends Record<string, unknown> {
+export interface TerminalNodeData extends TileData {
   terminalId: string;
   title: string;
 }
 
+export type PickerNodeData = TileData;
+
 export type WindowFlowNode = Node<WindowNodeData, "window">;
 export type TerminalFlowNode = Node<TerminalNodeData, "terminal">;
-export type GroupFlowNode = Node<Record<string, unknown>, "group">;
-export type FlowNode = WindowFlowNode | TerminalFlowNode | GroupFlowNode;
+export type PickerFlowNode = Node<PickerNodeData, "picker">;
+export type FlowNode = WindowFlowNode | TerminalFlowNode | PickerFlowNode;

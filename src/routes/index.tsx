@@ -3,74 +3,85 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  type OnSelectionChangeFunc,
   ReactFlow,
   ReactFlowProvider,
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import type {
-  FlowNode,
-  TerminalFlowNode,
-  WindowFlowNode,
-} from "@/components/flow/types";
-import { useCanvasNodeActions } from "@/components/flow/use-canvas-node-actions";
-import { DeleteTerminalNodeContext } from "@/components/flow/use-delete-terminal-node";
+import { CommandPalette } from "@/components/command-palette";
+import { makeNodeFactory } from "@/components/flow/node-factories";
+import PickerNode from "@/components/flow/picker-node";
 import TerminalNode from "@/components/flow/terminal-node";
+import type { FlowNode } from "@/components/flow/types";
+import { useCanvasNodeActions } from "@/components/flow/use-canvas-node-actions";
+import { TileActionsContext } from "@/components/flow/use-tile-actions";
 import WindowNode from "@/components/flow/window-node";
 import ModeToggle from "@/components/mode-toggle";
 import { useTheme } from "@/components/theme-provider";
-import { CommandPalette } from "@/components/command-palette";
 import type { CommandHandlerMap } from "@/keybindings/types";
 import { useKeybindings } from "@/keybindings/useKeybindings";
-
-const initialNodes: WindowFlowNode[] = [
-  {
-    id: "source-window",
-    type: "window",
-    position: { x: 80, y: 120 },
-    data: {
-      subtitle: "Renderer viewport ready",
-      title: "Main Workspace",
-    },
-  },
-  {
-    id: "preview-window",
-    type: "window",
-    position: { x: 420, y: 240 },
-    data: {
-      subtitle: "Custom node component",
-      title: "Preview Panel",
-    },
-  },
-];
+import { useTilingLayout } from "@/layout/use-tiling-layout";
 
 const nodeTypes = {
   window: WindowNode,
   terminal: TerminalNode,
+  picker: PickerNode,
 };
 
-const TERMINAL_DEFAULT_WIDTH = 640;
-const TERMINAL_DEFAULT_HEIGHT = 380;
-
 function Canvas() {
-  const [nodes, setNodes] = useNodesState<FlowNode>(initialNodes);
+  const [nodes, setNodes] = useNodesState<FlowNode>([]);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const terminalCounterRef = useRef(0);
   const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
   const reactFlow = useReactFlow();
   const { resolvedTheme, toggleTheme } = useTheme();
+
+  const { create, remove, replace, focus, move } = useTilingLayout(setNodes);
+
+  const terminalCounterRef = useRef(0);
+  const terminalFactory = useMemo(
+    () => makeNodeFactory("terminal", () => ++terminalCounterRef.current),
+    [],
+  );
+  const pickerFactory = useMemo(
+    () => makeNodeFactory("picker", () => 0),
+    [],
+  );
+
+  const tileActions = useMemo(
+    () => ({
+      remove,
+      replace: (nodeId: string, type: "terminal" | "window" | "picker") =>
+        replace(nodeId, makeNodeFactory(type, () => ++terminalCounterRef.current)),
+    }),
+    [remove, replace],
+  );
+
+  const lastFocusedId = useRef<string | null>(null);
+  const onSelectionChange: OnSelectionChangeFunc = useCallback(
+    ({ nodes: sel }) => {
+      if (sel.length !== 1) {
+        lastFocusedId.current = null;
+        return;
+      }
+      if (sel[0].id === lastFocusedId.current) return;
+      lastFocusedId.current = sel[0].id;
+      reactFlow.fitView({
+        nodes: [{ id: sel[0].id }],
+        duration: 300,
+        maxZoom: 1,
+        padding: 0.1,
+      });
+    },
+    [reactFlow],
+  );
+
   const {
     deleteSelectedNodes,
-    deleteTerminalNode,
-    groupSelectedNodes,
     hasSelectedNodes,
     onNodesChange,
-    selectedGroupNodes,
-    selectedGroupedNodes,
-    selectedTopLevelNodes,
     selectAllNodes,
-    ungroupSelectedNodes,
   } = useCanvasNodeActions({ nodes, reactFlow, setNodes });
 
   const isInputFocused = useCallback(
@@ -80,61 +91,34 @@ function Canvas() {
     []
   );
 
-  const createTerminalNode = useCallback(() => {
-    const terminalId = `terminal-${crypto.randomUUID()}`;
-    const nodeId = `terminal-node-${crypto.randomUUID()}`;
-
-    const center = reactFlow.screenToFlowPosition({
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-    });
-
-    const snappedX = Math.round((center.x - TERMINAL_DEFAULT_WIDTH / 2) / 24) * 24;
-    const snappedY = Math.round((center.y - TERMINAL_DEFAULT_HEIGHT / 2) / 24) * 24;
-
-    const terminalNumber = ++terminalCounterRef.current;
-
-    setNodes((prev) => {
-      const terminalNode: TerminalFlowNode = {
-        id: nodeId,
-        type: "terminal",
-        position: { x: snappedX, y: snappedY },
-        style: { width: TERMINAL_DEFAULT_WIDTH, height: TERMINAL_DEFAULT_HEIGHT },
-        selected: true,
-        data: {
-          terminalId,
-          title: `Terminal ${terminalNumber}`,
-        },
-      };
-
-      return [
-        ...prev.map((n) => (n.selected ? { ...n, selected: false } : n)),
-        terminalNode,
-      ];
-    });
-
-  }, [reactFlow, setNodes]);
-
   const commandHandlers: CommandHandlerMap = {
     "canvas.fitView": () => reactFlow.fitView(),
     "canvas.zoomIn": () => reactFlow.zoomIn(),
     "canvas.zoomOut": () => reactFlow.zoomOut(),
     "canvas.selectAll": selectAllNodes,
     "canvas.deleteSelected": deleteSelectedNodes,
-    "canvas.groupSelected": groupSelectedNodes,
-    "canvas.ungroupSelected": ungroupSelectedNodes,
-    "terminal.create": createTerminalNode,
+    "tiling.createLeft": () => create(-1, 0, terminalFactory),
+    "tiling.createRight": () => create(1, 0, terminalFactory),
+    "tiling.createUp": () => create(0, -1, terminalFactory),
+    "tiling.createDown": () => create(0, 1, terminalFactory),
+    "tiling.insertLeft": () => create(-1, 0, pickerFactory),
+    "tiling.insertRight": () => create(1, 0, pickerFactory),
+    "tiling.insertUp": () => create(0, -1, pickerFactory),
+    "tiling.insertDown": () => create(0, 1, pickerFactory),
+    "tiling.focusLeft": () => focus(-1, 0),
+    "tiling.focusRight": () => focus(1, 0),
+    "tiling.focusUp": () => focus(0, -1),
+    "tiling.focusDown": () => focus(0, 1),
+    "tiling.moveLeft": () => move(-1, 0),
+    "tiling.moveRight": () => move(1, 0),
+    "tiling.moveUp": () => move(0, -1),
+    "tiling.moveDown": () => move(0, 1),
     "theme.toggle": toggleTheme,
   };
 
   const getKeybindingContext = useCallback(
     () => ({
       canvasFocus: true,
-      canGroupNodes:
-        selectedTopLevelNodes.length >= 2 ||
-        (selectedTopLevelNodes.length >= 1 &&
-          (selectedGroupedNodes.length > 0 || selectedGroupNodes.length > 0)),
-      canUngroupNodes: selectedGroupedNodes.length > 0,
       inputFocus: isInputFocused() || commandPaletteOpen,
       nodeSelected: hasSelectedNodes,
       terminalFocus: isInputFocused(),
@@ -143,9 +127,6 @@ function Canvas() {
       commandPaletteOpen,
       hasSelectedNodes,
       isInputFocused,
-      selectedGroupNodes.length,
-      selectedGroupedNodes.length,
-      selectedTopLevelNodes.length,
     ]
   );
 
@@ -158,31 +139,29 @@ function Canvas() {
   });
 
   return (
-    <DeleteTerminalNodeContext.Provider value={deleteTerminalNode}>
+    <TileActionsContext.Provider value={tileActions}>
       <ReactFlow
         colorMode={resolvedTheme}
         defaultEdgeOptions={defaultEdgeOptions}
-        fitView
         maxZoom={1.8}
         minZoom={0.1}
         nodes={nodes}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
+        onSelectionChange={onSelectionChange}
         panOnDrag={[1, 2]}
         proOptions={{ hideAttribution: true }}
-        snapGrid={[24, 24]}
-        snapToGrid
       >
         <Background gap={24} size={1} variant={BackgroundVariant.Dots} />
         <Controls position="bottom-right" showInteractive={false} />
       </ReactFlow>
       <CommandPalette
-        open={commandPaletteOpen}
-        onOpenChange={setCommandPaletteOpen}
         handlers={commandHandlers}
         keybindings={keybindings}
+        onOpenChange={setCommandPaletteOpen}
+        open={commandPaletteOpen}
       />
-    </DeleteTerminalNodeContext.Provider>
+    </TileActionsContext.Provider>
   );
 }
 

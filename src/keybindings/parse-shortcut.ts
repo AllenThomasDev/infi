@@ -3,6 +3,10 @@ import type { KeybindingShortcut } from "./types";
 function normalizeKeyToken(token: string): string {
   if (token === "space") return " ";
   if (token === "esc") return "escape";
+  if (token === "left") return "arrowleft";
+  if (token === "right") return "arrowright";
+  if (token === "up") return "arrowup";
+  if (token === "down") return "arrowdown";
   return token;
 }
 
