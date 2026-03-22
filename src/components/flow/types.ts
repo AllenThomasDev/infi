@@ -11,6 +11,7 @@ export interface WindowNodeData extends TileData {
 }
 
 export interface TerminalNodeData extends TileData {
+  cwd?: string;
   terminalId: string;
   title: string;
 }

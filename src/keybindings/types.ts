@@ -22,6 +22,20 @@ export const KEYBINDING_COMMANDS = [
   "tiling.moveDown",
   "theme.toggle",
   "app.commandPalette",
+  "workspace.newCanvas",
+  "workspace.openProject",
+  "workspace.closeCanvas",
+  "workspace.prevProject",
+  "workspace.nextProject",
+  "workspace.canvas1",
+  "workspace.canvas2",
+  "workspace.canvas3",
+  "workspace.canvas4",
+  "workspace.canvas5",
+  "workspace.canvas6",
+  "workspace.canvas7",
+  "workspace.canvas8",
+  "workspace.canvas9",
 ] as const;
 
 export type KeybindingCommand = (typeof KEYBINDING_COMMANDS)[number];

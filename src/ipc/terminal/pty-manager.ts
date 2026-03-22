@@ -1,9 +1,9 @@
-import * as nodePty from "node-pty";
 import type { BrowserWindow } from "electron";
+import * as nodePty from "node-pty";
 
 export interface PtySession {
-  pty: nodePty.IPty;
   id: string;
+  pty: nodePty.IPty;
 }
 
 const sessions = new Map<string, PtySession>();
@@ -14,7 +14,12 @@ export function setTerminalWindow(window: BrowserWindow) {
   mainWindow = window;
 }
 
-export function spawnTerminal(id: string, cols: number, rows: number): number {
+export function spawnTerminal(
+  id: string,
+  cols: number,
+  rows: number,
+  cwd?: string
+): number {
   const existing = sessions.get(id);
   if (existing) {
     return existing.pty.pid;
@@ -29,7 +34,7 @@ export function spawnTerminal(id: string, cols: number, rows: number): number {
     name: "xterm-256color",
     cols,
     rows,
-    cwd: process.env.HOME ?? process.cwd(),
+    cwd: cwd ?? process.env.HOME ?? process.cwd(),
     env: process.env as Record<string, string>,
   });
 
@@ -57,7 +62,9 @@ export function resizeTerminal(id: string, cols: number, rows: number) {
 
 export function killTerminal(id: string) {
   const session = sessions.get(id);
-  if (!session) return;
+  if (!session) {
+    return;
+  }
   session.pty.kill();
   sessions.delete(id);
 }

@@ -13,8 +13,17 @@ interface PickerOptionDefinition {
   label: string;
 }
 
+export interface NodeCreateContext {
+  cwd?: string;
+}
+
 interface NodeDefinition {
-  create: (col: number, row: number, nodes: readonly FlowNode[]) => FlowNode;
+  create: (
+    col: number,
+    row: number,
+    nodes: readonly FlowNode[],
+    ctx?: NodeCreateContext
+  ) => FlowNode;
   picker?: PickerOptionDefinition;
 }
 
@@ -55,7 +64,7 @@ export const nodeRegistry: Record<NodeType, NodeDefinition> = {
     },
   },
   terminal: {
-    create: (col, row, nodes) =>
+    create: (col, row, nodes, ctx) =>
       ({
         id: `terminal-node-${crypto.randomUUID()}`,
         type: "terminal",
@@ -65,6 +74,7 @@ export const nodeRegistry: Record<NodeType, NodeDefinition> = {
         data: {
           col,
           row,
+          cwd: ctx?.cwd,
           terminalId: `terminal-${crypto.randomUUID()}`,
           title: `Terminal ${nextNumber(nodes, "Terminal")}`,
         },

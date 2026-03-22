@@ -134,11 +134,16 @@ function moveRight(nodes: FlowNode[], sel: FlowNode): FlowNode[] {
   return appendSelected(shifted, tile(sel, targetCol, 0));
 }
 
+export interface CreateNodeContext {
+  cwd?: string;
+}
+
 export type CreateNode = (
   type: string,
   col: number,
   row: number,
-  nodes: readonly FlowNode[]
+  nodes: readonly FlowNode[],
+  ctx?: CreateNodeContext
 ) => FlowNode;
 
 export function useTilingLayout(
@@ -152,12 +157,12 @@ export function useTilingLayout(
   );
 
   const create = useCallback(
-    (dc: number, dr: number, type: string) => {
+    (dc: number, dr: number, type: string, ctx?: CreateNodeContext) => {
       update((nodes) => {
         const sel = nodes.find((n) => n.selected);
         if (!sel) {
           const col = columnCount(nodes);
-          return appendSelected(nodes, createNode(type, col, 0, nodes));
+          return appendSelected(nodes, createNode(type, col, 0, nodes, ctx));
         }
 
         let col = sel.data.col;
@@ -180,7 +185,7 @@ export function useTilingLayout(
           );
         }
 
-        return appendSelected(pushed, createNode(type, col, row, nodes));
+        return appendSelected(pushed, createNode(type, col, row, nodes, ctx));
       });
     },
     [createNode, update]
@@ -210,13 +215,19 @@ export function useTilingLayout(
   );
 
   const replace = useCallback(
-    (nodeId: string, type: string) => {
+    (nodeId: string, type: string, ctx?: CreateNodeContext) => {
       update((nodes) => {
         const target = nodes.find((n) => n.id === nodeId);
         if (!target) {
           return nodes;
         }
-        const newNode = createNode(type, target.data.col, target.data.row, nodes);
+        const newNode = createNode(
+          type,
+          target.data.col,
+          target.data.row,
+          nodes,
+          ctx
+        );
         return nodes.map((n) =>
           n.id === nodeId
             ? ({ ...newNode, selected: n.selected } as FlowNode)

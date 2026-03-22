@@ -25,10 +25,11 @@ function getTerminalTheme(): Record<string, string> {
 }
 
 interface TerminalViewProps {
+  cwd?: string;
   terminalId: string;
 }
 
-export default function TerminalView({ terminalId }: TerminalViewProps) {
+export default function TerminalView({ cwd, terminalId }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -97,6 +98,7 @@ export default function TerminalView({ terminalId }: TerminalViewProps) {
         id: terminalId,
         cols: terminal.cols,
         rows: terminal.rows,
+        cwd,
       })
       .then(() => {
         terminal.focus();
