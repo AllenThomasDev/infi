@@ -14,11 +14,7 @@ interface PickerOptionDefinition {
 }
 
 interface NodeDefinition {
-  create: (
-    col: number,
-    row: number,
-    nodes: readonly FlowNode[]
-  ) => FlowNode;
+  create: (col: number, row: number, nodes: readonly FlowNode[]) => FlowNode;
   picker?: PickerOptionDefinition;
 }
 
@@ -30,7 +26,9 @@ function nextNumber(nodes: readonly FlowNode[], prefix: string) {
   for (const n of nodes) {
     const title = (n.data as { title?: string }).title;
     const m = title?.match(pattern);
-    if (m) max = Math.max(max, Number(m[1]));
+    if (m) {
+      max = Math.max(max, Number(m[1]));
+    }
   }
   return max + 1;
 }

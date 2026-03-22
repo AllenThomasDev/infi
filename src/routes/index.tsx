@@ -100,6 +100,7 @@ function Canvas() {
     []
   );
 
+
   const commandHandlers: CommandHandlerMap = {
     "canvas.fitView": () => reactFlow.fitView(),
     "canvas.zoomIn": () => reactFlow.zoomIn(),
@@ -154,13 +155,18 @@ function Canvas() {
   };
 
   const getKeybindingContext = useCallback(
-    () => ({
-      canvasFocus: true,
-      inputFocus: isInputFocused() || commandPaletteOpen,
-      pickerSelected: nodes.some(
-        (node) => node.selected && node.type === "picker"
-      ),
-    }),
+    () => {
+      const selectedNode = nodes.find((node) => node.selected);
+      const selectedType = selectedNode?.type;
+      return {
+        browserSelected: selectedType === "browser",
+        canvasFocus: true,
+        inputFocus: isInputFocused() || commandPaletteOpen,
+        pickerSelected: selectedType === "picker",
+        terminalSelected: selectedType === "terminal",
+        windowSelected: selectedType === "window",
+      };
+    },
     [commandPaletteOpen, isInputFocused, nodes]
   );
 

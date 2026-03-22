@@ -1,35 +1,94 @@
 import type { NodeProps } from "@xyflow/react";
-import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  RefreshCcwIcon,
-  X,
-} from "lucide-react";
-import { useCallback, useRef, useState } from "react";
-import {
-  WebPreview,
-  WebPreviewNavigation,
-  WebPreviewNavigationButton,
-  WebPreviewUrl,
-} from "@/components/ai/web-preview";
+import { ArrowLeftIcon, ArrowRightIcon, RefreshCcwIcon, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BaseNode,
   BaseNodeHeader,
   BaseNodeHeaderTitle,
 } from "@/components/base-node";
+import {
+  BrowserAddressInput,
+  BrowserChrome,
+  BrowserToolbar,
+  BrowserToolbarButton,
+} from "@/components/browser/browser-chrome";
 import type { BrowserFlowNode } from "@/components/flow/types";
 import { useNodeActions } from "@/components/flow/use-node-actions";
-import { useNodeSelectionEffects } from "@/components/flow/use-node-selection-effects";
 import { Button } from "@/components/ui/button";
 
 const SHARED_PARTITION = "persist:browser";
 const DEFAULT_URL = "https://google.com";
+const URL_SCHEME_PATTERN = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//;
+const HOSTLIKE_INPUT_PATTERN = /[.:]/;
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "0.0.0.0", "::1", "localhost"]);
+const TEN_NETWORK_PATTERN = /^10\./;
+const RFC1918_CLASS_C_PATTERN = /^192\.168\./;
+const RFC1918_CLASS_B_PATTERN = /^172\.(\d{1,3})\./;
+
+interface LoadErrorState {
+  code: number;
+  description: string;
+  url: string;
+}
+
+function isLocalNetworkHost(hostname: string): boolean {
+  if (LOOPBACK_HOSTS.has(hostname)) {
+    return true;
+  }
+
+  if (TEN_NETWORK_PATTERN.test(hostname)) {
+    return true;
+  }
+
+  if (RFC1918_CLASS_C_PATTERN.test(hostname)) {
+    return true;
+  }
+
+  const match = hostname.match(RFC1918_CLASS_B_PATTERN);
+
+  if (!match) {
+    return false;
+  }
+
+  const secondOctet = Number(match[1]);
+  return secondOctet >= 16 && secondOctet <= 31;
+}
+
+function inferHttpUrl(input: string): string | null {
+  try {
+    const candidate = new URL(`http://${input}`);
+
+    if (isLocalNetworkHost(candidate.hostname)) {
+      return candidate.toString();
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 function normalizeUrl(input: string): string {
   const trimmed = input.trim();
-  if (!trimmed) return DEFAULT_URL;
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)) return trimmed;
-  if (!trimmed.includes(" ") && /[.:]/.test(trimmed)) return `https://${trimmed}`;
+
+  if (!trimmed) {
+    return DEFAULT_URL;
+  }
+
+  if (URL_SCHEME_PATTERN.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (!trimmed.includes(" ") && HOSTLIKE_INPUT_PATTERN.test(trimmed)) {
+    const localUrl = inferHttpUrl(trimmed);
+
+    if (localUrl) {
+      return localUrl;
+    }
+
+    return `https://${trimmed}`;
+  }
+
   return `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`;
 }
 
@@ -44,54 +103,105 @@ export default function BrowserNode({
   const [currentUrl, setCurrentUrl] = useState(data.url || DEFAULT_URL);
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
+  const [loadError, setLoadError] = useState<LoadErrorState | null>(null);
+  const [webviewFocused, setWebviewFocused] = useState(false);
 
-  useNodeSelectionEffects({
-    containerRef,
-    focusTarget: "input",
-    selected,
-  });
+  useEffect(() => {
+    if (!selected) {
+      setWebviewFocused(false);
+    }
+  }, [selected]);
 
   const handleUrlChange = useCallback((url: string) => {
     const normalized = normalizeUrl(url);
+    setCurrentUrl(normalized);
+    setLoadError(null);
     webviewRef.current?.loadURL(normalized);
   }, []);
 
-  const handleWebviewRef = useCallback(
-    (el: Electron.WebviewTag | null) => {
-      const prev = webviewRef.current;
-      if (prev) {
-        prev.removeEventListener("did-navigate", handleNavigate);
-        prev.removeEventListener("did-navigate-in-page", handleNavigate);
+  const handleReload = useCallback(() => {
+    if (!webviewRef.current) {
+      return;
+    }
+
+    setLoadError(null);
+    webviewRef.current.loadURL(currentUrl);
+  }, [currentUrl]);
+
+  const handleWebviewRef = useCallback((el: Electron.WebviewTag | null) => {
+    (webviewRef as React.MutableRefObject<Electron.WebviewTag | null>).current =
+      el;
+
+    if (!el) {
+      return;
+    }
+
+    const webview = el;
+
+    function handleNavigate() {
+      setLoadError(null);
+      setCurrentUrl(webview.getURL());
+      setCanGoBack(webview.canGoBack());
+      setCanGoForward(webview.canGoForward());
+    }
+
+    function handleLoadStart() {
+      setLoadError(null);
+    }
+
+    function handleLoadFail(
+      event: Event & {
+        errorCode: number;
+        errorDescription: string;
+        validatedURL: string;
+      }
+    ) {
+      if (event.errorCode === -3) {
+        return;
       }
 
-      (webviewRef as React.MutableRefObject<Electron.WebviewTag | null>).current = el;
+      setCurrentUrl(event.validatedURL);
+      setLoadError({
+        code: event.errorCode,
+        description: event.errorDescription,
+        url: event.validatedURL,
+      });
+      setCanGoBack(webview.canGoBack());
+      setCanGoForward(webview.canGoForward());
+    }
 
-      if (!el) return;
+    webview.addEventListener("focus", () => setWebviewFocused(true));
+    webview.addEventListener("blur", () => setWebviewFocused(false));
 
-      function handleNavigate() {
-        if (!el) return;
-        setCurrentUrl(el.getURL());
-        setCanGoBack(el.canGoBack());
-        setCanGoForward(el.canGoForward());
+    let registeredId: number | null = null;
+
+    webview.addEventListener("dom-ready", () => {
+      const wcId = webview.getWebContentsId();
+      if (registeredId !== null) {
+        window.webviewBridge.unregisterWebview(registeredId);
       }
+      registeredId = wcId;
+      window.webviewBridge.registerWebview(wcId);
+    });
 
-      el.addEventListener("did-navigate", handleNavigate);
-      el.addEventListener("did-navigate-in-page", handleNavigate);
-      el.addEventListener("did-fail-load", ((e: Event & { errorCode: number; errorDescription: string; validatedURL: string }) => {
-        if (e.errorCode === -3) return;
-        el.loadURL(`data:text/html,${encodeURIComponent(
-          `<body style="font-family:system-ui;color:#888;padding:2em">` +
-          `<h2>Failed to load</h2>` +
-          `<p>${e.validatedURL}</p>` +
-          `<p>${e.errorDescription} (${e.errorCode})</p></body>`
-        )}`);
-      }) as EventListener);
-    },
-    []
-  );
+    window.webviewBridge.onEscape((wcId) => {
+      if (wcId === registeredId) {
+        webview.blur();
+      }
+    });
+
+    webview.addEventListener("did-start-loading", handleLoadStart);
+    webview.addEventListener("did-navigate", handleNavigate);
+    webview.addEventListener("did-navigate-in-page", handleNavigate);
+    webview.addEventListener("did-fail-load", handleLoadFail as EventListener);
+  }, []);
 
   return (
-    <BaseNode className="h-full w-full" selected={selected}>
+    <BaseNode
+      className="h-full w-full data-[webview-focused=true]:border-primary data-[webview-focused=true]:ring-1 data-[webview-focused=true]:ring-primary/50"
+      data-webview-focused={webviewFocused}
+      selected={selected}
+    >
       <BaseNodeHeader className="border-b">
         <BaseNodeHeaderTitle className="text-xs">
           {data.title}
@@ -107,49 +217,67 @@ export default function BrowserNode({
         </Button>
       </BaseNodeHeader>
 
-      <WebPreview
+      <BrowserChrome
         className="nodrag min-h-0 flex-1 rounded-none border-0"
         defaultUrl={data.url || DEFAULT_URL}
-        url={currentUrl}
         onUrlChange={handleUrlChange}
+        url={currentUrl}
       >
-        <WebPreviewNavigation>
-          <WebPreviewNavigationButton
+        <BrowserToolbar>
+          <BrowserToolbarButton
             disabled={!canGoBack}
             onClick={() => webviewRef.current?.goBack()}
             tooltip="Go back"
           >
             <ArrowLeftIcon className="size-4" />
-          </WebPreviewNavigationButton>
-          <WebPreviewNavigationButton
+          </BrowserToolbarButton>
+          <BrowserToolbarButton
             disabled={!canGoForward}
             onClick={() => webviewRef.current?.goForward()}
             tooltip="Go forward"
           >
             <ArrowRightIcon className="size-4" />
-          </WebPreviewNavigationButton>
-          <WebPreviewNavigationButton
-            onClick={() => webviewRef.current?.reload()}
-            tooltip="Reload"
-          >
+          </BrowserToolbarButton>
+          <BrowserToolbarButton onClick={handleReload} tooltip="Reload">
             <RefreshCcwIcon className="size-4" />
-          </WebPreviewNavigationButton>
-          <WebPreviewUrl />
-        </WebPreviewNavigation>
+          </BrowserToolbarButton>
+          <BrowserAddressInput />
+        </BrowserToolbar>
 
-        {/* Webview replaces the iframe-based WebPreviewBody */}
         <div
           className="nowheel nokey relative min-h-0 flex-1"
           ref={containerRef}
         >
           <webview
+            className="absolute inset-0"
+            partition={SHARED_PARTITION}
             ref={handleWebviewRef}
             src={data.url || DEFAULT_URL}
-            partition={SHARED_PARTITION}
-            className="absolute inset-0"
           />
+          {!webviewFocused ? (
+            <div
+              className="absolute inset-0 cursor-pointer"
+              onClick={() => {
+                webviewRef.current?.focus();
+                setWebviewFocused(true);
+              }}
+            />
+          ) : null}
+          {loadError ? (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/90 p-4 text-center">
+              <div className="max-w-sm space-y-2 rounded-lg border bg-card p-4 shadow-sm">
+                <h2 className="font-semibold text-sm">Failed to load page</h2>
+                <p className="break-all text-muted-foreground text-xs">
+                  {loadError.url}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  {loadError.description} ({loadError.code})
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
-      </WebPreview>
+      </BrowserChrome>
     </BaseNode>
   );
 }
