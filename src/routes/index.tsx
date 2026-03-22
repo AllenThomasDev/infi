@@ -101,12 +101,8 @@ function Canvas() {
     fitNodeIntoView(selectedNode.id);
   }, [fitNodeIntoView, nodes]);
 
-  const {
-    deleteSelectedNodes,
-    hasSelectedNodes,
-    onNodesChange,
-    selectAllNodes,
-  } = useCanvasNodeActions({ nodes, reactFlow, setNodes });
+  const { deleteSelectedNodes, onNodesChange, selectAllNodes } =
+    useCanvasNodeActions({ nodes, reactFlow, setNodes });
 
   const isInputFocused = useCallback(
     () =>
@@ -172,10 +168,8 @@ function Canvas() {
     () => ({
       canvasFocus: true,
       inputFocus: isInputFocused() || commandPaletteOpen,
-      nodeSelected: hasSelectedNodes,
-      terminalFocus: isInputFocused(),
     }),
-    [commandPaletteOpen, hasSelectedNodes, isInputFocused]
+    [commandPaletteOpen, isInputFocused]
   );
 
   const { keybindings } = useKeybindings({

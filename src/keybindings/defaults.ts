@@ -22,12 +22,6 @@ export const DEFAULT_KEYBINDINGS: readonly KeybindingRule[] = [
     label: "Delete Selected",
     when: "canvasFocus && !inputFocus",
   },
-  // TODO: implement handlers for these commands
-  // { key: "mod+z", command: "canvas.undo", label: "Undo" },
-  // { key: "mod+shift+z", command: "canvas.redo", label: "Redo" },
-  // { key: "mod+c", command: "canvas.copy", label: "Copy", when: "canvasFocus" },
-  // { key: "mod+v", command: "canvas.paste", label: "Paste", when: "canvasFocus" },
-  // { key: "mod+d", command: "canvas.duplicate", label: "Duplicate", when: "canvasFocus && nodeSelected" },
   {
     key: "mod+h",
     command: "tiling.createLeft",

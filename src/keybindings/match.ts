@@ -7,17 +7,17 @@ import type {
 } from "./types";
 
 export interface ShortcutEventLike {
-  type?: string;
+  altKey: boolean;
+  ctrlKey: boolean;
   key: string;
   metaKey: boolean;
-  ctrlKey: boolean;
   shiftKey: boolean;
-  altKey: boolean;
+  type?: string;
 }
 
 interface ShortcutMatchOptions {
-  platform?: string;
   context?: Partial<ShortcutMatchContext>;
+  platform?: string;
 }
 
 export function isMacPlatform(platform = navigator.platform): boolean {
@@ -26,22 +26,25 @@ export function isMacPlatform(platform = navigator.platform): boolean {
 
 function normalizeEventKey(key: string): string {
   const normalized = key.toLowerCase();
-  if (normalized === "esc") return "escape";
+  if (normalized === "esc") {
+    return "escape";
+  }
   return normalized;
 }
 
 function matchesShortcut(
   event: ShortcutEventLike,
   shortcut: KeybindingShortcut,
-  platform = navigator.platform,
+  platform = navigator.platform
 ): boolean {
   const key = normalizeEventKey(event.key);
-  if (key !== shortcut.key) return false;
+  if (key !== shortcut.key) {
+    return false;
+  }
 
   const useMetaForMod = isMacPlatform(platform);
   const expectedMeta = shortcut.metaKey || (shortcut.modKey && useMetaForMod);
-  const expectedCtrl =
-    shortcut.ctrlKey || (shortcut.modKey && !useMetaForMod);
+  const expectedCtrl = shortcut.ctrlKey || (shortcut.modKey && !useMetaForMod);
 
   return (
     event.metaKey === expectedMeta &&
@@ -53,12 +56,16 @@ function matchesShortcut(
 
 function evaluateWhenNode(
   node: KeybindingWhenNode,
-  context: ShortcutMatchContext,
+  context: ShortcutMatchContext
 ): boolean {
   switch (node.type) {
     case "identifier":
-      if (node.name === "true") return true;
-      if (node.name === "false") return false;
+      if (node.name === "true") {
+        return true;
+      }
+      if (node.name === "false") {
+        return false;
+      }
       return Boolean(context[node.name]);
     case "not":
       return !evaluateWhenNode(node.node, context);
@@ -72,14 +79,18 @@ function evaluateWhenNode(
         evaluateWhenNode(node.left, context) ||
         evaluateWhenNode(node.right, context)
       );
+    default:
+      throw new Error(`Unsupported when node: ${node satisfies never}`);
   }
 }
 
 function matchesWhenClause(
   whenAst: KeybindingWhenNode | undefined,
-  context: ShortcutMatchContext,
+  context: ShortcutMatchContext
 ): boolean {
-  if (!whenAst) return true;
+  if (!whenAst) {
+    return true;
+  }
   return evaluateWhenNode(whenAst, context);
 }
 
@@ -88,13 +99,11 @@ function resolvePlatform(options: ShortcutMatchOptions | undefined): string {
 }
 
 function resolveContext(
-  options: ShortcutMatchOptions | undefined,
+  options: ShortcutMatchOptions | undefined
 ): ShortcutMatchContext {
   return {
     canvasFocus: false,
     inputFocus: false,
-    nodeSelected: false,
-    terminalFocus: false,
     ...options?.context,
   };
 }
@@ -102,41 +111,60 @@ function resolveContext(
 export function resolveShortcutCommand(
   event: ShortcutEventLike,
   keybindings: ResolvedKeybindingsConfig,
-  options?: ShortcutMatchOptions,
+  options?: ShortcutMatchOptions
 ): KeybindingCommand | null {
   const platform = resolvePlatform(options);
   const context = resolveContext(options);
 
   for (let index = keybindings.length - 1; index >= 0; index -= 1) {
     const binding = keybindings[index];
-    if (!binding) continue;
-    if (!matchesWhenClause(binding.whenAst, context)) continue;
-    if (!matchesShortcut(event, binding.shortcut, platform)) continue;
+    if (!binding) {
+      continue;
+    }
+    if (!matchesWhenClause(binding.whenAst, context)) {
+      continue;
+    }
+    if (!matchesShortcut(event, binding.shortcut, platform)) {
+      continue;
+    }
     return binding.command;
   }
   return null;
 }
 
 function formatShortcutKeyLabel(key: string): string {
-  if (key === " ") return "Space";
-  if (key.length === 1) return key.toUpperCase();
-  if (key === "escape") return "Esc";
-  if (key === "arrowup") return "Up";
-  if (key === "arrowdown") return "Down";
-  if (key === "arrowleft") return "Left";
-  if (key === "arrowright") return "Right";
+  if (key === " ") {
+    return "Space";
+  }
+  if (key.length === 1) {
+    return key.toUpperCase();
+  }
+  if (key === "escape") {
+    return "Esc";
+  }
+  if (key === "arrowup") {
+    return "Up";
+  }
+  if (key === "arrowdown") {
+    return "Down";
+  }
+  if (key === "arrowleft") {
+    return "Left";
+  }
+  if (key === "arrowright") {
+    return "Right";
+  }
   return key.slice(0, 1).toUpperCase() + key.slice(1);
 }
 
 export function formatShortcutLabel(
   shortcut: KeybindingShortcut,
-  platform = navigator.platform,
+  platform = navigator.platform
 ): string {
   const keyLabel = formatShortcutKeyLabel(shortcut.key);
   const useMetaForMod = isMacPlatform(platform);
   const showMeta = shortcut.metaKey || (shortcut.modKey && useMetaForMod);
-  const showCtrl =
-    shortcut.ctrlKey || (shortcut.modKey && !useMetaForMod);
+  const showCtrl = shortcut.ctrlKey || (shortcut.modKey && !useMetaForMod);
   const showAlt = shortcut.altKey;
   const showShift = shortcut.shiftKey;
 
@@ -145,23 +173,18 @@ export function formatShortcutLabel(
   }
 
   const parts: string[] = [];
-  if (showCtrl) parts.push("Ctrl");
-  if (showAlt) parts.push("Alt");
-  if (showShift) parts.push("Shift");
-  if (showMeta) parts.push("Meta");
+  if (showCtrl) {
+    parts.push("Ctrl");
+  }
+  if (showAlt) {
+    parts.push("Alt");
+  }
+  if (showShift) {
+    parts.push("Shift");
+  }
+  if (showMeta) {
+    parts.push("Meta");
+  }
   parts.push(keyLabel);
   return parts.join("+");
-}
-
-export function shortcutLabelForCommand(
-  keybindings: ResolvedKeybindingsConfig,
-  command: KeybindingCommand,
-  platform = navigator.platform,
-): string | null {
-  for (let index = keybindings.length - 1; index >= 0; index -= 1) {
-    const binding = keybindings[index];
-    if (!binding || binding.command !== command) continue;
-    return formatShortcutLabel(binding.shortcut, platform);
-  }
-  return null;
 }

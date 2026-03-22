@@ -4,11 +4,6 @@ export const KEYBINDING_COMMANDS = [
   "canvas.fitView",
   "canvas.selectAll",
   "canvas.deleteSelected",
-  "canvas.undo",
-  "canvas.redo",
-  "canvas.copy",
-  "canvas.paste",
-  "canvas.duplicate",
   "tiling.createLeft",
   "tiling.createRight",
   "tiling.createUp",
@@ -67,8 +62,6 @@ export type ResolvedKeybindingsConfig = ResolvedKeybindingRule[];
 export interface ShortcutMatchContext {
   canvasFocus: boolean;
   inputFocus: boolean;
-  nodeSelected: boolean;
-  terminalFocus: boolean;
   [key: string]: boolean;
 }
 
