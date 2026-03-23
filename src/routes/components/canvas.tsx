@@ -94,7 +94,7 @@ export function Canvas({
 
       lastFocusedId.current = nodeId;
       reactFlow.setCenter(node.position.x + width / 2, node.position.y + height / 2, {
-        duration: 300,
+        duration: 150,
         zoom: reactFlow.getZoom(),
       });
     },
