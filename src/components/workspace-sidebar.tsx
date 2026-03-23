@@ -1,4 +1,4 @@
-import { ChevronRight, FolderOpen, Plus, X } from "lucide-react";
+import { ChevronRight, FolderOpen, FolderPlus, GitBranchPlus, X } from "lucide-react";
 import ModeToggle from "@/components/mode-toggle";
 import {
   Collapsible,
@@ -56,28 +56,28 @@ function ProjectItem({
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
           <SidebarMenuButton
-            isActive={isActive}
+            className="group-hover/menu-item:bg-sidebar-accent group-hover/menu-item:text-sidebar-accent-foreground"
             onClick={onSwitch}
             tooltip={project.name}
           >
+            <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
             <FolderOpen />
             <span>{project.name}</span>
-            <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
           </SidebarMenuButton>
         </CollapsibleTrigger>
 
         <SidebarMenuAction
+          className="hover:bg-foreground/10"
           onClick={(e) => {
             e.stopPropagation();
-            onClose();
+            onCreateCanvas();
           }}
-          showOnHover
         >
-          <X />
+          <GitBranchPlus />
         </SidebarMenuAction>
 
         <CollapsibleContent>
-          <SidebarMenuSub>
+          <SidebarMenuSub className="mr-0 pr-0">
             {project.canvases.map((canvas: Canvas) => (
               <CanvasItem
                 canvas={canvas}
@@ -91,15 +91,6 @@ function ProjectItem({
                 onSwitch={() => onSwitchCanvas(canvas.id)}
               />
             ))}
-
-            <SidebarMenuSubItem>
-              <SidebarMenuSubButton asChild>
-                <button onClick={onCreateCanvas} type="button">
-                  <Plus className="size-3" />
-                  <span className="text-muted-foreground">New Canvas</span>
-                </button>
-              </SidebarMenuSubButton>
-            </SidebarMenuSubItem>
           </SidebarMenuSub>
         </CollapsibleContent>
       </SidebarMenuItem>
@@ -120,7 +111,7 @@ function CanvasItem({
 }) {
   return (
     <SidebarMenuSubItem className="group/canvas-item">
-      <SidebarMenuSubButton asChild isActive={isActive}>
+      <SidebarMenuSubButton asChild isActive={isActive} className="w-full">
         <button onClick={onSwitch} type="button">
           <span>{canvas.name}</span>
         </button>
@@ -161,7 +152,7 @@ export function WorkspaceSidebar({
             }}
             title="Open Project"
           >
-            <Plus />
+            <FolderPlus />
           </SidebarGroupAction>
           <SidebarGroupContent>
             <SidebarMenu>
