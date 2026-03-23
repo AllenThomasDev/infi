@@ -32,10 +32,16 @@ export function NiriRenderer() {
       return;
     }
 
-    columnRefs.current[activeColumnId]?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "center",
+    // Double rAF ensures the browser has painted the new column
+    // before we attempt to scroll to it.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        columnRefs.current[activeColumnId]?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "center",
+        });
+      });
     });
   }, [activeColumnId, isOverviewOpen]);
 
