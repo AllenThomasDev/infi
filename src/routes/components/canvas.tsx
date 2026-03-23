@@ -74,10 +74,18 @@ export function Canvas({
 
   const lastFocusedId = useRef<string | null>(null);
   const pendingMoveViewportId = useRef<string | null>(null);
+  const fullscreenMode = useRef(false);
   const fitNodeIntoView = useCallback(
     (nodeId: string) => {
       const node = reactFlow.getNode(nodeId);
       if (!node) {
+        return;
+      }
+
+      lastFocusedId.current = nodeId;
+
+      if (fullscreenMode.current) {
+        reactFlow.fitView({ nodes: [{ id: nodeId }], duration: 150, padding: 0.05 });
         return;
       }
 
@@ -92,7 +100,6 @@ export function Canvas({
           ? node.style.height
           : TILE_HEIGHT);
 
-      lastFocusedId.current = nodeId;
       reactFlow.setCenter(node.position.x + width / 2, node.position.y + height / 2, {
         duration: 150,
         zoom: reactFlow.getZoom(),
@@ -149,6 +156,21 @@ export function Canvas({
   const canvasHandlers = useMemo<CommandHandlerMap>(
     () => ({
       "canvas.fitView": () => reactFlow.fitView(),
+      "canvas.fullscreenNode": () => {
+        fullscreenMode.current = !fullscreenMode.current;
+        if (fullscreenMode.current) {
+          const selected = nodesRef.current.find((n) => n.selected);
+          if (selected) {
+            reactFlow.fitView({
+              nodes: [selected],
+              duration: 150,
+              padding: 0.05,
+            });
+          }
+        } else {
+          reactFlow.fitView({ duration: 150 });
+        }
+      },
       "canvas.zoomIn": () => reactFlow.zoomIn(),
       "canvas.zoomOut": () => reactFlow.zoomOut(),
       "canvas.selectAll": selectAllNodes,

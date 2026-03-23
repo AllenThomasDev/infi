@@ -5,6 +5,12 @@ export const DEFAULT_KEYBINDINGS: readonly KeybindingRule[] = [
   { key: "mod+-", command: "canvas.zoomOut", label: "Zoom Out" },
   { key: "mod+0", command: "canvas.fitView", label: "Fit View" },
   {
+    key: "mod+shift+f",
+    command: "canvas.fullscreenNode",
+    label: "Toggle Fullscreen Mode",
+    when: "canvasFocus && !pickerSelected",
+  },
+  {
     key: "mod+a",
     command: "canvas.selectAll",
     label: "Select All",
