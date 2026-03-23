@@ -5,11 +5,7 @@ import type {
   NiriLayoutItem,
   NiriWorkspace,
 } from "@/layout/layout-types";
-import {
-  PLACEHOLDER_PICKER_ITEM_ID_PREFIX,
-  TILE_HEIGHT,
-  TILE_WIDTH,
-} from "@/layout/layout-types";
+import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
 
 function makeItem(
@@ -53,16 +49,9 @@ describe("useLayoutStore", () => {
     useLayoutStore.setState(useLayoutStore.getInitialState(), true);
   });
 
-  it("seeds a placeholder picker in an empty workspace", () => {
+  it("starts with an empty layout", () => {
     const layout = currentLayout();
-    const workspace = layout.workspaces[0];
-    const column = workspace.columns[0];
-    const item = column.items[0];
-
-    expect(workspace.columns).toHaveLength(1);
-    expect(column.items).toHaveLength(1);
-    expect(item.ref.type).toBe("picker");
-    expect(item.id.startsWith(PLACEHOLDER_PICKER_ITEM_ID_PREFIX)).toBe(true);
+    expect(layout.workspaces).toHaveLength(0);
   });
 
   it("toggles tabbed display without changing items or focus", () => {
@@ -156,7 +145,8 @@ describe("useLayoutStore", () => {
       isOverviewOpen: false,
     });
 
-    useLayoutStore.getState().addWorkspaceBelow();
+    const pickerItem = makeItem("picker-1", { type: "picker" });
+    useLayoutStore.getState().addWorkspaceBelow(pickerItem);
 
     const next = currentLayout();
     expect(next.workspaces).toHaveLength(3);
@@ -290,34 +280,44 @@ describe("useLayoutStore", () => {
     expect(next.camera.focusedItemId).toBe(keep.id);
   });
 
-  it("restores a placeholder picker after deleting the last real tile", () => {
+  it("removes empty workspace when last tile is deleted", () => {
     const tile = makeItem("terminal-1", { type: "terminal" });
+    const other = makeItem("terminal-2", { type: "terminal" });
 
-    useLayoutStore.getState().addColumnRight(tile);
+    seedLayout({
+      workspaces: [
+        makeWorkspace("ws-1", [makeColumn("col-1", [tile])]),
+        makeWorkspace("ws-2", [makeColumn("col-2", [other])]),
+      ],
+      camera: {
+        activeWorkspaceId: "ws-1",
+        activeColumnId: "col-1",
+        focusedItemId: tile.id,
+      },
+      isOverviewOpen: false,
+    });
+
     useLayoutStore.getState().removeItem(tile.id);
 
-    const workspace = currentLayout().workspaces[0];
-    const item = workspace.columns[0]?.items[0];
-    expect(item?.ref.type).toBe("picker");
-    expect(item?.id.startsWith(PLACEHOLDER_PICKER_ITEM_ID_PREFIX)).toBe(true);
+    const next = currentLayout();
+    expect(next.workspaces).toHaveLength(1);
+    expect(next.workspaces[0].id).toBe("ws-2");
+    expect(next.camera.focusedItemId).toBe(other.id);
   });
 
-  it("restores a placeholder picker when moving the last tile away", () => {
+  it("removes empty workspace when last tile is moved away", () => {
     const sourceTile = makeItem("source-terminal", { type: "terminal" });
     const destinationTile = makeItem("destination-terminal", {
       type: "terminal",
     });
-    const sourceWorkspace = makeWorkspace("ws-1", [
-      makeColumn("col-1", [sourceTile]),
-    ]);
-    const destinationWorkspace = makeWorkspace("ws-2", [
-      makeColumn("col-2", [destinationTile]),
-    ]);
 
     seedLayout({
-      workspaces: [sourceWorkspace, destinationWorkspace],
+      workspaces: [
+        makeWorkspace("ws-1", [makeColumn("col-1", [sourceTile])]),
+        makeWorkspace("ws-2", [makeColumn("col-2", [destinationTile])]),
+      ],
       camera: {
-        activeWorkspaceId: sourceWorkspace.id,
+        activeWorkspaceId: "ws-1",
         activeColumnId: "col-1",
         focusedItemId: sourceTile.id,
       },
@@ -327,11 +327,7 @@ describe("useLayoutStore", () => {
     useLayoutStore.getState().moveItem(sourceTile.id, "col-2");
 
     const next = currentLayout();
-    const source = next.workspaces.find((workspace) => workspace.id === "ws-1");
-    const sourceItem = source?.columns[0]?.items[0];
-    expect(sourceItem?.ref.type).toBe("picker");
-    expect(sourceItem?.id.startsWith(PLACEHOLDER_PICKER_ITEM_ID_PREFIX)).toBe(
-      true
-    );
+    expect(next.workspaces).toHaveLength(1);
+    expect(next.workspaces[0].id).toBe("ws-2");
   });
 });

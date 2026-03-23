@@ -5,10 +5,7 @@ import {
 } from "@/components/tiles/browser-tile";
 import { PickerTileContent } from "@/components/tiles/picker-tile";
 import { TerminalTileContent } from "@/components/tiles/terminal-tile";
-import {
-  type NiriLayoutItem,
-  PLACEHOLDER_PICKER_ITEM_ID_PREFIX,
-} from "@/layout/layout-types";
+import type { NiriLayoutItem } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
 import { cn } from "@/utils/tailwind";
 
@@ -52,9 +49,6 @@ export function NiriTile({ className, isFocused, item, style }: NiriTileProps) {
   const removeItem = useLayoutStore((state) => state.removeItem);
   const replaceItem = useLayoutStore((state) => state.replaceItem);
   const selectItem = useLayoutStore((state) => state.selectItem);
-  const isPlaceholderPicker =
-    item.ref.type === "picker" &&
-    item.id.startsWith(PLACEHOLDER_PICKER_ITEM_ID_PREFIX);
 
   switch (item.ref.type) {
     case "browser":
@@ -80,13 +74,8 @@ export function NiriTile({ className, isFocused, item, style }: NiriTileProps) {
           style={style}
         >
           <PickerTileContent
-            canCancel={!isPlaceholderPicker}
             isFocused={isFocused}
-            onCancel={() => {
-              if (!isPlaceholderPicker) {
-                removeItem(item.id);
-              }
-            }}
+            onCancel={() => removeItem(item.id)}
             onSelectType={(type) => replaceItem(item.id, { type })}
           />
         </div>

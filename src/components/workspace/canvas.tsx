@@ -161,7 +161,8 @@ export function Canvas({
         addColumnRight(createLayoutItem({ type: "picker" })),
       "tiling.addBelow": () =>
         addItemBelow(createLayoutItem({ type: "picker" })),
-      "tiling.addWorkspaceBelow": addWorkspaceBelow,
+      "tiling.addWorkspaceBelow": () =>
+        addWorkspaceBelow(createLayoutItem({ type: "picker" })),
       "tiling.focusLeft": () => focusNeighbor(-1, 0),
       "tiling.focusRight": () => focusNeighbor(1, 0),
       "tiling.focusUp": () => focusNeighbor(0, -1),
