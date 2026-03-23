@@ -22,6 +22,7 @@ export interface NiriColumn {
 
 export interface NiriWorkspace {
   columns: NiriColumn[];
+  focusedColumnId?: string;
   id: string;
   name: string;
 }

@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import type { CSSProperties } from "react";
-import { useEffect, useRef } from "react";
+import { useMemo, useRef } from "react";
 import {
   BaseNode,
   BaseNodeHeader,
@@ -10,52 +10,51 @@ import TerminalView, {
   type TerminalViewHandle,
 } from "@/components/terminal/terminal-view";
 import { Button } from "@/components/ui/button";
+import { useFocusRegistration } from "@/components/workspace/focus-registry";
+import type { NiriLayoutItem } from "@/layout/layout-types";
+import { useLayoutStore } from "@/stores/layout-store";
 
 interface TerminalTileContentProps {
   className?: string;
-  isFocused: boolean;
-  onClose: () => void;
-  onSelect: () => void;
+  item: NiriLayoutItem;
+  selected: boolean;
   style?: CSSProperties;
-  terminalId: string;
-  title: string;
+}
+
+function tileLabel(item: NiriLayoutItem) {
+  const suffix = item.id.split("-").at(-1)?.slice(0, 4) ?? item.id.slice(0, 4);
+  return `Terminal ${suffix}`;
 }
 
 export function TerminalTileContent({
   className,
-  isFocused,
-  onClose,
-  onSelect,
+  item,
+  selected,
   style,
-  terminalId,
-  title,
 }: TerminalTileContentProps) {
+  const removeItem = useLayoutStore((state) => state.removeItem);
+  const selectItem = useLayoutStore((state) => state.selectItem);
   const terminalViewRef = useRef<TerminalViewHandle>(null);
+  const title = tileLabel(item);
 
-  useEffect(() => {
-    if (!isFocused) {
-      return;
-    }
-
-    const frame = requestAnimationFrame(() => {
-      terminalViewRef.current?.focus();
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, [isFocused]);
+  const handle = useMemo(
+    () => ({ focus: () => terminalViewRef.current?.focus() }),
+    []
+  );
+  useFocusRegistration(item.id, handle);
 
   return (
     <BaseNode
       className={className}
-      onMouseDown={onSelect}
-      selected={isFocused}
+      onMouseDown={() => selectItem(item.id)}
+      selected={selected}
       style={style}
     >
       <BaseNodeHeader className="border-b">
         <BaseNodeHeaderTitle className="text-xs">{title}</BaseNodeHeaderTitle>
         <Button
           aria-label={`Close ${title}`}
-          onClick={onClose}
+          onClick={() => removeItem(item.id)}
           size="icon-sm"
           variant="ghost"
         >
@@ -63,7 +62,7 @@ export function TerminalTileContent({
         </Button>
       </BaseNodeHeader>
       <div className="min-h-0 flex-1 cursor-text p-1">
-        <TerminalView ref={terminalViewRef} terminalId={terminalId} />
+        <TerminalView ref={terminalViewRef} terminalId={item.id} />
       </div>
     </BaseNode>
   );

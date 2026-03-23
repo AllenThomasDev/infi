@@ -1,9 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import { Globe, Plus, Terminal } from "lucide-react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { BaseNode } from "@/components/base-node";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/utils/tailwind";
 import {
   Command,
   CommandEmpty,
@@ -12,6 +11,10 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { useFocusRegistration } from "@/components/workspace/focus-registry";
+import type { NiriLayoutItem } from "@/layout/layout-types";
+import { useLayoutStore } from "@/stores/layout-store";
+import { cn } from "@/utils/tailwind";
 
 interface PickerOption {
   icon: LucideIcon;
@@ -34,21 +37,20 @@ const PICKER_OPTIONS: PickerOption[] = [
 
 interface PickerTileContentProps {
   className?: string;
-  isFocused: boolean;
-  onCancel: () => void;
-  onSelect: () => void;
-  onSelectType: (type: PickerOption["type"]) => void;
+  item: NiriLayoutItem;
+  selected: boolean;
   style?: React.CSSProperties;
 }
 
 export function PickerTileContent({
   className,
-  isFocused,
-  onCancel,
-  onSelect,
-  onSelectType,
+  item,
+  selected,
   style,
 }: PickerTileContentProps) {
+  const removeItem = useLayoutStore((state) => state.removeItem);
+  const replaceItem = useLayoutStore((state) => state.replaceItem);
+  const selectItem = useLayoutStore((state) => state.selectItem);
   const containerRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(false);
 
@@ -57,8 +59,8 @@ export function PickerTileContent({
       return;
     }
     doneRef.current = true;
-    onCancel();
-  }, [onCancel]);
+    removeItem(item.id);
+  }, [item.id, removeItem]);
 
   const confirm = useCallback(
     (type: PickerOption["type"]) => {
@@ -66,34 +68,36 @@ export function PickerTileContent({
         return;
       }
       doneRef.current = true;
-      onSelectType(type);
+      replaceItem(item.id, { type });
     },
-    [onSelectType]
+    [item.id, replaceItem]
   );
 
-  useEffect(() => {
-    if (!isFocused) {
-      cancel();
-      return;
-    }
-
-    doneRef.current = false;
-    const frame = requestAnimationFrame(() => {
-      const container = containerRef.current;
-      const target = container?.querySelector<HTMLElement>("input");
-      if (target && !container?.contains(document.activeElement)) {
-        target.focus();
-      }
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, [cancel, isFocused]);
+  const handle = useMemo(
+    () => ({
+      focus: () => {
+        doneRef.current = false;
+        const container = containerRef.current;
+        const target = container?.querySelector<HTMLElement>("input");
+        if (target && !container?.contains(document.activeElement)) {
+          target.focus();
+        }
+      },
+    }),
+    []
+  );
+  useFocusRegistration(item.id, handle);
 
   return (
-    <div className={cn("h-full w-full", className)} onMouseDown={onSelect} ref={containerRef} style={style}>
+    <div
+      className={cn("h-full w-full", className)}
+      onMouseDown={() => selectItem(item.id)}
+      ref={containerRef}
+      style={style}
+    >
       <BaseNode
         className="h-full w-full border-primary/35 border-dashed bg-primary/5 shadow-none backdrop-blur-sm"
-        selected={isFocused}
+        selected={selected}
       >
         <div className="flex h-full flex-col gap-4 p-4">
           <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-[0.24em]">

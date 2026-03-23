@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
 import type {
   NiriCanvasLayout,
   NiriColumn,
@@ -86,28 +87,6 @@ function createColumn(item: NiriLayoutItem): NiriColumn {
   };
 }
 
-function sanitizeColumn(column: NiriColumn): NiriColumn {
-  const focusedItemId = column.items.some(
-    (item) => item.id === column.focusedItemId
-  )
-    ? column.focusedItemId
-    : column.items[0]?.id;
-
-  return {
-    ...column,
-    focusedItemId,
-  };
-}
-
-function normalizeWorkspaceColumns(workspace: NiriWorkspace): NiriWorkspace {
-  return {
-    ...workspace,
-    columns: workspace.columns
-      .filter((column) => column.items.length > 0)
-      .map(sanitizeColumn),
-  };
-}
-
 export function createInitialLayout(): NiriCanvasLayout {
   return {
     workspaces: [],
@@ -181,31 +160,20 @@ function getActiveColumn(layout: NiriCanvasLayout) {
 }
 
 function applyFocus(layout: NiriCanvasLayout, target: FocusTarget | null) {
-  return {
-    ...layout,
-    workspaces: layout.workspaces.map((workspace) => ({
-      ...workspace,
-      columns: workspace.columns.map((column) => {
-        if (!(target && column.id === target.column.id)) {
-          return column;
-        }
+  if (target) {
+    target.column.focusedItemId = target.item.id;
+    target.workspace.focusedColumnId = target.column.id;
+    layout.camera = {
+      activeWorkspaceId: target.workspace.id,
+      activeColumnId: target.column.id,
+      focusedItemId: target.item.id,
+    };
+    return;
+  }
 
-        return {
-          ...column,
-          focusedItemId: target.item.id,
-        };
-      }),
-    })),
-    camera: target
-      ? {
-          activeWorkspaceId: target.workspace.id,
-          activeColumnId: target.column.id,
-          focusedItemId: target.item.id,
-        }
-      : {
-          activeWorkspaceId: layout.workspaces[0]?.id,
-        },
-  } satisfies NiriCanvasLayout;
+  layout.camera = {
+    activeWorkspaceId: layout.workspaces[0]?.id,
+  };
 }
 
 function getFocusedTarget(layout: NiriCanvasLayout): FocusTarget | null {
@@ -320,11 +288,16 @@ function getAdjacentWorkspaceTarget(
     return null;
   }
 
-  const targetColumnIndex =
-    currentColumnIndex >= 0
-      ? Math.min(currentColumnIndex, nextWorkspace.columns.length - 1)
-      : 0;
-  const targetColumn = nextWorkspace.columns[targetColumnIndex];
+  const rememberedColumn = nextWorkspace.focusedColumnId
+    ? nextWorkspace.columns.find((c) => c.id === nextWorkspace.focusedColumnId)
+    : null;
+  const targetColumn =
+    rememberedColumn ??
+    nextWorkspace.columns[
+      currentColumnIndex >= 0
+        ? Math.min(currentColumnIndex, nextWorkspace.columns.length - 1)
+        : 0
+    ];
 
   return getColumnFocusTarget(nextWorkspace, targetColumn, preferredItemIndex);
 }
@@ -430,67 +403,62 @@ function findColumnIndex(layout: NiriCanvasLayout, columnId: string) {
 }
 
 function removeItemFromLayout(layout: NiriCanvasLayout, itemId: string) {
-  const movedItem = findItemLocation(layout, itemId)?.item ?? null;
+  const location = findItemLocation(layout, itemId);
+  if (!location) {
+    return { item: null };
+  }
 
-  const nextLayout = {
-    ...layout,
-    workspaces: layout.workspaces.map((workspace) => ({
-      ...workspace,
-      columns: workspace.columns.map((column) => {
-        if (!column.items.some((item) => item.id === itemId)) {
-          return column;
-        }
+  const movedItem = location.item;
+  location.column.items.splice(location.itemIndex, 1);
+  if (location.column.focusedItemId === itemId) {
+    location.column.focusedItemId = undefined;
+  }
 
-        const items = column.items.filter((item) => item.id !== itemId);
-
-        return {
-          ...column,
-          items,
-          focusedItemId:
-            column.focusedItemId === itemId ? undefined : column.focusedItemId,
-        };
-      }),
-    })),
-  } satisfies NiriCanvasLayout;
-
-  return { layout: nextLayout, item: movedItem };
+  return { item: movedItem };
 }
 
 function normalizeLayout(layout: NiriCanvasLayout) {
-  const normalizedWorkspaces = layout.workspaces
-    .map(normalizeWorkspaceColumns)
-    .filter((workspace) => workspace.columns.length > 0);
-  const normalizedLayout = {
-    ...layout,
-    workspaces: normalizedWorkspaces,
-  } satisfies NiriCanvasLayout;
+  for (const workspace of layout.workspaces) {
+    workspace.columns = workspace.columns.filter(
+      (column) => column.items.length > 0
+    );
 
-  const focused = normalizedLayout.camera.focusedItemId
-    ? findItemLocation(normalizedLayout, normalizedLayout.camera.focusedItemId)
+    for (const column of workspace.columns) {
+      if (!column.items.some((item) => item.id === column.focusedItemId)) {
+        column.focusedItemId = column.items[0]?.id;
+      }
+    }
+  }
+
+  layout.workspaces = layout.workspaces.filter(
+    (workspace) => workspace.columns.length > 0
+  );
+
+  const focused = layout.camera.focusedItemId
+    ? findItemLocation(layout, layout.camera.focusedItemId)
     : null;
   if (focused) {
-    return applyFocus(normalizedLayout, {
+    applyFocus(layout, {
       workspace: focused.workspace,
       column: focused.column,
       item: focused.item,
     });
+    return;
   }
 
   const activeWorkspace =
-    normalizedLayout.workspaces.find(
-      (workspace) => workspace.id === normalizedLayout.camera.activeWorkspaceId
-    ) ?? normalizedLayout.workspaces[0];
+    layout.workspaces.find(
+      (workspace) => workspace.id === layout.camera.activeWorkspaceId
+    ) ?? layout.workspaces[0];
   const activeColumn = activeWorkspace?.columns[0];
   const activeItem = activeColumn?.items[0];
   if (activeWorkspace && activeColumn && activeItem) {
-    return applyFocus(normalizedLayout, {
+    applyFocus(layout, {
       workspace: activeWorkspace,
       column: activeColumn,
       item: activeItem,
     });
   }
-
-  return normalizedLayout;
 }
 
 function insertColumn(
@@ -499,8 +467,12 @@ function insertColumn(
   offset: number
 ) {
   const active = getActiveColumn(layout);
-  const workspace =
-    active?.workspace ?? layout.workspaces[0] ?? createWorkspace();
+  let workspace = active?.workspace ?? layout.workspaces[0];
+  if (!workspace) {
+    workspace = createWorkspace();
+    layout.workspaces.push(workspace);
+  }
+
   const nextColumn = createColumn(item);
   const activeIndex = active?.column
     ? workspace.columns.findIndex((column) => column.id === active.column?.id)
@@ -509,25 +481,9 @@ function insertColumn(
     activeIndex >= 0
       ? clampIndex(activeIndex + offset, workspace.columns.length)
       : workspace.columns.length;
-  const workspaces = (
-    layout.workspaces.length > 0 ? layout.workspaces : [workspace]
-  ).map((currentWorkspace) =>
-    currentWorkspace.id === workspace.id
-      ? {
-          ...currentWorkspace,
-          columns: [
-            ...currentWorkspace.columns.slice(0, insertAt),
-            nextColumn,
-            ...currentWorkspace.columns.slice(insertAt),
-          ],
-        }
-      : currentWorkspace
-  );
+  workspace.columns.splice(insertAt, 0, nextColumn);
 
-  return applyFocus(
-    { ...layout, workspaces },
-    { workspace, column: nextColumn, item }
-  );
+  return { workspace, column: nextColumn, item } satisfies FocusTarget;
 }
 
 function appendItemToActiveColumn(
@@ -539,560 +495,423 @@ function appendItemToActiveColumn(
     return insertColumn(layout, item, 1);
   }
 
-  return applyFocus(
-    {
-      ...layout,
-      workspaces: layout.workspaces.map((workspace) =>
-        workspace.id === active.workspace.id
-          ? {
-              ...workspace,
-              columns: workspace.columns.map((column) =>
-                column.id === active.column?.id
-                  ? {
-                      ...column,
-                      items: [...column.items, item],
-                      focusedItemId: item.id,
-                    }
-                  : column
-              ),
-            }
-          : workspace
-      ),
-    },
-    { workspace: active.workspace, column: active.column, item }
-  );
+  active.column.items.push(item);
+  active.column.focusedItemId = item.id;
+
+  return {
+    workspace: active.workspace,
+    column: active.column,
+    item,
+  } satisfies FocusTarget;
 }
 
-export const useLayoutStore = create<LayoutState>((set) => ({
-  activeCanvasId: null,
-  layoutsByCanvas: {},
-  layout: createInitialLayout(),
+export const useLayoutStore = create<LayoutState>()(
+  immer((set) => ({
+    activeCanvasId: null,
+    layoutsByCanvas: {},
+    layout: createInitialLayout(),
 
-  setActiveCanvas: (canvasId) => {
-    set((state) => {
-      const layoutsByCanvas = { ...state.layoutsByCanvas };
+    setActiveCanvas: (canvasId) => {
+      set((state) => {
+        if (state.activeCanvasId) {
+          state.layoutsByCanvas[state.activeCanvasId] = state.layout;
+        }
 
-      if (state.activeCanvasId) {
-        layoutsByCanvas[state.activeCanvasId] = state.layout;
-      }
+        if (!canvasId) {
+          state.activeCanvasId = null;
+          state.layout = createInitialLayout();
+          return;
+        }
 
-      if (!canvasId) {
-        return {
-          activeCanvasId: null,
-          layoutsByCanvas,
-          layout: createInitialLayout(),
-        };
-      }
+        const existing = state.layoutsByCanvas[canvasId];
+        const nextLayout = existing ?? createInitialLayout();
+        if (!existing) {
+          state.layoutsByCanvas[canvasId] = nextLayout;
+        }
 
-      const existing = layoutsByCanvas[canvasId];
-      const nextLayout = existing ?? createInitialLayout();
-      if (!existing) {
-        layoutsByCanvas[canvasId] = nextLayout;
-      }
-
-      return {
-        activeCanvasId: canvasId,
-        layoutsByCanvas,
-        layout: nextLayout,
-      };
-    });
-  },
-
-  removeCanvasLayout: (canvasId) => {
-    set((state) => {
-      const layoutsByCanvas = { ...state.layoutsByCanvas };
-      delete layoutsByCanvas[canvasId];
-
-      const isActiveCanvas = state.activeCanvasId === canvasId;
-
-      return {
-        activeCanvasId: isActiveCanvas ? null : state.activeCanvasId,
-        layoutsByCanvas,
-        layout: isActiveCanvas ? createInitialLayout() : state.layout,
-      };
-    });
-  },
-
-  addWorkspaceBelow: (item) => {
-    set((state) => {
-      const currentLayout = state.layout;
-      const activeWorkspaceIndex = workspaceIndexById(
-        currentLayout,
-        currentLayout.camera.activeWorkspaceId
-      );
-      const insertAt =
-        activeWorkspaceIndex >= 0
-          ? activeWorkspaceIndex + 1
-          : currentLayout.workspaces.length;
-      const nextWorkspace = createWorkspace({
-        name: getNextWorkspaceName(currentLayout),
+        state.activeCanvasId = canvasId;
+        state.layout = nextLayout;
       });
-      const nextColumn = createColumn(item);
-      nextWorkspace.columns = [nextColumn];
+    },
 
-      return {
-        layout: applyFocus(
-          {
-            ...currentLayout,
-            workspaces: [
-              ...currentLayout.workspaces.slice(0, insertAt),
-              nextWorkspace,
-              ...currentLayout.workspaces.slice(insertAt),
-            ],
-          },
-          { workspace: nextWorkspace, column: nextColumn, item }
-        ),
-      };
-    });
-  },
+    removeCanvasLayout: (canvasId) => {
+      set((state) => {
+        delete state.layoutsByCanvas[canvasId];
 
-  selectItem: (itemId) => {
-    set((state) => {
-      const location = findItemLocation(state.layout, itemId);
-      if (!location) {
-        return state;
-      }
+        const isActiveCanvas = state.activeCanvasId === canvasId;
+        if (isActiveCanvas) {
+          state.activeCanvasId = null;
+          state.layout = createInitialLayout();
+        }
+      });
+    },
 
-      return {
-        layout: applyFocus(state.layout, {
+    addWorkspaceBelow: (item) => {
+      set((state) => {
+        const activeWorkspaceIndex = workspaceIndexById(
+          state.layout,
+          state.layout.camera.activeWorkspaceId
+        );
+        const insertAt =
+          activeWorkspaceIndex >= 0
+            ? activeWorkspaceIndex + 1
+            : state.layout.workspaces.length;
+        const nextWorkspace = createWorkspace({
+          name: getNextWorkspaceName(state.layout),
+        });
+        const nextColumn = createColumn(item);
+        nextWorkspace.columns = [nextColumn];
+
+        state.layout.workspaces.splice(insertAt, 0, nextWorkspace);
+        applyFocus(state.layout, {
+          workspace: nextWorkspace,
+          column: nextColumn,
+          item,
+        });
+      });
+    },
+
+    selectItem: (itemId) => {
+      set((state) => {
+        const location = findItemLocation(state.layout, itemId);
+        if (!location) {
+          return;
+        }
+
+        applyFocus(state.layout, {
           workspace: location.workspace,
           column: location.column,
           item: location.item,
-        }),
-      };
-    });
-  },
-
-  addColumnRight: (item) => {
-    set((state) => ({
-      layout: normalizeLayout(insertColumn(state.layout, item, 1)),
-    }));
-  },
-
-  addItemBelow: (item) => {
-    set((state) => ({
-      layout: normalizeLayout(appendItemToActiveColumn(state.layout, item)),
-    }));
-  },
-
-  removeItem: (itemId) => {
-    set((state) => {
-      const currentLayout = state.layout;
-      const location = findItemLocation(currentLayout, itemId);
-      if (!location) {
-        return state;
-      }
-      const removedColumnIndex = location.workspace.columns.findIndex(
-        (column) => column.id === location.column.id
-      );
-
-      const nextLayout = normalizeLayout({
-        ...currentLayout,
-        workspaces: currentLayout.workspaces.map((workspace) => ({
-          ...workspace,
-          columns: workspace.columns.map((column) =>
-            column.id === location.column.id
-              ? {
-                  ...column,
-                  items: column.items.filter((item) => item.id !== itemId),
-                  focusedItemId:
-                    column.focusedItemId === itemId
-                      ? undefined
-                      : column.focusedItemId,
-                }
-              : column
-          ),
-        })),
+        });
       });
+    },
 
-      const neighbor =
-        getFocusAfterRemoval(
-          nextLayout,
-          location.workspace.id,
-          location.column.id,
-          removedColumnIndex,
-          location.itemIndex
-        ) ?? firstFocusTarget(nextLayout);
+    addColumnRight: (item) => {
+      set((state) => {
+        const target = insertColumn(state.layout, item, 1);
+        normalizeLayout(state.layout);
 
-      return {
-        layout: applyFocus(nextLayout, neighbor),
-      };
-    });
-  },
+        const inserted = findItemLocation(state.layout, target.item.id);
+        if (!inserted) {
+          return;
+        }
 
-  replaceItem: (itemId, ref) => {
-    set((state) => {
-      const location = findItemLocation(state.layout, itemId);
-      if (!location) {
-        return state;
-      }
+        applyFocus(state.layout, {
+          workspace: inserted.workspace,
+          column: inserted.column,
+          item: inserted.item,
+        });
+      });
+    },
 
-      const nextLayout = {
-        ...state.layout,
-        workspaces: state.layout.workspaces.map((workspace) => ({
-          ...workspace,
-          columns: workspace.columns.map((column) =>
-            column.id === location.column.id
-              ? {
-                  ...column,
-                  items: column.items.map((item) =>
-                    item.id === itemId ? { ...item, ref } : item
-                  ),
-                }
-              : column
-          ),
-        })),
-      } satisfies NiriCanvasLayout;
-      const normalizedLayout = normalizeLayout(nextLayout);
-      const nextLocation = findItemLocation(normalizedLayout, itemId);
-      if (!nextLocation) {
-        return { layout: normalizedLayout };
-      }
+    addItemBelow: (item) => {
+      set((state) => {
+        const target = appendItemToActiveColumn(state.layout, item);
+        normalizeLayout(state.layout);
 
-      return {
-        layout: applyFocus(normalizedLayout, {
+        const inserted = findItemLocation(state.layout, target.item.id);
+        if (!inserted) {
+          return;
+        }
+
+        applyFocus(state.layout, {
+          workspace: inserted.workspace,
+          column: inserted.column,
+          item: inserted.item,
+        });
+      });
+    },
+
+    removeItem: (itemId) => {
+      set((state) => {
+        const location = findItemLocation(state.layout, itemId);
+        if (!location) {
+          return;
+        }
+
+        const removedColumnIndex = location.workspace.columns.findIndex(
+          (column) => column.id === location.column.id
+        );
+
+        removeItemFromLayout(state.layout, itemId);
+        normalizeLayout(state.layout);
+
+        const neighbor =
+          getFocusAfterRemoval(
+            state.layout,
+            location.workspace.id,
+            location.column.id,
+            removedColumnIndex,
+            location.itemIndex
+          ) ?? firstFocusTarget(state.layout);
+
+        applyFocus(state.layout, neighbor);
+      });
+    },
+
+    replaceItem: (itemId, ref) => {
+      set((state) => {
+        const location = findItemLocation(state.layout, itemId);
+        if (!location) {
+          return;
+        }
+
+        location.item.ref = ref;
+
+        normalizeLayout(state.layout);
+        const nextLocation = findItemLocation(state.layout, itemId);
+        if (!nextLocation) {
+          return;
+        }
+
+        applyFocus(state.layout, {
           workspace: nextLocation.workspace,
           column: nextLocation.column,
           item: nextLocation.item,
-        }),
-      };
-    });
-  },
-
-  focusNeighbor: (horizontal, vertical) => {
-    set((state) => {
-      const focused = getFocusedTarget(state.layout);
-      if (!focused) {
-        const target = firstFocusTarget(state.layout);
-        return target ? { layout: applyFocus(state.layout, target) } : state;
-      }
-
-      const target = getNeighborTarget(
-        state.layout,
-        focused.item.id,
-        horizontal,
-        vertical
-      );
-      if (!target) {
-        return state;
-      }
-
-      return {
-        layout: applyFocus(state.layout, target),
-      };
-    });
-  },
-
-  setColumnWidths: (widths) => {
-    set((state) => ({
-      layout: {
-        ...state.layout,
-        workspaces: state.layout.workspaces.map((workspace) => ({
-          ...workspace,
-          columns: workspace.columns.map((column) => {
-            const width = widths[column.id];
-            if (width === undefined) {
-              return column;
-            }
-
-            return {
-              ...column,
-              preferredWidth: clampPreferredWidth(width),
-            };
-          }),
-        })),
-      },
-    }));
-  },
-
-  setItemHeights: (heights) => {
-    set((state) => ({
-      layout: {
-        ...state.layout,
-        workspaces: state.layout.workspaces.map((workspace) => ({
-          ...workspace,
-          columns: workspace.columns.map((column) => ({
-            ...column,
-            items: column.items.map((item) => {
-              const height = heights[item.id];
-              if (height === undefined) {
-                return item;
-              }
-
-              return {
-                ...item,
-                preferredHeight: clampPreferredHeight(height),
-              };
-            }),
-          })),
-        })),
-      },
-    }));
-  },
-
-  moveColumn: (columnId, toWorkspaceId, index) => {
-    set((state) => {
-      const source = findColumnIndex(state.layout, columnId);
-      const destinationWorkspaceIndex = workspaceIndexById(
-        state.layout,
-        toWorkspaceId
-      );
-      if (!source || destinationWorkspaceIndex < 0) {
-        return state;
-      }
-
-      const destinationWorkspace =
-        state.layout.workspaces[destinationWorkspaceIndex];
-      const movedColumn = source.column;
-      const layoutWithoutColumn = {
-        ...state.layout,
-        workspaces: state.layout.workspaces.map((workspace) => ({
-          ...workspace,
-          columns:
-            workspace.id === source.workspace.id
-              ? workspace.columns.filter((column) => column.id !== columnId)
-              : workspace.columns,
-        })),
-      } satisfies NiriCanvasLayout;
-      const destinationAfterRemoval =
-        layoutWithoutColumn.workspaces[destinationWorkspaceIndex];
-      const insertAt = clampIndex(
-        index,
-        destinationAfterRemoval.columns.length
-      );
-      const nextLayout = normalizeLayout({
-        ...layoutWithoutColumn,
-        workspaces: layoutWithoutColumn.workspaces.map((workspace) =>
-          workspace.id === destinationWorkspace.id
-            ? {
-                ...workspace,
-                columns: [
-                  ...workspace.columns.slice(0, insertAt),
-                  movedColumn,
-                  ...workspace.columns.slice(insertAt),
-                ],
-              }
-            : workspace
-        ),
+        });
       });
+    },
 
-      const focusedItem =
-        movedColumn.items.find(
-          (item) => item.id === movedColumn.focusedItemId
-        ) ?? movedColumn.items[0];
-      if (!focusedItem) {
-        return { layout: nextLayout };
-      }
+    focusNeighbor: (horizontal, vertical) => {
+      set((state) => {
+        const focused = getFocusedTarget(state.layout);
+        if (!focused) {
+          const target = firstFocusTarget(state.layout);
+          if (target) {
+            applyFocus(state.layout, target);
+          }
+          return;
+        }
 
-      const movedColumnLocation = findColumnById(nextLayout, movedColumn.id);
-      if (!movedColumnLocation) {
-        return { layout: nextLayout };
-      }
+        const target = getNeighborTarget(
+          state.layout,
+          focused.item.id,
+          horizontal,
+          vertical
+        );
+        if (!target) {
+          return;
+        }
 
-      return {
-        layout: applyFocus(nextLayout, {
+        applyFocus(state.layout, target);
+      });
+    },
+
+    setColumnWidths: (widths) => {
+      set((state) => {
+        for (const workspace of state.layout.workspaces) {
+          for (const column of workspace.columns) {
+            const width = widths[column.id];
+            if (width !== undefined) {
+              column.preferredWidth = clampPreferredWidth(width);
+            }
+          }
+        }
+      });
+    },
+
+    setItemHeights: (heights) => {
+      set((state) => {
+        for (const workspace of state.layout.workspaces) {
+          for (const column of workspace.columns) {
+            for (const item of column.items) {
+              const height = heights[item.id];
+              if (height !== undefined) {
+                item.preferredHeight = clampPreferredHeight(height);
+              }
+            }
+          }
+        }
+      });
+    },
+
+    moveColumn: (columnId, toWorkspaceId, index) => {
+      set((state) => {
+        const source = findColumnIndex(state.layout, columnId);
+        const destinationWorkspaceIndex = workspaceIndexById(
+          state.layout,
+          toWorkspaceId
+        );
+        if (!source || destinationWorkspaceIndex < 0) {
+          return;
+        }
+
+        const movedColumn = source.column;
+        source.workspace.columns.splice(source.index, 1);
+
+        const destinationWorkspace =
+          state.layout.workspaces[destinationWorkspaceIndex];
+        const adjustedIndex =
+          source.workspace.id === destinationWorkspace.id &&
+          source.index < index
+            ? index - 1
+            : index;
+        const insertAt = clampIndex(
+          adjustedIndex,
+          destinationWorkspace.columns.length
+        );
+        destinationWorkspace.columns.splice(insertAt, 0, movedColumn);
+
+        normalizeLayout(state.layout);
+
+        const focusedItem =
+          movedColumn.items.find(
+            (item) => item.id === movedColumn.focusedItemId
+          ) ?? movedColumn.items[0];
+        if (!focusedItem) {
+          return;
+        }
+
+        const movedColumnLocation = findColumnById(
+          state.layout,
+          movedColumn.id
+        );
+        if (!movedColumnLocation) {
+          return;
+        }
+
+        const focusItem =
+          movedColumnLocation.column.items.find(
+            (item) => item.id === focusedItem.id
+          ) ?? movedColumnLocation.column.items[0];
+        if (!focusItem) {
+          return;
+        }
+
+        applyFocus(state.layout, {
           workspace: movedColumnLocation.workspace,
           column: movedColumnLocation.column,
-          item:
-            movedColumnLocation.column.items.find(
-              (item) => item.id === focusedItem.id
-            ) ?? movedColumnLocation.column.items[0],
-        }),
-      };
-    });
-  },
-
-  moveItem: (itemId, toColumnId, index) => {
-    set((state) => {
-      const itemLocation = findItemLocation(state.layout, itemId);
-      if (!itemLocation) {
-        return state;
-      }
-
-      const extracted = removeItemFromLayout(state.layout, itemId);
-      const layoutWithoutItem = extracted.layout;
-      const movedItem = extracted.item;
-
-      if (!movedItem) {
-        return state;
-      }
-
-      const target = findColumnById(layoutWithoutItem, toColumnId);
-      const targetWorkspace = target?.workspace ?? null;
-      const targetColumn = target?.column ?? null;
-
-      if (!(targetWorkspace && targetColumn)) {
-        return state;
-      }
-
-      const insertAt = clampIndex(
-        index ?? targetColumn.items.length,
-        targetColumn.items.length
-      );
-      const layoutWithInsertedItem = {
-        ...layoutWithoutItem,
-        workspaces: layoutWithoutItem.workspaces.map((workspace) =>
-          workspace.id === targetWorkspace?.id
-            ? {
-                ...workspace,
-                columns: workspace.columns.map((column) =>
-                  column.id === targetColumn?.id
-                    ? {
-                        ...column,
-                        items: [
-                          ...column.items.slice(0, insertAt),
-                          movedItem,
-                          ...column.items.slice(insertAt),
-                        ],
-                        focusedItemId: movedItem.id,
-                      }
-                    : column
-                ),
-              }
-            : workspace
-        ),
-      } satisfies NiriCanvasLayout;
-      const normalizedLayout = normalizeLayout(layoutWithInsertedItem);
-      const movedItemLocation = findItemLocation(
-        normalizedLayout,
-        movedItem.id
-      );
-      if (!movedItemLocation) {
-        return state;
-      }
-
-      const nextLayout = applyFocus(normalizedLayout, {
-        workspace: movedItemLocation.workspace,
-        column: movedItemLocation.column,
-        item: movedItemLocation.item,
+          item: focusItem,
+        });
       });
+    },
 
-      return { layout: nextLayout };
-    });
-  },
+    moveItem: (itemId, toColumnId, index) => {
+      set((state) => {
+        const itemLocation = findItemLocation(state.layout, itemId);
+        if (!itemLocation) {
+          return;
+        }
 
-  moveItemToNewColumn: (itemId, index) => {
-    set((state) => {
-      const itemLocation = findItemLocation(state.layout, itemId);
-      if (!itemLocation) {
-        return state;
-      }
+        const extracted = removeItemFromLayout(state.layout, itemId);
+        const movedItem = extracted.item;
 
-      const extracted = removeItemFromLayout(state.layout, itemId);
-      if (!extracted.item) {
-        return state;
-      }
+        if (!movedItem) {
+          return;
+        }
 
-      const nextColumn = {
-        ...createColumn(extracted.item),
-        preferredWidth: itemLocation.column.preferredWidth,
-      } satisfies NiriColumn;
-      const insertAt = clampIndex(
-        index ?? itemLocation.itemIndex + 1,
-        itemLocation.workspace.columns.length
-      );
-      const nextLayout = normalizeLayout({
-        ...extracted.layout,
-        workspaces: extracted.layout.workspaces.map((workspace) =>
-          workspace.id === itemLocation.workspace.id
-            ? {
-                ...workspace,
-                columns: [
-                  ...workspace.columns.slice(0, insertAt),
-                  nextColumn,
-                  ...workspace.columns.slice(insertAt),
-                ],
-              }
-            : workspace
-        ),
+        const target = findColumnById(state.layout, toColumnId);
+        if (!target) {
+          return;
+        }
+
+        const insertAt = clampIndex(
+          index ?? target.column.items.length,
+          target.column.items.length
+        );
+        target.column.items.splice(insertAt, 0, movedItem);
+        target.column.focusedItemId = movedItem.id;
+
+        normalizeLayout(state.layout);
+        const movedItemLocation = findItemLocation(state.layout, movedItem.id);
+        if (!movedItemLocation) {
+          return;
+        }
+
+        applyFocus(state.layout, {
+          workspace: movedItemLocation.workspace,
+          column: movedItemLocation.column,
+          item: movedItemLocation.item,
+        });
       });
+    },
 
-      const inserted = findColumnById(nextLayout, nextColumn.id);
-      if (!inserted) {
-        return state;
-      }
+    moveItemToNewColumn: (itemId, index) => {
+      set((state) => {
+        const itemLocation = findItemLocation(state.layout, itemId);
+        if (!itemLocation) {
+          return;
+        }
 
-      return {
-        layout: applyFocus(nextLayout, {
+        const extracted = removeItemFromLayout(state.layout, itemId);
+        const movedItem = extracted.item;
+        if (!movedItem) {
+          return;
+        }
+
+        const nextColumn = {
+          ...createColumn(movedItem),
+          preferredWidth: itemLocation.column.preferredWidth,
+        } satisfies NiriColumn;
+
+        const workspace = state.layout.workspaces.find(
+          (candidate: NiriWorkspace) =>
+            candidate.id === itemLocation.workspace.id
+        );
+        if (!workspace) {
+          return;
+        }
+
+        const insertAt = clampIndex(
+          index ?? itemLocation.itemIndex + 1,
+          workspace.columns.length
+        );
+        workspace.columns.splice(insertAt, 0, nextColumn);
+
+        normalizeLayout(state.layout);
+
+        const inserted = findColumnById(state.layout, nextColumn.id);
+        if (!inserted) {
+          return;
+        }
+
+        applyFocus(state.layout, {
           workspace: inserted.workspace,
           column: inserted.column,
           item: inserted.column.items[0],
-        }),
-      };
-    });
-  },
+        });
+      });
+    },
 
-  swapColumns: (columnId, otherColumnId) => {
-    set((state) => {
-      const first = findColumnIndex(state.layout, columnId);
-      const second = findColumnIndex(state.layout, otherColumnId);
-      if (!(first && second) || first.workspace.id !== second.workspace.id) {
-        return state;
-      }
+    swapColumns: (columnId, otherColumnId) => {
+      set((state) => {
+        const first = findColumnIndex(state.layout, columnId);
+        const second = findColumnIndex(state.layout, otherColumnId);
+        if (!(first && second) || first.workspace.id !== second.workspace.id) {
+          return;
+        }
 
-      const nextLayout = {
-        ...state.layout,
-        workspaces: state.layout.workspaces.map((workspace) => {
-          if (workspace.id === first.workspace.id) {
-            const columns = [...workspace.columns];
-            columns[first.index] = second.column;
-            columns[second.index] = first.column;
-            return { ...workspace, columns };
-          }
+        const workspace = first.workspace;
+        const temp = workspace.columns[first.index];
+        workspace.columns[first.index] = workspace.columns[second.index];
+        workspace.columns[second.index] = temp;
 
-          return workspace;
-        }),
-      } satisfies NiriCanvasLayout;
-      const focused = getFocusedTarget(nextLayout);
+        const focused = getFocusedTarget(state.layout);
+        if (focused) {
+          applyFocus(state.layout, focused);
+        }
+      });
+    },
 
-      return {
-        layout: focused ? applyFocus(nextLayout, focused) : nextLayout,
-      };
-    });
-  },
+    toggleOverview: () => {
+      set((state) => {
+        state.layout.isOverviewOpen = !state.layout.isOverviewOpen;
+      });
+    },
 
-  toggleOverview: () => {
-    set((state) => ({
-      layout: {
-        ...state.layout,
-        isOverviewOpen: !state.layout.isOverviewOpen,
-      },
-    }));
-  },
+    toggleTabbed: () => {
+      set((state) => {
+        const active = getActiveColumn(state.layout);
+        if (!active?.column) {
+          return;
+        }
 
-  toggleTabbed: () => {
-    set((state) => {
-      const active = getActiveColumn(state.layout);
-      if (!active?.column) {
-        return state;
-      }
-
-      return {
-        layout: {
-          ...state.layout,
-          workspaces: state.layout.workspaces.map((workspace) =>
-            workspace.id === active.workspace.id
-              ? {
-                  ...workspace,
-                  columns: workspace.columns.map((column) =>
-                    column.id === active.column?.id
-                      ? {
-                          ...column,
-                          displayMode:
-                            column.displayMode === "normal"
-                              ? "tabbed"
-                              : "normal",
-                        }
-                      : column
-                  ),
-                }
-              : workspace
-          ),
-        },
-      };
-    });
-  },
-}));
+        active.column.displayMode =
+          active.column.displayMode === "normal" ? "tabbed" : "normal";
+      });
+    },
+  }))
+);
 
 export function getLayoutStore() {
   return useLayoutStore.getState();

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useTheme } from "@/components/theme-provider";
+import { FocusRegistryProvider } from "@/components/workspace/focus-registry";
 import { NiriRenderer } from "@/components/workspace/niri-renderer";
 import { WorkspaceContext } from "@/components/workspace/workspace-context";
 import type {
@@ -141,9 +142,6 @@ export function Canvas({
       ? state.layout
       : (state.layoutsByCanvas[canvasId] ?? EMPTY_LAYOUT)
   );
-  const focusedItemId = useLayoutStore(
-    (state) => state.layout.camera.focusedItemId
-  );
   const addColumnRight = useLayoutStore((state) => state.addColumnRight);
   const addItemBelow = useLayoutStore((state) => state.addItemBelow);
   const addWorkspaceBelow = useLayoutStore((state) => state.addWorkspaceBelow);
@@ -161,8 +159,10 @@ export function Canvas({
       "canvas.zoomOut": NOOP,
       "canvas.selectAll": NOOP,
       "canvas.deleteSelected": () => {
-        if (focusedItemId) {
-          removeItem(focusedItemId);
+        const focused =
+          useLayoutStore.getState().layout.camera.focusedItemId;
+        if (focused) {
+          removeItem(focused);
         }
       },
       "tiling.addRight": () =>
@@ -188,7 +188,6 @@ export function Canvas({
       addItemBelow,
       addWorkspaceBelow,
       focusNeighbor,
-      focusedItemId,
       removeItem,
       toggleOverview,
       toggleTabbed,
@@ -229,7 +228,9 @@ export function Canvas({
 
   return (
     <WorkspaceContext.Provider value={{ directory }}>
-      <NiriRenderer layout={layout} />
+      <FocusRegistryProvider>
+        <NiriRenderer layout={layout} />
+      </FocusRegistryProvider>
     </WorkspaceContext.Provider>
   );
 }

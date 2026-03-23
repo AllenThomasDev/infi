@@ -1,5 +1,5 @@
 import { ArrowLeftIcon, ArrowRightIcon, RefreshCcwIcon, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   BaseNode,
   BaseNodeHeader,
@@ -12,6 +12,9 @@ import {
   BrowserToolbarButton,
 } from "@/components/browser/browser-chrome";
 import { Button } from "@/components/ui/button";
+import { useFocusRegistration } from "@/components/workspace/focus-registry";
+import type { NiriLayoutItem } from "@/layout/layout-types";
+import { useLayoutStore } from "@/stores/layout-store";
 import { cn } from "@/utils/tailwind";
 
 const SHARED_PARTITION = "persist:browser";
@@ -31,12 +34,9 @@ interface LoadErrorState {
 
 interface BrowserTileContentProps {
   className?: string;
-  initialUrl?: string;
-  isFocused: boolean;
-  onClose: () => void;
-  onSelect: () => void;
+  item: NiriLayoutItem;
+  selected: boolean;
   style?: React.CSSProperties;
-  title: string;
 }
 
 function isLocalNetworkHost(hostname: string): boolean {
@@ -100,29 +100,37 @@ function normalizeUrl(input: string): string {
   return `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`;
 }
 
+function tileLabel(item: NiriLayoutItem) {
+  const suffix = item.id.split("-").at(-1)?.slice(0, 4) ?? item.id.slice(0, 4);
+  return `Browser ${suffix}`;
+}
+
 export function BrowserTileContent({
   className,
-  initialUrl,
-  isFocused,
-  onClose,
-  onSelect,
+  item,
+  selected,
   style,
-  title,
 }: BrowserTileContentProps) {
+  const removeItem = useLayoutStore((state) => state.removeItem);
+  const selectItem = useLayoutStore((state) => state.selectItem);
+  const title = tileLabel(item);
   const webviewRef = useRef<Electron.WebviewTag>(null);
-  const [currentUrl, setCurrentUrl] = useState(
-    initialUrl || DEFAULT_BROWSER_URL
-  );
+  const [currentUrl, setCurrentUrl] = useState(DEFAULT_BROWSER_URL);
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
   const [loadError, setLoadError] = useState<LoadErrorState | null>(null);
   const [webviewFocused, setWebviewFocused] = useState(false);
 
-  useEffect(() => {
-    if (!isFocused) {
-      setWebviewFocused(false);
-    }
-  }, [isFocused]);
+  const handle = useMemo(
+    () => ({
+      focus: () => {
+        webviewRef.current?.focus();
+        setWebviewFocused(true);
+      },
+    }),
+    []
+  );
+  useFocusRegistration(item.id, handle);
 
   const handleUrlChange = useCallback((url: string) => {
     const normalized = normalizeUrl(url);
@@ -212,15 +220,15 @@ export function BrowserTileContent({
     <BaseNode
       className={cn("data-[webview-focused=true]:border-primary data-[webview-focused=true]:ring-1 data-[webview-focused=true]:ring-primary/50", className)}
       data-webview-focused={webviewFocused}
-      onMouseDown={onSelect}
-      selected={isFocused}
+      onMouseDown={() => selectItem(item.id)}
+      selected={selected}
       style={style}
     >
       <BaseNodeHeader className="border-b">
         <BaseNodeHeaderTitle className="text-xs">{title}</BaseNodeHeaderTitle>
         <Button
           aria-label={`Close ${title}`}
-          onClick={onClose}
+          onClick={() => removeItem(item.id)}
           size="icon-sm"
           variant="ghost"
         >
@@ -230,7 +238,7 @@ export function BrowserTileContent({
 
       <BrowserChrome
         className="min-h-0 flex-1 rounded-none border-0"
-        defaultUrl={initialUrl || DEFAULT_BROWSER_URL}
+        defaultUrl={DEFAULT_BROWSER_URL}
         onUrlChange={handleUrlChange}
         url={currentUrl}
       >
@@ -260,7 +268,7 @@ export function BrowserTileContent({
             className="absolute inset-0"
             partition={SHARED_PARTITION}
             ref={handleWebviewRef}
-            src={initialUrl || DEFAULT_BROWSER_URL}
+            src={DEFAULT_BROWSER_URL}
           />
           {webviewFocused ? null : (
             <button

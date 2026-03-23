@@ -50,8 +50,8 @@ export function NiriColumn({
         </div>
         <div className="min-h-0 flex-1 p-2">
           <NiriTile
-            isFocused={tabbedItem.id === focusedItemId}
             item={tabbedItem}
+            selected={tabbedItem.id === focusedItemId}
           />
         </div>
       </section>
@@ -66,9 +66,9 @@ export function NiriColumn({
       {column.items.map((item) => (
         <NiriTile
           className="min-h-0"
-          isFocused={item.id === focusedItemId}
           item={item}
           key={item.id}
+          selected={item.id === focusedItemId}
           style={{
             flex: item.preferredHeight ? "0 0 auto" : "1 1 0",
             height: item.preferredHeight ?? defaultItemHeight,
