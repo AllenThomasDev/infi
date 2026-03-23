@@ -22,6 +22,7 @@ import type {
   CommandHandlerMap,
   ShortcutMatchContext,
 } from "@/keybindings/types";
+import { useSidebar } from "@/components/ui/sidebar";
 import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/tile-constants";
 import { useTilingLayout } from "@/layout/use-tiling-layout";
 
@@ -58,6 +59,7 @@ export function Canvas({
   const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
   const reactFlow = useReactFlow();
   const { resolvedTheme, toggleTheme } = useTheme();
+  const { setOpen: setSidebarOpen } = useSidebar();
 
   const createNode = useCallback(
     (type: string, col: number, row: number, items: readonly FlowNode[]) =>
@@ -159,6 +161,7 @@ export function Canvas({
       "canvas.fullscreenNode": () => {
         fullscreenMode.current = !fullscreenMode.current;
         if (fullscreenMode.current) {
+          setSidebarOpen(false);
           const selected = nodesRef.current.find((n) => n.selected);
           if (selected) {
             reactFlow.fitView({
@@ -200,6 +203,7 @@ export function Canvas({
       moveWithViewport,
       reactFlow,
       selectAllNodes,
+      setSidebarOpen,
       toggleTheme,
     ]
   );
