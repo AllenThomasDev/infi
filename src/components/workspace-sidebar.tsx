@@ -17,7 +17,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
@@ -29,6 +28,7 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { isMacPlatform } from "@/keybindings/match";
 import type { Canvas, Project } from "@/workspace/types";
 import { useWorkspaceStore } from "@/workspace/workspace-store";
 
@@ -149,6 +149,7 @@ export function WorkspaceSidebar({
   onCreateCanvas,
   onOpenProject,
 }: WorkspaceSidebarProps) {
+  const isMac = isMacPlatform();
   const projects = useWorkspaceStore((s) => s.projects);
   const activeCanvasId = useWorkspaceStore((s) => s.activeCanvasId);
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
@@ -158,16 +159,20 @@ export function WorkspaceSidebar({
   return (
     <Sidebar collapsible="offcanvas" side="left">
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Projects</SidebarGroupLabel>
-          <SidebarGroupAction
-            onClick={() => {
-              Promise.resolve(onOpenProject()).catch(console.error);
-            }}
-            title="Open Project"
-          >
-            <Import />
-          </SidebarGroupAction>
+        <SidebarGroup className={isMac ? "pt-14" : undefined}>
+          <div className="flex items-center justify-between px-2">
+            <SidebarGroupLabel className="px-0">Projects</SidebarGroupLabel>
+            <button
+              className="flex size-8 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              onClick={() => {
+                Promise.resolve(onOpenProject()).catch(console.error);
+              }}
+              title="Open Project"
+              type="button"
+            >
+              <Import className="size-4" />
+            </button>
+          </div>
           <SidebarGroupContent>
             <SidebarMenu>
               {projects.map((project) => (
