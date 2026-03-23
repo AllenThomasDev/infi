@@ -3,9 +3,9 @@ import { FolderOpen } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BranchPicker } from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
-import ModeToggle from "@/components/mode-toggle";
 import { Button } from "@/components/ui/button";
-import { WorkspaceBar } from "@/components/workspace-bar";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { WorkspaceSidebar } from "@/components/workspace-sidebar";
 import { useConfirm } from "@/hooks/use-confirm";
 import type { CommandHandlerMap } from "@/keybindings/types";
 import { useKeybindings } from "@/keybindings/useKeybindings";
@@ -46,6 +46,7 @@ function HomePage() {
     handleBranchPickerOpenChange,
     handleBranchSelected,
     openBranchPicker,
+    openBranchPickerForProject,
     openProjectAndPromptForBranch,
   } = useBranchPickerState({ openBranch });
 
@@ -70,19 +71,14 @@ function HomePage() {
   });
 
   return (
-    <section className="relative flex h-full flex-col overflow-hidden bg-background">
-      {hasProjects ? (
-        <WorkspaceBar
-          onCloseCanvas={closeCanvas}
-          onCloseProject={closeProject}
-          onCreateCanvas={openBranchPicker}
-          onOpenProject={openProjectAndPromptForBranch}
-        />
-      ) : null}
-      <div className="relative min-h-0 flex-1">
-        <div className="absolute top-4 right-4 z-10">
-          <ModeToggle />
-        </div>
+    <SidebarProvider>
+      <WorkspaceSidebar
+        onCloseCanvas={closeCanvas}
+        onCloseProject={closeProject}
+        onCreateCanvas={openBranchPickerForProject}
+        onOpenProject={openProjectAndPromptForBranch}
+      />
+      <div className="relative h-full w-full overflow-hidden">
         {hasProjects ? (
           <WorkspaceContainer
             branchPickerOpen={branchPickerOpen}
@@ -108,7 +104,7 @@ function HomePage() {
         />
         {confirmDialog}
       </div>
-    </section>
+    </SidebarProvider>
   );
 }
 

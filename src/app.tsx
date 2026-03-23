@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 import "@xyflow/react/dist/style.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { LOCAL_STORAGE_KEYS } from "@/constants";
 import { updateAppLanguage } from "./actions/language";
 import { router } from "./utils/routes";
@@ -18,7 +19,9 @@ export default function App() {
 
   return (
     <ThemeProvider defaultTheme="dark" storageKey={LOCAL_STORAGE_KEYS.THEME}>
-      <RouterProvider router={router} />
+      <TooltipProvider>
+        <RouterProvider router={router} />
+      </TooltipProvider>
     </ThemeProvider>
   );
 }

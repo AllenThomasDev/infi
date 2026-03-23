@@ -42,6 +42,11 @@ export function useBranchPickerState({
     setBranchPickerOpen(true);
   }, [activeProjectId]);
 
+  const openBranchPickerForProject = useCallback((projectId: string) => {
+    setBranchPickerProjectId(projectId);
+    setBranchPickerOpen(true);
+  }, []);
+
   const handleBranchPickerOpenChange = useCallback((open: boolean) => {
     setBranchPickerOpen(open);
     if (!open) {
@@ -86,6 +91,7 @@ export function useBranchPickerState({
     handleBranchPickerOpenChange,
     handleBranchSelected,
     openBranchPicker,
+    openBranchPickerForProject,
     openProjectAndPromptForBranch,
   };
 }
