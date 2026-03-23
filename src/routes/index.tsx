@@ -83,6 +83,7 @@ function HomePage() {
           <WorkspaceContainer
             branchPickerOpen={branchPickerOpen}
             commandPaletteOpen={commandPaletteOpen}
+            onCreateCanvas={openBranchPicker}
             onKeybindingStateChange={setCanvasKeybindingState}
           />
         ) : (

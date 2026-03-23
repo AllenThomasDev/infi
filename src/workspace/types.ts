@@ -1,10 +1,8 @@
 export interface Project {
-  activeCanvasId: string | null;
   canvases: Canvas[];
   createdAt: number;
   directory: string;
   id: string;
-  lastActiveAt: number;
   name: string;
 }
 

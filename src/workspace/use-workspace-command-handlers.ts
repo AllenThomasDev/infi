@@ -14,19 +14,20 @@ export function useWorkspaceCommandHandlers({
   onOpenProject,
 }: WorkspaceCommandHandlersOptions) {
   const projects = useWorkspaceStore((s) => s.projects);
+  const activeCanvasId = useWorkspaceStore((s) => s.activeCanvasId);
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
   const switchCanvas = useWorkspaceStore((s) => s.switchCanvas);
   const switchProject = useWorkspaceStore((s) => s.switchProject);
-  const activeProject = projects.find((p) => p.id === activeProjectId);
+  const activeProject = projects.find((p) => p.id === activeProjectId) ?? null;
 
   const switchCanvasByOffset = useCallback(
     (offset: number) => {
-      if (!activeProject?.activeCanvasId) {
+      if (!activeCanvasId || !activeProject) {
         return;
       }
 
       const idx = activeProject.canvases.findIndex(
-        (canvas) => canvas.id === activeProject.activeCanvasId
+        (canvas) => canvas.id === activeCanvasId
       );
       if (idx < 0) {
         return;
@@ -37,7 +38,7 @@ export function useWorkspaceCommandHandlers({
         switchCanvas(next.id);
       }
     },
-    [activeProject, switchCanvas]
+    [activeCanvasId, activeProject, switchCanvas]
   );
 
   const switchProjectByIndex = useCallback(
@@ -57,8 +58,8 @@ export function useWorkspaceCommandHandlers({
         onOpenProject().catch(console.error);
       },
       "workspace.closeCanvas": () => {
-        if (activeProject?.activeCanvasId) {
-          Promise.resolve(onCloseCanvas(activeProject.activeCanvasId)).catch(
+        if (activeCanvasId) {
+          Promise.resolve(onCloseCanvas(activeCanvasId)).catch(
             console.error
           );
         }

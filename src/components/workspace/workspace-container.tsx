@@ -9,30 +9,25 @@ import { useWorkspaceStore } from "@/workspace/workspace-store";
 interface WorkspaceContainerProps {
   branchPickerOpen: boolean;
   commandPaletteOpen: boolean;
+  onCreateCanvas?: () => void;
   onKeybindingStateChange: (state: CanvasKeybindingState | null) => void;
 }
 
 export function WorkspaceContainer({
   branchPickerOpen,
   commandPaletteOpen,
+  onCreateCanvas,
   onKeybindingStateChange,
 }: WorkspaceContainerProps) {
   const projects = useWorkspaceStore((s) => s.projects);
-  const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
-  const activeProject = projects.find(
-    (project) => project.id === activeProjectId
-  );
+  const activeCanvasId = useWorkspaceStore((s) => s.activeCanvasId);
 
   return (
     <>
-      {activeProject && activeProject.canvases.length === 0 ? (
-        <EmptyCanvasState />
-      ) : null}
+      {!activeCanvasId ? <EmptyCanvasState onCreateCanvas={onCreateCanvas} /> : null}
       {projects.flatMap((project) =>
         project.canvases.map((canvas) => {
-          const isProjectActive = project.id === activeProjectId;
-          const isCanvasActive =
-            isProjectActive && canvas.id === project.activeCanvasId;
+          const isCanvasActive = canvas.id === activeCanvasId;
           const directory = canvas.worktreePath ?? project.directory;
 
           return (

@@ -146,6 +146,7 @@ export function WorkspaceSidebar({
   onOpenProject,
 }: WorkspaceSidebarProps) {
   const projects = useWorkspaceStore((s) => s.projects);
+  const activeCanvasId = useWorkspaceStore((s) => s.activeCanvasId);
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
   const switchProject = useWorkspaceStore((s) => s.switchProject);
   const switchCanvas = useWorkspaceStore((s) => s.switchCanvas);
@@ -167,7 +168,7 @@ export function WorkspaceSidebar({
             <SidebarMenu>
               {projects.map((project) => (
                 <ProjectItem
-                  activeCanvasId={project.activeCanvasId}
+                  activeCanvasId={activeCanvasId}
                   isActive={project.id === activeProjectId}
                   key={project.id}
                   onCloseCanvas={onCloseCanvas}
