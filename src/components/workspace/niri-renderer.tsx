@@ -53,10 +53,14 @@ export function NiriRenderer() {
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-gradient-to-br from-background via-background to-muted/20">
       <div
         className={cn(
-          "flex min-h-0 w-full flex-1 flex-col overflow-y-auto px-4 pt-3 pb-4",
+          "flex min-h-0 w-full flex-1 flex-col overflow-y-auto px-4 snap-y snap-mandatory scroll-smooth",
           isOverviewOpen ? "gap-5" : "gap-6"
         )}
       >
+        <div
+          className="shrink-0"
+          style={{ height: `calc(50% - ${TILE_HEIGHT / 2}px)` }}
+        />
         {workspaces.map((workspace, workspaceIndex) => {
           const workspaceName =
             workspace.name || `Workspace ${workspaceIndex + 1}`;
@@ -65,32 +69,39 @@ export function NiriRenderer() {
             (!activeWorkspaceId && workspaceIndex === 0);
 
           return (
-            <section className="shrink-0" key={workspace.id}>
+            <section className="shrink-0 snap-center" key={workspace.id}>
               <div
                 className={cn(
-                  "pointer-events-none pb-1 pl-1 font-medium text-[11px] tracking-[0.02em]",
+                  "pointer-events-none pb-1 font-medium text-[11px] tracking-[0.02em]",
                   isActiveWorkspace
                     ? "text-foreground/90"
                     : "text-muted-foreground/90"
                 )}
+                style={{
+                  paddingLeft: `calc(50% - ${TILE_WIDTH / 2}px + 4px)`,
+                }}
               >
                 {workspaceName}
               </div>
-              <div className="w-full overflow-x-auto overflow-y-hidden">
+              <div className="w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden scroll-smooth">
                 <div
                   className={cn(
-                    "flex min-h-0 gap-3 pr-2 transition-transform duration-200 ease-out",
+                    "flex min-h-0 gap-3 transition-transform duration-200 ease-out",
                     isOverviewOpen && "origin-top scale-[0.95] py-2"
                   )}
                   style={{ height: TILE_HEIGHT }}
                 >
+                  <div
+                    className="shrink-0"
+                    style={{ width: `calc(50% - ${TILE_WIDTH / 2}px)` }}
+                  />
                   {workspace.columns.map((column) => {
                     const itemCount = Math.max(column.items.length, 1);
                     const defaultItemHeight = `calc((100% - ${(itemCount - 1) * 8}px) / ${itemCount})`;
 
                     return (
                       <div
-                        className="h-full min-h-0 shrink-0"
+                        className="h-full min-h-0 shrink-0 snap-center"
                         key={column.id}
                         ref={(node) => {
                           columnRefs.current[column.id] = node;
@@ -110,11 +121,19 @@ export function NiriRenderer() {
                       </div>
                     );
                   })}
+                  <div
+                    className="shrink-0"
+                    style={{ width: `calc(50% - ${TILE_WIDTH / 2}px)` }}
+                  />
                 </div>
               </div>
             </section>
           );
         })}
+        <div
+          className="shrink-0"
+          style={{ height: `calc(50% - ${TILE_HEIGHT / 2}px)` }}
+        />
       </div>
     </div>
   );
