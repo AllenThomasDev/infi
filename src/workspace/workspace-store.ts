@@ -69,22 +69,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       }
 
       const remaining = state.projects.filter((p) => p.id !== projectId);
-      const wasActive = state.activeProjectId === projectId;
 
-      if (!wasActive) {
+      if (state.activeProjectId !== projectId) {
         return { projects: remaining };
       }
-
-      const activeCanvasStillExists = remaining.some((p) =>
-        p.canvases.some((canvas) => canvas.id === state.activeCanvasId)
-      );
 
       return {
         projects: remaining,
         activeProjectId: remaining[0]?.id ?? null,
-        activeCanvasId: activeCanvasStillExists
-          ? state.activeCanvasId
-          : null,
+        activeCanvasId: null,
       };
     });
   },
@@ -123,6 +116,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   switchCanvas: (canvasId: string) => {
+    if (canvasId === get().activeCanvasId) {
+      return;
+    }
+
     const now = Date.now();
     const ownerProjectId = get().projects.find((p) =>
       p.canvases.some((c) => c.id === canvasId)
@@ -132,7 +129,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       activeCanvasId: canvasId,
       activeProjectId: ownerProjectId ?? state.activeProjectId,
       projects: state.projects.map((p) =>
-        p.canvases.some((canvas) => canvas.id === canvasId)
+        p.id === ownerProjectId
           ? {
               ...p,
               canvases: p.canvases.map((canvas) =>

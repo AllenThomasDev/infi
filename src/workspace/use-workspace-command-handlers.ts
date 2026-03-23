@@ -77,7 +77,7 @@ export function useWorkspaceCommandHandlers({
       "workspace.project9": () => switchProjectByIndex(8),
     }),
     [
-      activeProject,
+      activeCanvasId,
       onCloseCanvas,
       onCreateCanvas,
       onOpenProject,

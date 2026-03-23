@@ -59,18 +59,22 @@ function ProjectItem({
   return (
     <Collapsible className="group/collapsible" defaultOpen={isActive}>
       <SidebarMenuItem>
-        <CollapsibleTrigger asChild>
-          <SidebarMenuButton onClick={onSwitch} tooltip={project.name}>
+        <SidebarMenuButton className="relative" onClick={onSwitch} tooltip={project.name}>
+          {isActive ? (
+            <div className="absolute top-1/2 left-0 h-4 w-1 -translate-y-1/2 rounded-r-full bg-sidebar-primary" />
+          ) : null}
+          <CollapsibleTrigger asChild onClick={(e) => e.stopPropagation()}>
             <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
-            <FolderGit2 />
-            <span>{project.name}</span>
-          </SidebarMenuButton>
-        </CollapsibleTrigger>
+          </CollapsibleTrigger>
+          <FolderGit2 />
+          <span>{project.name}</span>
+        </SidebarMenuButton>
 
         <SidebarMenuAction
           className="hover:bg-foreground/10"
           onClick={(e) => {
             e.stopPropagation();
+            onSwitch();
             onCreateCanvas();
           }}
         >
