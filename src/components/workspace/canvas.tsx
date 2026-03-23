@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useTheme } from "@/components/theme-provider";
-import { FocusRegistryProvider } from "@/components/workspace/focus-registry";
 import { NiriRenderer } from "@/components/workspace/niri-renderer";
 import { WorkspaceContext } from "@/components/workspace/workspace-context";
 import type {
@@ -228,9 +227,7 @@ export function Canvas({
 
   return (
     <WorkspaceContext.Provider value={{ directory }}>
-      <FocusRegistryProvider>
-        <NiriRenderer layout={layout} />
-      </FocusRegistryProvider>
+      <NiriRenderer layout={layout} />
     </WorkspaceContext.Provider>
   );
 }
