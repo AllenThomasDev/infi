@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import type { CSSProperties } from "react";
-import { useMemo, useRef } from "react";
+import { useCallback, useRef } from "react";
 import {
   BaseNode,
   BaseNodeHeader,
@@ -9,8 +9,8 @@ import {
 import TerminalView, {
   type TerminalViewHandle,
 } from "@/components/terminal/terminal-view";
+import { useFocusWhenSelected } from "@/components/tiles/use-tile-focus-effect";
 import { Button } from "@/components/ui/button";
-import { useFocusRegistration } from "@/components/workspace/focus-registry";
 import type { NiriLayoutItem } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
 
@@ -37,11 +37,8 @@ export function TerminalTileContent({
   const terminalViewRef = useRef<TerminalViewHandle>(null);
   const title = tileLabel(item);
 
-  const handle = useMemo(
-    () => ({ focus: () => terminalViewRef.current?.focus() }),
-    []
-  );
-  useFocusRegistration(item.id, handle);
+  const focusTerminal = useCallback(() => terminalViewRef.current?.focus(), []);
+  useFocusWhenSelected(item.id, focusTerminal);
 
   return (
     <BaseNode

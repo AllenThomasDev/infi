@@ -1,5 +1,5 @@
 import { ArrowLeftIcon, ArrowRightIcon, RefreshCcwIcon, X } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   BaseNode,
   BaseNodeHeader,
@@ -11,8 +11,8 @@ import {
   BrowserToolbar,
   BrowserToolbarButton,
 } from "@/components/browser/browser-chrome";
+import { useFocusWhenSelected } from "@/components/tiles/use-tile-focus-effect";
 import { Button } from "@/components/ui/button";
-import { useFocusRegistration } from "@/components/workspace/focus-registry";
 import type { NiriLayoutItem } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
 import { cn } from "@/utils/tailwind";
@@ -121,16 +121,11 @@ export function BrowserTileContent({
   const [loadError, setLoadError] = useState<LoadErrorState | null>(null);
   const [webviewFocused, setWebviewFocused] = useState(false);
 
-  const handle = useMemo(
-    () => ({
-      focus: () => {
-        webviewRef.current?.focus();
-        setWebviewFocused(true);
-      },
-    }),
-    []
-  );
-  useFocusRegistration(item.id, handle);
+  const focusWebview = useCallback(() => {
+    webviewRef.current?.focus();
+    setWebviewFocused(true);
+  }, []);
+  useFocusWhenSelected(item.id, focusWebview);
 
   const handleUrlChange = useCallback((url: string) => {
     const normalized = normalizeUrl(url);
@@ -218,7 +213,10 @@ export function BrowserTileContent({
 
   return (
     <BaseNode
-      className={cn("data-[webview-focused=true]:border-primary data-[webview-focused=true]:ring-1 data-[webview-focused=true]:ring-primary/50", className)}
+      className={cn(
+        "data-[webview-focused=true]:border-primary data-[webview-focused=true]:ring-1 data-[webview-focused=true]:ring-primary/50",
+        className
+      )}
       data-webview-focused={webviewFocused}
       onMouseDown={() => selectItem(item.id)}
       selected={selected}

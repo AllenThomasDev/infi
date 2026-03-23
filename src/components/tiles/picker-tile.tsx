@@ -1,7 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import { Globe, Plus, Terminal } from "lucide-react";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { BaseNode } from "@/components/base-node";
+import { useFocusWhenSelected } from "@/components/tiles/use-tile-focus-effect";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -11,7 +12,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { useFocusRegistration } from "@/components/workspace/focus-registry";
 import type { NiriLayoutItem } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
 import { cn } from "@/utils/tailwind";
@@ -73,30 +73,25 @@ export function PickerTileContent({
     [item.id, replaceItem]
   );
 
-  const handle = useMemo(
-    () => ({
-      focus: () => {
-        doneRef.current = false;
-        const container = containerRef.current;
-        const target = container?.querySelector<HTMLElement>("input");
-        if (target && !container?.contains(document.activeElement)) {
-          target.focus();
-        }
-      },
-    }),
-    []
-  );
-  useFocusRegistration(item.id, handle);
+  const focusInput = useCallback(() => {
+    doneRef.current = false;
+    const container = containerRef.current;
+    const target = container?.querySelector<HTMLElement>("input");
+    if (target && !container?.contains(document.activeElement)) {
+      target.focus();
+    }
+  }, []);
+  useFocusWhenSelected(item.id, focusInput);
 
   return (
     <div
       className={cn("h-full w-full", className)}
-      onMouseDown={() => selectItem(item.id)}
       ref={containerRef}
       style={style}
     >
       <BaseNode
         className="h-full w-full border-primary/35 border-dashed bg-primary/5 shadow-none backdrop-blur-sm"
+        onMouseDown={() => selectItem(item.id)}
         selected={selected}
       >
         <div className="flex h-full flex-col gap-4 p-4">

@@ -4,6 +4,7 @@ import { Terminal } from "@xterm/xterm";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { useWorkspaceContext } from "@/components/workspace/workspace-context";
 import { ipc } from "@/ipc/manager";
+import { useLayoutStore } from "@/stores/layout-store";
 import "@xterm/xterm/css/xterm.css";
 import "@/assets/fonts/jetbrains-mono-nerd.css";
 
@@ -33,148 +34,157 @@ interface TerminalViewProps {
   terminalId: string;
 }
 
-const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(function TerminalView({ terminalId }, ref) {
-  const { directory } = useWorkspaceContext();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const terminalRef = useRef<Terminal | null>(null);
-  const fitAddonRef = useRef<FitAddon | null>(null);
-  // A terminal should spawn in the workspace directory that existed when this
-  // view mounted; later context changes should not retarget an existing PTY.
-  const spawnDirectoryRef = useRef(directory);
-  // Incremented on each mount so a stale cleanup's deferred kill is cancelled
-  // when strict mode remounts the component.
-  const mountGenRef = useRef(0);
+const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
+  function TerminalView({ terminalId }, ref) {
+    const { directory } = useWorkspaceContext();
+    const containerRef = useRef<HTMLDivElement>(null);
+    const terminalRef = useRef<Terminal | null>(null);
+    const fitAddonRef = useRef<FitAddon | null>(null);
+    // A terminal should spawn in the workspace directory that existed when this
+    // view mounted; later context changes should not retarget an existing PTY.
+    const spawnDirectoryRef = useRef(directory);
+    // Incremented on each mount so a stale cleanup's deferred kill is cancelled
+    // when strict mode remounts the component.
+    const mountGenRef = useRef(0);
 
-  useImperativeHandle(ref, () => ({
-    focus: () => terminalRef.current?.focus(),
-  }));
+    useImperativeHandle(ref, () => ({
+      focus: () => terminalRef.current?.focus(),
+    }));
 
-  // Initialize terminal, spawn PTY, wire up listeners
-  useEffect(() => {
-    if (!containerRef.current) {
-      return;
-    }
-
-    const currentGen = ++mountGenRef.current;
-
-    const terminal = new Terminal({
-      cursorBlink: true,
-      fontSize: 13,
-      lineHeight: 1.2,
-      scrollback: 5000,
-      fontFamily: '"JetBrainsMono Nerd Font Mono", "JetBrains Mono", monospace',
-      theme: getTerminalTheme(),
-    });
-
-    const fitAddon = new FitAddon();
-    terminal.loadAddon(fitAddon);
-    terminal.open(containerRef.current);
-    try {
-      terminal.loadAddon(new WebglAddon());
-    } catch {
-      // WebGL not available; fall back to default canvas renderer
-    }
-    fitAddon.fit();
-
-    terminalRef.current = terminal;
-    fitAddonRef.current = fitAddon;
-
-    const inputDisposable = terminal.onData((data) => {
-      ipc.client.terminal.write({ id: terminalId, data }).catch(console.error);
-    });
-
-    const removeDataListener = window.terminalBridge.onData((id, data) => {
-      if (id === terminalId) {
-        terminal.write(data);
+    // Initialize terminal, spawn PTY, wire up listeners
+    useEffect(() => {
+      if (!containerRef.current) {
+        return;
       }
-    });
 
-    const removeExitListener = window.terminalBridge.onExit(
-      (id, exitCode, _signal) => {
+      const currentGen = ++mountGenRef.current;
+
+      const terminal = new Terminal({
+        cursorBlink: true,
+        fontSize: 13,
+        lineHeight: 1.2,
+        scrollback: 5000,
+        fontFamily:
+          '"JetBrainsMono Nerd Font Mono", "JetBrains Mono", monospace',
+        theme: getTerminalTheme(),
+      });
+
+      const fitAddon = new FitAddon();
+      terminal.loadAddon(fitAddon);
+      terminal.open(containerRef.current);
+      try {
+        terminal.loadAddon(new WebglAddon());
+      } catch {
+        // WebGL not available; fall back to default canvas renderer
+      }
+      fitAddon.fit();
+
+      terminalRef.current = terminal;
+      fitAddonRef.current = fitAddon;
+
+      const inputDisposable = terminal.onData((data) => {
+        ipc.client.terminal
+          .write({ id: terminalId, data })
+          .catch(console.error);
+      });
+
+      const removeDataListener = window.terminalBridge.onData((id, data) => {
         if (id === terminalId) {
-          terminal.writeln(`\r\n[Process exited with code ${exitCode}]`);
+          terminal.write(data);
         }
+      });
+
+      const removeExitListener = window.terminalBridge.onExit(
+        (id, exitCode, _signal) => {
+          if (id === terminalId) {
+            terminal.writeln(`\r\n[Process exited with code ${exitCode}]`);
+          }
+        }
+      );
+
+      const themeObserver = new MutationObserver(() => {
+        terminal.options.theme = getTerminalTheme();
+      });
+      themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+
+      ipc.client.terminal
+        .spawn({
+          id: terminalId,
+          cols: terminal.cols,
+          rows: terminal.rows,
+          cwd: spawnDirectoryRef.current,
+        })
+        .then(() => {
+          if (
+            useLayoutStore.getState().layout.camera.focusedItemId === terminalId
+          ) {
+            terminal.focus();
+          }
+        })
+        .catch((err) => {
+          terminal.writeln(`\r\n[Failed to spawn terminal: ${err}]`);
+        });
+
+      return () => {
+        themeObserver.disconnect();
+        inputDisposable.dispose();
+        removeDataListener();
+        removeExitListener();
+        terminal.dispose();
+        terminalRef.current = null;
+        fitAddonRef.current = null;
+
+        // Defer PTY kill so a strict-mode remount can reclaim the session
+        // before this fires. If mountGenRef has advanced, a new mount took
+        // over and we skip the kill.
+        const gen = currentGen;
+        setTimeout(() => {
+          if (mountGenRef.current === gen) {
+            ipc.client.terminal.kill({ id: terminalId }).catch(console.error);
+          }
+        }, 50);
+      };
+    }, [terminalId]);
+
+    // Refit on resize
+    useEffect(() => {
+      if (!fitAddonRef.current) {
+        return;
       }
-    );
 
-    const themeObserver = new MutationObserver(() => {
-      terminal.options.theme = getTerminalTheme();
-    });
-    themeObserver.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
+      const fitAddon = fitAddonRef.current;
+      const terminal = terminalRef.current;
 
-    ipc.client.terminal
-      .spawn({
-        id: terminalId,
-        cols: terminal.cols,
-        rows: terminal.rows,
-        cwd: spawnDirectoryRef.current,
-      })
-      .then(() => {
-        terminal.focus();
-      })
-      .catch((err) => {
-        terminal.writeln(`\r\n[Failed to spawn terminal: ${err}]`);
-      });
+      const handleResize = () => {
+        requestAnimationFrame(() => {
+          fitAddon.fit();
+          if (terminal) {
+            ipc.client.terminal
+              .resize({
+                id: terminalId,
+                cols: terminal.cols,
+                rows: terminal.rows,
+              })
+              .catch(console.error);
+          }
+        });
+      };
 
-    return () => {
-      themeObserver.disconnect();
-      inputDisposable.dispose();
-      removeDataListener();
-      removeExitListener();
-      terminal.dispose();
-      terminalRef.current = null;
-      fitAddonRef.current = null;
+      handleResize();
 
-      // Defer PTY kill so a strict-mode remount can reclaim the session
-      // before this fires. If mountGenRef has advanced, a new mount took
-      // over and we skip the kill.
-      const gen = currentGen;
-      setTimeout(() => {
-        if (mountGenRef.current === gen) {
-          ipc.client.terminal.kill({ id: terminalId }).catch(console.error);
-        }
-      }, 50);
-    };
-  }, [terminalId]);
+      const resizeObserver = new ResizeObserver(handleResize);
+      if (containerRef.current) {
+        resizeObserver.observe(containerRef.current);
+      }
 
-  // Refit on resize
-  useEffect(() => {
-    if (!fitAddonRef.current) {
-      return;
-    }
+      return () => resizeObserver.disconnect();
+    }, [terminalId]);
 
-    const fitAddon = fitAddonRef.current;
-    const terminal = terminalRef.current;
-
-    const handleResize = () => {
-      requestAnimationFrame(() => {
-        fitAddon.fit();
-        if (terminal) {
-          ipc.client.terminal
-            .resize({
-              id: terminalId,
-              cols: terminal.cols,
-              rows: terminal.rows,
-            })
-            .catch(console.error);
-        }
-      });
-    };
-
-    handleResize();
-
-    const resizeObserver = new ResizeObserver(handleResize);
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => resizeObserver.disconnect();
-  }, [terminalId]);
-
-  return <div className="h-full w-full" ref={containerRef} />;
-});
+    return <div className="h-full w-full" ref={containerRef} />;
+  }
+);
 
 export default TerminalView;

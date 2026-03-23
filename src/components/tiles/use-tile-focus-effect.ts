@@ -1,33 +1,33 @@
 import { useEffect } from "react";
+import { useLayoutStore } from "@/stores/layout-store";
 
-interface UseTileFocusEffectOptions {
-  containerRef: React.RefObject<HTMLElement | null>;
-  focusTarget: string;
-  isFocused?: boolean;
-}
+export function useFocusWhenSelected(itemId: string, focus: () => void) {
+  const focusedItemId = useLayoutStore(
+    (state) => state.layout.camera.focusedItemId
+  );
+  const focusTick = useLayoutStore((state) => state.layout.camera.focusTick);
 
-export function useTileFocusEffect({
-  containerRef,
-  focusTarget,
-  isFocused = false,
-}: UseTileFocusEffectOptions) {
   useEffect(() => {
-    if (!isFocused) {
+    if (focusedItemId !== itemId) {
       return;
     }
 
+    const scheduledTick = focusTick;
     const frame = requestAnimationFrame(() => {
-      const container = containerRef.current;
-      if (!container) {
+      const {
+        focusedItemId: currentFocusedItemId,
+        focusTick: currentFocusTick,
+      } = useLayoutStore.getState().layout.camera;
+      if (
+        currentFocusedItemId !== itemId ||
+        currentFocusTick !== scheduledTick
+      ) {
         return;
       }
 
-      const target = container.querySelector<HTMLElement>(focusTarget);
-      if (target && !container.contains(document.activeElement)) {
-        target.focus();
-      }
+      focus();
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [containerRef, focusTarget, isFocused]);
+  }, [focus, focusTick, focusedItemId, itemId]);
 }

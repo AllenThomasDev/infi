@@ -160,6 +160,8 @@ function getActiveColumn(layout: NiriCanvasLayout) {
 }
 
 function applyFocus(layout: NiriCanvasLayout, target: FocusTarget | null) {
+  const focusTick = (layout.camera.focusTick ?? 0) + 1;
+
   if (target) {
     target.column.focusedItemId = target.item.id;
     target.workspace.focusedColumnId = target.column.id;
@@ -167,12 +169,14 @@ function applyFocus(layout: NiriCanvasLayout, target: FocusTarget | null) {
       activeWorkspaceId: target.workspace.id,
       activeColumnId: target.column.id,
       focusedItemId: target.item.id,
+      focusTick,
     };
     return;
   }
 
   layout.camera = {
     activeWorkspaceId: layout.workspaces[0]?.id,
+    focusTick,
   };
 }
 

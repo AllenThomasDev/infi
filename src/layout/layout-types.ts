@@ -31,6 +31,7 @@ export interface NiriCameraState {
   activeColumnId?: string;
   activeWorkspaceId?: string;
   focusedItemId?: string;
+  focusTick?: number;
 }
 
 export interface NiriCanvasLayout {
