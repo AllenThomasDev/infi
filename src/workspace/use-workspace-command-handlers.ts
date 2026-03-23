@@ -15,36 +15,39 @@ export function useWorkspaceCommandHandlers({
 }: WorkspaceCommandHandlersOptions) {
   const projects = useWorkspaceStore((s) => s.projects);
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId);
-  const switchProject = useWorkspaceStore((s) => s.switchProject);
   const switchCanvas = useWorkspaceStore((s) => s.switchCanvas);
-
+  const switchProject = useWorkspaceStore((s) => s.switchProject);
   const activeProject = projects.find((p) => p.id === activeProjectId);
 
-  const switchToCanvasByIndex = useCallback(
-    (index: number) => {
-      if (!activeProject) {
+  const switchCanvasByOffset = useCallback(
+    (offset: number) => {
+      if (!activeProject?.activeCanvasId) {
         return;
       }
-      const canvasId = activeProject.canvases[index]?.id;
-      if (canvasId) {
-        switchCanvas(canvasId);
+
+      const idx = activeProject.canvases.findIndex(
+        (canvas) => canvas.id === activeProject.activeCanvasId
+      );
+      if (idx < 0) {
+        return;
+      }
+
+      const next = activeProject.canvases[idx + offset];
+      if (next) {
+        switchCanvas(next.id);
       }
     },
     [activeProject, switchCanvas]
   );
 
-  const switchProjectByOffset = useCallback(
-    (offset: number) => {
-      const idx = projects.findIndex((p) => p.id === activeProjectId);
-      if (idx < 0) {
-        return;
-      }
-      const next = projects[idx + offset];
-      if (next) {
-        switchProject(next.id);
+  const switchProjectByIndex = useCallback(
+    (index: number) => {
+      const project = projects[index];
+      if (project) {
+        switchProject(project.id);
       }
     },
-    [activeProjectId, projects, switchProject]
+    [projects, switchProject]
   );
 
   return useMemo<CommandHandlerMap>(
@@ -60,25 +63,25 @@ export function useWorkspaceCommandHandlers({
           );
         }
       },
-      "workspace.prevProject": () => switchProjectByOffset(-1),
-      "workspace.nextProject": () => switchProjectByOffset(1),
-      "workspace.canvas1": () => switchToCanvasByIndex(0),
-      "workspace.canvas2": () => switchToCanvasByIndex(1),
-      "workspace.canvas3": () => switchToCanvasByIndex(2),
-      "workspace.canvas4": () => switchToCanvasByIndex(3),
-      "workspace.canvas5": () => switchToCanvasByIndex(4),
-      "workspace.canvas6": () => switchToCanvasByIndex(5),
-      "workspace.canvas7": () => switchToCanvasByIndex(6),
-      "workspace.canvas8": () => switchToCanvasByIndex(7),
-      "workspace.canvas9": () => switchToCanvasByIndex(8),
+      "workspace.prevCanvas": () => switchCanvasByOffset(-1),
+      "workspace.nextCanvas": () => switchCanvasByOffset(1),
+      "workspace.project1": () => switchProjectByIndex(0),
+      "workspace.project2": () => switchProjectByIndex(1),
+      "workspace.project3": () => switchProjectByIndex(2),
+      "workspace.project4": () => switchProjectByIndex(3),
+      "workspace.project5": () => switchProjectByIndex(4),
+      "workspace.project6": () => switchProjectByIndex(5),
+      "workspace.project7": () => switchProjectByIndex(6),
+      "workspace.project8": () => switchProjectByIndex(7),
+      "workspace.project9": () => switchProjectByIndex(8),
     }),
     [
       activeProject,
       onCloseCanvas,
       onCreateCanvas,
       onOpenProject,
-      switchProjectByOffset,
-      switchToCanvasByIndex,
+      switchCanvasByOffset,
+      switchProjectByIndex,
     ]
   );
 }
