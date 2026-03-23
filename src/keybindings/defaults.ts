@@ -35,12 +35,6 @@ export const DEFAULT_KEYBINDINGS: readonly KeybindingRule[] = [
     when: "!pickerSelected",
   },
   {
-    key: "mod+shift+enter",
-    command: "tiling.addBelow",
-    label: "Add Tile Below",
-    when: "!pickerSelected",
-  },
-  {
     key: "mod+n",
     command: "tiling.addWorkspaceBelow",
     label: "Add Workspace Below",
