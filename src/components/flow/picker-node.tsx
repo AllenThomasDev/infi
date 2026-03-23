@@ -1,10 +1,12 @@
 import type { NodeProps } from "@xyflow/react";
+import type { LucideIcon } from "lucide-react";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { BaseNode } from "@/components/base-node";
 import { pickerNodeOptions } from "@/components/flow/node-registry";
 import type { PickerFlowNode } from "@/components/flow/types";
 import { useNodeActions } from "@/components/flow/use-node-actions";
+import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -14,11 +16,28 @@ import {
   CommandList,
 } from "@/components/ui/command";
 
-export default function PickerNode({
-  id,
-  selected,
-}: NodeProps<PickerFlowNode>) {
-  const { removeSelf, replaceSelf } = useNodeActions(id);
+interface PickerOption {
+  icon: LucideIcon;
+  label: string;
+  type: "browser" | "terminal";
+}
+
+const NIRI_PICKER_OPTIONS: PickerOption[] = pickerNodeOptions.flatMap(
+  (option) =>
+    option.type === "browser" || option.type === "terminal" ? [option] : []
+);
+
+interface PickerTileContentProps {
+  isFocused: boolean;
+  onCancel: () => void;
+  onSelectType: (type: PickerOption["type"]) => void;
+}
+
+export function PickerTileContent({
+  isFocused,
+  onCancel,
+  onSelectType,
+}: PickerTileContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(false);
 
@@ -27,25 +46,25 @@ export default function PickerNode({
       return;
     }
     doneRef.current = true;
-    removeSelf();
-  }, [removeSelf]);
+    onCancel();
+  }, [onCancel]);
 
   const confirm = useCallback(
-    (type: (typeof pickerNodeOptions)[number]["type"]) => {
+    (type: PickerOption["type"]) => {
       if (doneRef.current) {
         return;
       }
       doneRef.current = true;
-      replaceSelf(type);
+      onSelectType(type);
     },
-    [replaceSelf]
+    [onSelectType]
   );
 
-  // Defer focus until the CommandInput is mounted
   useEffect(() => {
-    if (!selected) {
+    if (!isFocused) {
       return;
     }
+    doneRef.current = false;
     const timer = window.setTimeout(() => {
       const container = containerRef.current;
       const target = container?.querySelector<HTMLElement>("input");
@@ -54,11 +73,10 @@ export default function PickerNode({
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [selected]);
+  }, [isFocused]);
 
-  // Cancel when deselected or focus leaves the node
   useEffect(() => {
-    if (!selected) {
+    if (!isFocused) {
       cancel();
       return;
     }
@@ -76,13 +94,13 @@ export default function PickerNode({
 
     container.addEventListener("focusout", handleFocusOut);
     return () => container.removeEventListener("focusout", handleFocusOut);
-  }, [cancel, selected]);
+  }, [cancel, isFocused]);
 
   return (
-    <div className="nodrag nowheel h-full w-full" ref={containerRef}>
+    <div className="h-full w-full" ref={containerRef}>
       <BaseNode
         className="h-full w-full border-primary/35 border-dashed bg-primary/5 shadow-none backdrop-blur-sm"
-        selected={selected}
+        selected={isFocused}
       >
         <div className="flex h-full flex-col gap-4 p-4">
           <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-[0.24em]">
@@ -99,7 +117,7 @@ export default function PickerNode({
                 <CommandList>
                   <CommandEmpty>No types found.</CommandEmpty>
                   <CommandGroup>
-                    {pickerNodeOptions.map((option) => {
+                    {NIRI_PICKER_OPTIONS.map((option) => {
                       const Icon = option.icon;
                       return (
                         <CommandItem
@@ -116,8 +134,27 @@ export default function PickerNode({
               </Command>
             </div>
           </div>
+          <div className="flex justify-end">
+            <Button onClick={cancel} size="sm" variant="ghost">
+              Cancel
+            </Button>
+          </div>
         </div>
       </BaseNode>
     </div>
+  );
+}
+
+export default function PickerNode({
+  id,
+  selected,
+}: NodeProps<PickerFlowNode>) {
+  const { removeSelf, replaceSelf } = useNodeActions(id);
+  return (
+    <PickerTileContent
+      isFocused={selected}
+      onCancel={removeSelf}
+      onSelectType={replaceSelf}
+    />
   );
 }

@@ -12,42 +12,60 @@ import { useNodeSelectionEffects } from "@/components/flow/use-node-selection-ef
 import TerminalView from "@/components/terminal/terminal-view";
 import { Button } from "@/components/ui/button";
 
-export default function TerminalNode({
-  id,
-  data,
-  selected,
-}: NodeProps<TerminalFlowNode>) {
-  const { removeSelf } = useNodeActions(id);
+interface TerminalTileContentProps {
+  isFocused: boolean;
+  onClose: () => void;
+  terminalId: string;
+  title: string;
+}
+
+export function TerminalTileContent({
+  isFocused,
+  onClose,
+  terminalId,
+  title,
+}: TerminalTileContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useNodeSelectionEffects({
     containerRef,
     focusTarget: "textarea, input, [tabindex]",
-    selected,
+    selected: isFocused,
   });
 
   return (
-    <BaseNode className="h-full w-full" selected={selected}>
+    <BaseNode className="h-full w-full" selected={isFocused}>
       <BaseNodeHeader className="border-b">
-        <BaseNodeHeaderTitle className="text-xs">
-          {data.title}
-        </BaseNodeHeaderTitle>
+        <BaseNodeHeaderTitle className="text-xs">{title}</BaseNodeHeaderTitle>
         <Button
-          aria-label={`Close ${data.title}`}
-          className="nodrag"
-          onClick={removeSelf}
+          aria-label={`Close ${title}`}
+          onClick={onClose}
           size="icon-sm"
           variant="ghost"
         >
           <X />
         </Button>
       </BaseNodeHeader>
-      <div
-        className="nodrag nowheel nokey min-h-0 flex-1 cursor-text p-1"
-        ref={containerRef}
-      >
-        <TerminalView terminalId={data.terminalId} />
+      <div className="min-h-0 flex-1 cursor-text p-1" ref={containerRef}>
+        <TerminalView terminalId={terminalId} />
       </div>
     </BaseNode>
+  );
+}
+
+export default function TerminalNode({
+  id,
+  data,
+  selected,
+}: NodeProps<TerminalFlowNode>) {
+  const { removeSelf } = useNodeActions(id);
+
+  return (
+    <TerminalTileContent
+      isFocused={selected}
+      onClose={removeSelf}
+      terminalId={data.terminalId}
+      title={data.title}
+    />
   );
 }

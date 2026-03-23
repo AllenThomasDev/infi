@@ -1,36 +1,116 @@
-import {
-  Background,
-  BackgroundVariant,
-  Controls,
-  type OnSelectionChangeFunc,
-  ReactFlow,
-  useNodesState,
-  useReactFlow,
-} from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import {
-  flowNodeTypes,
-  type NodeType,
-  nodeRegistry,
-} from "@/components/flow/node-registry";
-import type { FlowNode } from "@/components/flow/types";
-import { useCanvasNodeActions } from "@/components/flow/use-canvas-node-actions";
-import { TileActionsContext } from "@/components/flow/use-tile-actions";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTheme } from "@/components/theme-provider";
-import { useSidebar } from "@/components/ui/sidebar";
+import { NiriRenderer } from "@/components/workspace/niri-renderer";
 import { WorkspaceContext } from "@/components/workspace/workspace-context";
 import type {
   CommandHandlerMap,
   ShortcutMatchContext,
 } from "@/keybindings/types";
-import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/tile-constants";
-import { useTilingLayout } from "@/layout/use-tiling-layout";
+import type {
+  NiriCanvasLayout,
+  NiriItemRef,
+  NiriLayoutItem,
+} from "@/layout/layout-types";
+import { useLayoutStore } from "@/stores/layout-store";
 
 function isInputFocused() {
   return (
     document.activeElement?.tagName === "INPUT" ||
     document.activeElement?.tagName === "TEXTAREA"
   );
+}
+
+interface LayoutLocation {
+  column: NiriCanvasLayout["workspaces"][number]["columns"][number];
+  columnIndex: number;
+  item: NiriLayoutItem;
+  itemIndex: number;
+  workspace: NiriCanvasLayout["workspaces"][number];
+}
+
+function getFocusedLocation(layout: NiriCanvasLayout): LayoutLocation | null {
+  const focusedId = layout.camera.focusedItemId;
+
+  for (const workspace of layout.workspaces) {
+    const columnIndex = workspace.columns.findIndex((column) =>
+      column.items.some((item) => item.id === focusedId)
+    );
+    if (columnIndex < 0) {
+      continue;
+    }
+
+    const column = workspace.columns[columnIndex];
+    const itemIndex = column.items.findIndex((item) => item.id === focusedId);
+    return {
+      workspace,
+      column,
+      columnIndex,
+      item: column.items[itemIndex],
+      itemIndex,
+    };
+  }
+
+  const workspace =
+    layout.workspaces.find(
+      (candidate) => candidate.id === layout.camera.activeWorkspaceId
+    ) ?? layout.workspaces[0];
+  const column = workspace?.columns[0];
+  const item = column?.items[0];
+  if (!(workspace && column && item)) {
+    return null;
+  }
+
+  return {
+    workspace,
+    column,
+    columnIndex: 0,
+    item,
+    itemIndex: 0,
+  };
+}
+
+function createLayoutItem(ref: NiriItemRef): NiriLayoutItem {
+  return {
+    id: `${ref.type}-item-${crypto.randomUUID()}`,
+    ref,
+  };
+}
+
+const NOOP = () => undefined;
+
+function moveFocusedItem(horizontal: number, vertical: number) {
+  const store = useLayoutStore.getState();
+  const focused = getFocusedLocation(store.layout);
+  if (!focused) {
+    return;
+  }
+
+  if (vertical !== 0) {
+    const targetIndex = focused.itemIndex + vertical;
+    if (targetIndex < 0 || targetIndex >= focused.column.items.length) {
+      return;
+    }
+
+    store.moveItem(focused.item.id, focused.column.id, targetIndex);
+    return;
+  }
+
+  if (horizontal === 0) {
+    return;
+  }
+
+  if (focused.column.items.length === 1) {
+    const targetIndex = focused.columnIndex + horizontal;
+    if (targetIndex < 0 || targetIndex >= focused.workspace.columns.length) {
+      return;
+    }
+
+    store.moveColumn(focused.column.id, focused.workspace.id, targetIndex);
+    return;
+  }
+
+  const targetIndex = focused.columnIndex + (horizontal > 0 ? 1 : 0);
+  store.moveItemToNewColumn(focused.item.id, targetIndex);
 }
 
 export interface CanvasKeybindingState {
@@ -40,7 +120,6 @@ export interface CanvasKeybindingState {
 
 interface CanvasProps {
   branchPickerOpen: boolean;
-  canvasId: string;
   commandPaletteOpen: boolean;
   directory?: string;
   isActive?: boolean;
@@ -49,183 +128,89 @@ interface CanvasProps {
 
 export function Canvas({
   branchPickerOpen,
-  canvasId,
   commandPaletteOpen,
   directory,
   isActive = true,
   onKeybindingStateChange,
 }: CanvasProps) {
-  const [nodes, setNodes] = useNodesState<FlowNode>([]);
-  const defaultEdgeOptions = useMemo(() => ({ selectable: false }), []);
-  const reactFlow = useReactFlow();
-  const { resolvedTheme, toggleTheme } = useTheme();
-  const { setOpen: setSidebarOpen } = useSidebar();
-
-  const createNode = useCallback(
-    (type: string, col: number, row: number, items: readonly FlowNode[]) =>
-      nodeRegistry[type as NodeType].create(col, row, items),
-    []
+  const focusedItemId = useLayoutStore(
+    (state) => state.layout.camera.focusedItemId
   );
-
-  const { create, remove, replace, focus, move } = useTilingLayout(
-    setNodes,
-    createNode
-  );
-
-  const tileActions = useMemo(() => ({ remove, replace }), [remove, replace]);
-
-  const lastFocusedId = useRef<string | null>(null);
-  const pendingMoveViewportId = useRef<string | null>(null);
-  const fullscreenMode = useRef(false);
-  const fitNodeIntoView = useCallback(
-    (nodeId: string) => {
-      const node = reactFlow.getNode(nodeId);
-      if (!node) {
-        return;
-      }
-
-      lastFocusedId.current = nodeId;
-
-      if (fullscreenMode.current) {
-        reactFlow.fitView({
-          nodes: [{ id: nodeId }],
-          duration: 150,
-          padding: 0.05,
-        });
-        return;
-      }
-
-      const width =
-        node.measured?.width ??
-        node.width ??
-        (typeof node.style?.width === "number" ? node.style.width : TILE_WIDTH);
-      const height =
-        node.measured?.height ??
-        node.height ??
-        (typeof node.style?.height === "number"
-          ? node.style.height
-          : TILE_HEIGHT);
-
-      reactFlow.setCenter(
-        node.position.x + width / 2,
-        node.position.y + height / 2,
-        {
-          duration: 150,
-          zoom: reactFlow.getZoom(),
-        }
-      );
-    },
-    [reactFlow]
-  );
-  const onSelectionChange: OnSelectionChangeFunc = useCallback(
-    ({ nodes: selectedNodes }) => {
-      if (selectedNodes.length !== 1) {
-        lastFocusedId.current = null;
-        return;
-      }
-      if (selectedNodes[0].id === lastFocusedId.current) {
-        return;
-      }
-      fitNodeIntoView(selectedNodes[0].id);
-    },
-    [fitNodeIntoView]
-  );
-
-  useEffect(() => {
-    if (!pendingMoveViewportId.current) {
-      return;
-    }
-
-    const selectedNode = nodes.find((node) => node.selected);
-    if (!selectedNode || selectedNode.id !== pendingMoveViewportId.current) {
-      return;
-    }
-
-    pendingMoveViewportId.current = null;
-    fitNodeIntoView(selectedNode.id);
-  }, [fitNodeIntoView, nodes]);
-
-  const { deleteSelectedNodes, onNodesChange, selectAllNodes } =
-    useCanvasNodeActions({ nodes, reactFlow, setNodes });
-
-  const nodesRef = useRef(nodes);
-  nodesRef.current = nodes;
-
-  const moveWithViewport = useCallback(
-    (dx: number, dy: number) => {
-      const selectedNode = nodesRef.current.find((node) => node.selected);
-      if (!selectedNode) {
-        return;
-      }
-      pendingMoveViewportId.current = selectedNode.id;
-      move(dx, dy);
-    },
-    [move]
-  );
+  const addColumnLeft = useLayoutStore((state) => state.addColumnLeft);
+  const addColumnRight = useLayoutStore((state) => state.addColumnRight);
+  const addItemAbove = useLayoutStore((state) => state.addItemAbove);
+  const addItemBelow = useLayoutStore((state) => state.addItemBelow);
+  const removeItem = useLayoutStore((state) => state.removeItem);
+  const focusNeighbor = useLayoutStore((state) => state.focusNeighbor);
+  const toggleOverview = useLayoutStore((state) => state.toggleOverview);
+  const toggleTabbed = useLayoutStore((state) => state.toggleTabbed);
+  const { toggleTheme } = useTheme();
 
   const canvasHandlers = useMemo<CommandHandlerMap>(
     () => ({
-      "canvas.fitView": () => reactFlow.fitView(),
-      "canvas.fullscreenNode": () => {
-        fullscreenMode.current = !fullscreenMode.current;
-        if (fullscreenMode.current) {
-          setSidebarOpen(false);
-          const selected = nodesRef.current.find((n) => n.selected);
-          if (selected) {
-            reactFlow.fitView({
-              nodes: [selected],
-              duration: 150,
-              padding: 0.05,
-            });
-          }
-        } else {
-          reactFlow.fitView({ duration: 150 });
+      "canvas.fitView": NOOP,
+      "canvas.fullscreenNode": NOOP,
+      "canvas.zoomIn": NOOP,
+      "canvas.zoomOut": NOOP,
+      "canvas.selectAll": NOOP,
+      "canvas.deleteSelected": () => {
+        if (focusedItemId) {
+          removeItem(focusedItemId);
         }
       },
-      "canvas.zoomIn": () => reactFlow.zoomIn(),
-      "canvas.zoomOut": () => reactFlow.zoomOut(),
-      "canvas.selectAll": selectAllNodes,
-      "canvas.deleteSelected": deleteSelectedNodes,
-      "tiling.createLeft": () => create(-1, 0, "terminal"),
-      "tiling.createRight": () => create(1, 0, "terminal"),
-      "tiling.createUp": () => create(0, -1, "terminal"),
-      "tiling.createDown": () => create(0, 1, "terminal"),
-      "tiling.insertLeft": () => create(-1, 0, "picker"),
-      "tiling.insertRight": () => create(1, 0, "picker"),
-      "tiling.insertUp": () => create(0, -1, "picker"),
-      "tiling.insertDown": () => create(0, 1, "picker"),
-      "tiling.focusLeft": () => focus(-1, 0),
-      "tiling.focusRight": () => focus(1, 0),
-      "tiling.focusUp": () => focus(0, -1),
-      "tiling.focusDown": () => focus(0, 1),
-      "tiling.moveLeft": () => moveWithViewport(-1, 0),
-      "tiling.moveRight": () => moveWithViewport(1, 0),
-      "tiling.moveUp": () => moveWithViewport(0, -1),
-      "tiling.moveDown": () => moveWithViewport(0, 1),
+      "tiling.createLeft": () =>
+        addColumnLeft(createLayoutItem({ type: "terminal" })),
+      "tiling.createRight": () =>
+        addColumnRight(createLayoutItem({ type: "terminal" })),
+      "tiling.createUp": () =>
+        addItemAbove(createLayoutItem({ type: "terminal" })),
+      "tiling.createDown": () =>
+        addItemBelow(createLayoutItem({ type: "terminal" })),
+      "tiling.insertLeft": () =>
+        addColumnLeft(createLayoutItem({ type: "picker" })),
+      "tiling.insertRight": () =>
+        addColumnRight(createLayoutItem({ type: "picker" })),
+      "tiling.insertUp": () =>
+        addItemAbove(createLayoutItem({ type: "picker" })),
+      "tiling.insertDown": () =>
+        addItemBelow(createLayoutItem({ type: "picker" })),
+      "tiling.focusLeft": () => focusNeighbor(-1, 0),
+      "tiling.focusRight": () => focusNeighbor(1, 0),
+      "tiling.focusUp": () => focusNeighbor(0, -1),
+      "tiling.focusDown": () => focusNeighbor(0, 1),
+      "tiling.moveLeft": () => moveFocusedItem(-1, 0),
+      "tiling.moveRight": () => moveFocusedItem(1, 0),
+      "tiling.moveUp": () => moveFocusedItem(0, -1),
+      "tiling.moveDown": () => moveFocusedItem(0, 1),
+      "tiling.toggleOverview": toggleOverview,
+      "tiling.toggleTabbed": toggleTabbed,
       "theme.toggle": toggleTheme,
     }),
     [
-      create,
-      deleteSelectedNodes,
-      focus,
-      moveWithViewport,
-      reactFlow,
-      selectAllNodes,
-      setSidebarOpen,
+      addColumnLeft,
+      addColumnRight,
+      addItemAbove,
+      addItemBelow,
+      focusNeighbor,
+      focusedItemId,
+      removeItem,
+      toggleOverview,
+      toggleTabbed,
       toggleTheme,
     ]
   );
 
   const getKeybindingContext = useCallback(() => {
-    const selectedNode = nodesRef.current.find((node) => node.selected);
-    const selectedType = selectedNode?.type;
+    const focused = getFocusedLocation(useLayoutStore.getState().layout);
+    const selectedType = focused?.item.ref.type;
+
     return {
       browserSelected: selectedType === "browser",
       canvasFocus: true,
       inputFocus: isInputFocused() || commandPaletteOpen || branchPickerOpen,
       pickerSelected: selectedType === "picker",
       terminalSelected: selectedType === "terminal",
-      windowSelected: selectedType === "window",
+      windowSelected: false,
     };
   }, [branchPickerOpen, commandPaletteOpen]);
 
@@ -248,24 +233,7 @@ export function Canvas({
 
   return (
     <WorkspaceContext.Provider value={{ directory }}>
-      <TileActionsContext.Provider value={tileActions}>
-        <ReactFlow
-          colorMode={resolvedTheme}
-          defaultEdgeOptions={defaultEdgeOptions}
-          id={canvasId}
-          maxZoom={1.8}
-          minZoom={0.1}
-          nodes={nodes}
-          nodeTypes={flowNodeTypes}
-          onNodesChange={onNodesChange}
-          onSelectionChange={onSelectionChange}
-          panOnDrag={[1, 2]}
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background gap={24} size={1} variant={BackgroundVariant.Dots} />
-          <Controls position="bottom-right" showInteractive={false} />
-        </ReactFlow>
-      </TileActionsContext.Provider>
+      <NiriRenderer />
     </WorkspaceContext.Provider>
   );
 }

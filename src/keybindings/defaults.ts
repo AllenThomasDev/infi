@@ -124,6 +124,18 @@ export const DEFAULT_KEYBINDINGS: readonly KeybindingRule[] = [
     label: "Move Down in Column",
     when: "!pickerSelected && !(browserSelected && inputFocus)",
   },
+  {
+    key: "mod+shift+o",
+    command: "tiling.toggleOverview",
+    label: "Toggle Overview",
+    when: "canvasFocus",
+  },
+  {
+    key: "mod+shift+b",
+    command: "tiling.toggleTabbed",
+    label: "Toggle Tabbed Column",
+    when: "canvasFocus && !inputFocus && !pickerSelected",
+  },
   { key: "mod+shift+t", command: "theme.toggle", label: "Toggle Theme" },
   { key: "mod+shift+p", command: "app.commandPalette" },
   { key: "mod+shift+n", command: "workspace.newCanvas", label: "New Canvas" },

@@ -17,7 +17,7 @@ import { useNodeActions } from "@/components/flow/use-node-actions";
 import { Button } from "@/components/ui/button";
 
 const SHARED_PARTITION = "persist:browser";
-const DEFAULT_URL = "https://google.com";
+export const DEFAULT_BROWSER_URL = "https://google.com";
 const URL_SCHEME_PATTERN = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//;
 const HOSTLIKE_INPUT_PATTERN = /[.:]/;
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "0.0.0.0", "::1", "localhost"]);
@@ -29,6 +29,13 @@ interface LoadErrorState {
   code: number;
   description: string;
   url: string;
+}
+
+interface BrowserTileContentProps {
+  initialUrl?: string;
+  isFocused: boolean;
+  onClose: () => void;
+  title: string;
 }
 
 function isLocalNetworkHost(hostname: string): boolean {
@@ -72,7 +79,7 @@ function normalizeUrl(input: string): string {
   const trimmed = input.trim();
 
   if (!trimmed) {
-    return DEFAULT_URL;
+    return DEFAULT_BROWSER_URL;
   }
 
   if (URL_SCHEME_PATTERN.test(trimmed)) {
@@ -98,19 +105,37 @@ export default function BrowserNode({
   selected,
 }: NodeProps<BrowserFlowNode>) {
   const { removeSelf } = useNodeActions(id);
+  return (
+    <BrowserTileContent
+      initialUrl={data.url}
+      isFocused={selected}
+      onClose={removeSelf}
+      title={data.title}
+    />
+  );
+}
+
+export function BrowserTileContent({
+  initialUrl,
+  isFocused,
+  onClose,
+  title,
+}: BrowserTileContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const webviewRef = useRef<Electron.WebviewTag>(null);
-  const [currentUrl, setCurrentUrl] = useState(data.url || DEFAULT_URL);
+  const [currentUrl, setCurrentUrl] = useState(
+    initialUrl || DEFAULT_BROWSER_URL
+  );
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
   const [loadError, setLoadError] = useState<LoadErrorState | null>(null);
   const [webviewFocused, setWebviewFocused] = useState(false);
 
   useEffect(() => {
-    if (!selected) {
+    if (!isFocused) {
       setWebviewFocused(false);
     }
-  }, [selected]);
+  }, [isFocused]);
 
   const handleUrlChange = useCallback((url: string) => {
     const normalized = normalizeUrl(url);
@@ -200,16 +225,13 @@ export default function BrowserNode({
     <BaseNode
       className="h-full w-full data-[webview-focused=true]:border-primary data-[webview-focused=true]:ring-1 data-[webview-focused=true]:ring-primary/50"
       data-webview-focused={webviewFocused}
-      selected={selected}
+      selected={isFocused}
     >
       <BaseNodeHeader className="border-b">
-        <BaseNodeHeaderTitle className="text-xs">
-          {data.title}
-        </BaseNodeHeaderTitle>
+        <BaseNodeHeaderTitle className="text-xs">{title}</BaseNodeHeaderTitle>
         <Button
-          aria-label={`Close ${data.title}`}
-          className="nodrag"
-          onClick={removeSelf}
+          aria-label={`Close ${title}`}
+          onClick={onClose}
           size="icon-sm"
           variant="ghost"
         >
@@ -218,8 +240,8 @@ export default function BrowserNode({
       </BaseNodeHeader>
 
       <BrowserChrome
-        className="nodrag min-h-0 flex-1 rounded-none border-0"
-        defaultUrl={data.url || DEFAULT_URL}
+        className="min-h-0 flex-1 rounded-none border-0"
+        defaultUrl={initialUrl || DEFAULT_BROWSER_URL}
         onUrlChange={handleUrlChange}
         url={currentUrl}
       >
@@ -244,23 +266,29 @@ export default function BrowserNode({
           <BrowserAddressInput />
         </BrowserToolbar>
 
-        <div
-          className="nowheel nokey relative min-h-0 flex-1"
-          ref={containerRef}
-        >
+        <div className="relative min-h-0 flex-1" ref={containerRef}>
           <webview
             className="absolute inset-0"
             partition={SHARED_PARTITION}
             ref={handleWebviewRef}
-            src={data.url || DEFAULT_URL}
+            src={initialUrl || DEFAULT_BROWSER_URL}
           />
           {webviewFocused ? null : (
-            <div
+            <button
+              aria-label="Focus browser"
               className="absolute inset-0 cursor-pointer"
               onClick={() => {
                 webviewRef.current?.focus();
                 setWebviewFocused(true);
               }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  webviewRef.current?.focus();
+                  setWebviewFocused(true);
+                }
+              }}
+              type="button"
             />
           )}
           {loadError ? (

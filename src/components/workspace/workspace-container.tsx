@@ -24,7 +24,9 @@ export function WorkspaceContainer({
 
   return (
     <>
-      {!activeCanvasId ? <EmptyCanvasState onCreateCanvas={onCreateCanvas} /> : null}
+      {activeCanvasId ? null : (
+        <EmptyCanvasState onCreateCanvas={onCreateCanvas} />
+      )}
       {projects.flatMap((project) =>
         project.canvases.map((canvas) => {
           const isCanvasActive = canvas.id === activeCanvasId;
@@ -38,7 +40,6 @@ export function WorkspaceContainer({
               <ReactFlowProvider>
                 <Canvas
                   branchPickerOpen={branchPickerOpen}
-                  canvasId={canvas.id}
                   commandPaletteOpen={commandPaletteOpen}
                   directory={directory}
                   isActive={isCanvasActive}

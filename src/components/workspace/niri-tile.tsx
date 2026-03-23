@@ -1,0 +1,95 @@
+import type { KeyboardEvent } from "react";
+import {
+  BrowserTileContent,
+  DEFAULT_BROWSER_URL,
+} from "@/components/flow/browser-node";
+import { PickerTileContent } from "@/components/flow/picker-node";
+import { TerminalTileContent } from "@/components/flow/terminal-node";
+import type { NiriLayoutItem } from "@/layout/layout-types";
+import { useLayoutStore } from "@/stores/layout-store";
+
+interface NiriTileProps {
+  isFocused: boolean;
+  item: NiriLayoutItem;
+}
+
+function interactiveTileProps(onSelect: () => void) {
+  return {
+    onClick: onSelect,
+    onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onSelect();
+      }
+    },
+    role: "button" as const,
+    tabIndex: 0,
+  };
+}
+
+function itemLabel(item: NiriLayoutItem) {
+  const suffix = item.id.split("-").at(-1)?.slice(0, 4) ?? item.id.slice(0, 4);
+
+  switch (item.ref.type) {
+    case "browser":
+      return `Browser ${suffix}`;
+    case "picker":
+      return "New Pane";
+    case "terminal":
+      return `Terminal ${suffix}`;
+    default:
+      return item.id;
+  }
+}
+
+export function NiriTile({ isFocused, item }: NiriTileProps) {
+  const removeItem = useLayoutStore((state) => state.removeItem);
+  const replaceItem = useLayoutStore((state) => state.replaceItem);
+  const selectItem = useLayoutStore((state) => state.selectItem);
+
+  switch (item.ref.type) {
+    case "browser":
+      return (
+        <div
+          {...interactiveTileProps(() => selectItem(item.id))}
+          className="h-full min-h-0"
+        >
+          <BrowserTileContent
+            initialUrl={DEFAULT_BROWSER_URL}
+            isFocused={isFocused}
+            onClose={() => removeItem(item.id)}
+            title={itemLabel(item)}
+          />
+        </div>
+      );
+    case "picker":
+      return (
+        <div
+          {...interactiveTileProps(() => selectItem(item.id))}
+          className="h-full min-h-0"
+        >
+          <PickerTileContent
+            isFocused={isFocused}
+            onCancel={() => removeItem(item.id)}
+            onSelectType={(type) => replaceItem(item.id, { type })}
+          />
+        </div>
+      );
+    case "terminal":
+      return (
+        <div
+          {...interactiveTileProps(() => selectItem(item.id))}
+          className="h-full min-h-0"
+        >
+          <TerminalTileContent
+            isFocused={isFocused}
+            onClose={() => removeItem(item.id)}
+            terminalId={item.id}
+            title={itemLabel(item)}
+          />
+        </div>
+      );
+    default:
+      return null;
+  }
+}
