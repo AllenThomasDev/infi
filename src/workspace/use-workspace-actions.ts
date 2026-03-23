@@ -39,8 +39,10 @@ function getOrphanedWorktreePath(
     }
 
     if (
-      !canvas.worktreePath ||
-      !isManagedWorktree(project.directory, canvas.worktreePath)
+      !(
+        canvas.worktreePath &&
+        isManagedWorktree(project.directory, canvas.worktreePath)
+      )
     ) {
       return null;
     }
@@ -52,7 +54,10 @@ function getOrphanedWorktreePath(
 
     return isShared
       ? null
-      : { projectDirectory: project.directory, worktreePath: canvas.worktreePath };
+      : {
+          projectDirectory: project.directory,
+          worktreePath: canvas.worktreePath,
+        };
   }
 
   return null;
@@ -76,15 +81,17 @@ export function useWorkspaceActions({ confirm }: UseWorkspaceActionsOptions) {
           variant: "destructive",
         });
 
-        if (shouldRemove) {
-          try {
-            await ipc.client.git.removeWorktree({
-              cwd: orphan.projectDirectory,
-              path: orphan.worktreePath,
-            });
-          } catch (error) {
-            console.error("Failed to remove worktree", error);
-          }
+        if (!shouldRemove) {
+          return;
+        }
+
+        try {
+          await ipc.client.git.removeWorktree({
+            cwd: orphan.projectDirectory,
+            path: orphan.worktreePath,
+          });
+        } catch (error) {
+          console.error("Failed to remove worktree", error);
         }
       }
 
@@ -94,10 +101,7 @@ export function useWorkspaceActions({ confirm }: UseWorkspaceActionsOptions) {
   );
 
   const openBranch = useCallback(
-    async (
-      projectId: string,
-      selection: BranchPickerSelection
-    ) => {
+    async (projectId: string, selection: BranchPickerSelection) => {
       const project = projects.find((p) => p.id === projectId);
       if (!project) {
         return;

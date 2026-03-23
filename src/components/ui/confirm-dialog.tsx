@@ -41,7 +41,6 @@ export function ConfirmDialog({
           <Button
             onClick={() => {
               onConfirm();
-              onOpenChange(false);
             }}
             variant={variant === "destructive" ? "destructive" : "default"}
           >
