@@ -5,15 +5,15 @@ import { BranchPicker } from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
 import { Button } from "@/components/ui/button";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import type { CanvasKeybindingState } from "@/components/workspace/canvas";
+import { WorkspaceContainer } from "@/components/workspace/workspace-container";
 import { WorkspaceSidebar } from "@/components/workspace-sidebar";
 import { useConfirm } from "@/hooks/use-confirm";
 import type { CommandHandlerMap } from "@/keybindings/types";
 import { useKeybindings } from "@/keybindings/useKeybindings";
-import type { CanvasKeybindingState } from "@/routes/components/canvas";
-import { WorkspaceContainer } from "@/routes/components/workspace-container";
-import { useBranchPickerState } from "@/routes/use-branch-picker-state";
-import { useWorkspaceCommandHandlers } from "@/routes/use-workspace-command-handlers";
+import { useBranchPickerState } from "@/workspace/use-branch-picker-state";
 import { useWorkspaceActions } from "@/workspace/use-workspace-actions";
+import { useWorkspaceCommandHandlers } from "@/workspace/use-workspace-command-handlers";
 import { useWorkspaceStore } from "@/workspace/workspace-store";
 
 function WelcomeScreen({ onOpenProject }: { onOpenProject: () => void }) {

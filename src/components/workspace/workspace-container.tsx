@@ -1,6 +1,9 @@
 import { ReactFlowProvider } from "@xyflow/react";
-import { Canvas, type CanvasKeybindingState } from "@/routes/components/canvas";
-import { EmptyCanvasState } from "@/routes/components/empty-canvas-state";
+import {
+  Canvas,
+  type CanvasKeybindingState,
+} from "@/components/workspace/canvas";
+import { EmptyCanvasState } from "@/components/workspace/empty-canvas-state";
 import { useWorkspaceStore } from "@/workspace/workspace-store";
 
 interface WorkspaceContainerProps {

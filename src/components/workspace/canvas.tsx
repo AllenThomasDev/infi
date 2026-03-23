@@ -17,12 +17,12 @@ import type { FlowNode } from "@/components/flow/types";
 import { useCanvasNodeActions } from "@/components/flow/use-canvas-node-actions";
 import { TileActionsContext } from "@/components/flow/use-tile-actions";
 import { useTheme } from "@/components/theme-provider";
+import { useSidebar } from "@/components/ui/sidebar";
 import { WorkspaceContext } from "@/components/workspace/workspace-context";
 import type {
   CommandHandlerMap,
   ShortcutMatchContext,
 } from "@/keybindings/types";
-import { useSidebar } from "@/components/ui/sidebar";
 import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/tile-constants";
 import { useTilingLayout } from "@/layout/use-tiling-layout";
 
@@ -87,7 +87,11 @@ export function Canvas({
       lastFocusedId.current = nodeId;
 
       if (fullscreenMode.current) {
-        reactFlow.fitView({ nodes: [{ id: nodeId }], duration: 150, padding: 0.05 });
+        reactFlow.fitView({
+          nodes: [{ id: nodeId }],
+          duration: 150,
+          padding: 0.05,
+        });
         return;
       }
 
@@ -102,10 +106,14 @@ export function Canvas({
           ? node.style.height
           : TILE_HEIGHT);
 
-      reactFlow.setCenter(node.position.x + width / 2, node.position.y + height / 2, {
-        duration: 150,
-        zoom: reactFlow.getZoom(),
-      });
+      reactFlow.setCenter(
+        node.position.x + width / 2,
+        node.position.y + height / 2,
+        {
+          duration: 150,
+          zoom: reactFlow.getZoom(),
+        }
+      );
     },
     [reactFlow]
   );
