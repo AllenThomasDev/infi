@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FolderOpen } from "lucide-react";
+import { FolderGit2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BranchPicker } from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
@@ -19,10 +19,10 @@ import { useWorkspaceStore } from "@/workspace/workspace-store";
 function WelcomeScreen({ onOpenProject }: { onOpenProject: () => void }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
-      <FolderOpen className="size-12 opacity-40" />
+      <FolderGit2 className="size-12 opacity-40" />
       <p className="text-sm">Open a project to get started</p>
       <Button onClick={onOpenProject} size="lg" variant="outline">
-        <FolderOpen className="mr-2 size-4" />
+        <FolderGit2 className="mr-2 size-4" />
         Open Project
       </Button>
     </div>

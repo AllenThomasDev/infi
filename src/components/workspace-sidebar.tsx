@@ -1,4 +1,11 @@
-import { ChevronRight, FolderOpen, FolderPlus, GitBranchPlus, X } from "lucide-react";
+import {
+  ChevronRight,
+  FolderGit2,
+  GitBranch,
+  GitBranchPlus,
+  Import,
+  X,
+} from "lucide-react";
 import ModeToggle from "@/components/mode-toggle";
 import {
   Collapsible,
@@ -22,8 +29,8 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { useWorkspaceStore } from "@/workspace/workspace-store";
 import type { Canvas, Project } from "@/workspace/types";
+import { useWorkspaceStore } from "@/workspace/workspace-store";
 
 interface WorkspaceSidebarProps {
   onCloseCanvas: (canvasId: string) => void | Promise<void>;
@@ -35,7 +42,6 @@ interface WorkspaceSidebarProps {
 function ProjectItem({
   activeCanvasId,
   isActive,
-  onClose,
   onCloseCanvas,
   onCreateCanvas,
   onSwitch,
@@ -44,7 +50,6 @@ function ProjectItem({
 }: {
   activeCanvasId: string | null;
   isActive: boolean;
-  onClose: () => void;
   onCloseCanvas: (canvasId: string) => void | Promise<void>;
   onCreateCanvas: () => void;
   onSwitch: () => void;
@@ -52,16 +57,12 @@ function ProjectItem({
   project: Project;
 }) {
   return (
-    <Collapsible defaultOpen={isActive} className="group/collapsible">
+    <Collapsible className="group/collapsible" defaultOpen={isActive}>
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton
-            className="group-hover/menu-item:bg-sidebar-accent group-hover/menu-item:text-sidebar-accent-foreground"
-            onClick={onSwitch}
-            tooltip={project.name}
-          >
+          <SidebarMenuButton onClick={onSwitch} tooltip={project.name}>
             <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
-            <FolderOpen />
+            <FolderGit2 />
             <span>{project.name}</span>
           </SidebarMenuButton>
         </CollapsibleTrigger>
@@ -77,7 +78,7 @@ function ProjectItem({
         </SidebarMenuAction>
 
         <CollapsibleContent>
-          <SidebarMenuSub className="mr-0 pr-0">
+          <SidebarMenuSub className="mx-0 ml-4 pr-0 pl-2">
             {project.canvases.map((canvas: Canvas) => (
               <CanvasItem
                 canvas={canvas}
@@ -111,8 +112,17 @@ function CanvasItem({
 }) {
   return (
     <SidebarMenuSubItem className="group/canvas-item">
-      <SidebarMenuSubButton asChild isActive={isActive} className="w-full">
+      <SidebarMenuSubButton
+        asChild
+        className={
+          isActive
+            ? "w-full group-hover/canvas-item:bg-sidebar-accent group-hover/canvas-item:text-sidebar-accent-foreground [&>svg]:text-inherit"
+            : "w-full text-sidebar-foreground/70 group-hover/canvas-item:bg-sidebar-accent group-hover/canvas-item:text-sidebar-accent-foreground [&>svg]:text-inherit"
+        }
+        isActive={isActive}
+      >
         <button onClick={onSwitch} type="button">
+          <GitBranch className="size-3.5" />
           <span>{canvas.name}</span>
         </button>
       </SidebarMenuSubButton>
@@ -132,7 +142,6 @@ function CanvasItem({
 
 export function WorkspaceSidebar({
   onCloseCanvas,
-  onCloseProject,
   onCreateCanvas,
   onOpenProject,
 }: WorkspaceSidebarProps) {
@@ -152,7 +161,7 @@ export function WorkspaceSidebar({
             }}
             title="Open Project"
           >
-            <FolderPlus />
+            <Import />
           </SidebarGroupAction>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -161,7 +170,6 @@ export function WorkspaceSidebar({
                   activeCanvasId={project.activeCanvasId}
                   isActive={project.id === activeProjectId}
                   key={project.id}
-                  onClose={() => onCloseProject(project.id)}
                   onCloseCanvas={onCloseCanvas}
                   onCreateCanvas={() => onCreateCanvas(project.id)}
                   onSwitch={() => switchProject(project.id)}
