@@ -29,7 +29,7 @@ export function WorkspaceContainer({
       {projects.flatMap((project) =>
         project.canvases.map((canvas) => {
           const isCanvasActive = canvas.id === activeCanvasId;
-          const directory = canvas.worktreePath ?? project.directory;
+          const directory = canvas.worktreePath;
 
           return (
             <div
@@ -38,6 +38,7 @@ export function WorkspaceContainer({
             >
               <Canvas
                 branchPickerOpen={branchPickerOpen}
+                canvasId={canvas.id}
                 commandPaletteOpen={commandPaletteOpen}
                 directory={directory}
                 isActive={isCanvasActive}

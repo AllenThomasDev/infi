@@ -22,17 +22,21 @@ interface FocusTarget {
 }
 
 interface LayoutState {
+  activeCanvasId: string | null;
   addColumnRight: (item: NiriLayoutItem) => void;
   addItemBelow: (item: NiriLayoutItem) => void;
   addWorkspaceBelow: (item: NiriLayoutItem) => void;
   focusNeighbor: (horizontal: number, vertical: number) => void;
   layout: NiriCanvasLayout;
+  layoutsByCanvas: Record<string, NiriCanvasLayout>;
   moveColumn: (columnId: string, toWorkspaceId: string, index: number) => void;
   moveItem: (itemId: string, toColumnId: string, index?: number) => void;
   moveItemToNewColumn: (itemId: string, index?: number) => void;
+  removeCanvasLayout: (canvasId: string) => void;
   removeItem: (itemId: string) => void;
   replaceItem: (itemId: string, ref: NiriLayoutItem["ref"]) => void;
   selectItem: (itemId: string) => void;
+  setActiveCanvas: (canvasId: string | null) => void;
   setColumnWidths: (widths: ResizeMap) => void;
   setItemHeights: (heights: ResizeMap) => void;
   swapColumns: (columnId: string, otherColumnId: string) => void;
@@ -104,7 +108,7 @@ function normalizeWorkspaceColumns(workspace: NiriWorkspace): NiriWorkspace {
   };
 }
 
-function createInitialLayout(): NiriCanvasLayout {
+export function createInitialLayout(): NiriCanvasLayout {
   return {
     workspaces: [],
     camera: {},
@@ -560,7 +564,54 @@ function appendItemToActiveColumn(
 }
 
 export const useLayoutStore = create<LayoutState>((set) => ({
+  activeCanvasId: null,
+  layoutsByCanvas: {},
   layout: createInitialLayout(),
+
+  setActiveCanvas: (canvasId) => {
+    set((state) => {
+      const layoutsByCanvas = { ...state.layoutsByCanvas };
+
+      if (state.activeCanvasId) {
+        layoutsByCanvas[state.activeCanvasId] = state.layout;
+      }
+
+      if (!canvasId) {
+        return {
+          activeCanvasId: null,
+          layoutsByCanvas,
+          layout: createInitialLayout(),
+        };
+      }
+
+      const existing = layoutsByCanvas[canvasId];
+      const nextLayout = existing ?? createInitialLayout();
+      if (!existing) {
+        layoutsByCanvas[canvasId] = nextLayout;
+      }
+
+      return {
+        activeCanvasId: canvasId,
+        layoutsByCanvas,
+        layout: nextLayout,
+      };
+    });
+  },
+
+  removeCanvasLayout: (canvasId) => {
+    set((state) => {
+      const layoutsByCanvas = { ...state.layoutsByCanvas };
+      delete layoutsByCanvas[canvasId];
+
+      const isActiveCanvas = state.activeCanvasId === canvasId;
+
+      return {
+        activeCanvasId: isActiveCanvas ? null : state.activeCanvasId,
+        layoutsByCanvas,
+        layout: isActiveCanvas ? createInitialLayout() : state.layout,
+      };
+    });
+  },
 
   addWorkspaceBelow: (item) => {
     set((state) => {

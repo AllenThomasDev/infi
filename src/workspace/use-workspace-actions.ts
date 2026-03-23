@@ -27,7 +27,7 @@ function isManagedWorktree(directory: string, worktreePath: string) {
 
 function getOrphanedWorktreePath(
   projects: readonly {
-    canvases: readonly { id: string; worktreePath: string | null }[];
+    canvases: readonly { id: string; worktreePath: string }[];
     directory: string;
   }[],
   canvasId: string
@@ -38,12 +38,7 @@ function getOrphanedWorktreePath(
       continue;
     }
 
-    if (
-      !(
-        canvas.worktreePath &&
-        isManagedWorktree(project.directory, canvas.worktreePath)
-      )
-    ) {
+    if (!isManagedWorktree(project.directory, canvas.worktreePath)) {
       return null;
     }
 
@@ -115,14 +110,20 @@ export function useWorkspaceActions({ confirm }: UseWorkspaceActionsOptions) {
         return;
       }
 
-      if (
-        selection.branch === selection.currentBranch ||
-        selection.worktreePath
-      ) {
+      if (selection.worktreePath) {
         createCanvasAction(projectId, {
           branch: selection.branch,
           name: selection.branch,
-          worktreePath: selection.worktreePath ?? null,
+          worktreePath: selection.worktreePath,
+        });
+        return;
+      }
+
+      if (selection.branch === selection.currentBranch) {
+        createCanvasAction(projectId, {
+          branch: selection.branch,
+          name: selection.branch,
+          worktreePath: project.directory,
         });
         return;
       }

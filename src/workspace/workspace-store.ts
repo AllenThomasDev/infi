@@ -1,11 +1,12 @@
 import path from "pathe";
 import { create } from "zustand";
+import { useLayoutStore } from "@/stores/layout-store";
 import type { Canvas, Project } from "./types";
 
 interface CreateCanvasOptions {
   branch?: string | null;
   name?: string;
-  worktreePath?: string | null;
+  worktreePath: string;
 }
 
 interface WorkspaceState {
@@ -14,7 +15,7 @@ interface WorkspaceState {
   closeCanvas: (canvasId: string) => void;
   closeProject: (projectId: string) => void;
 
-  createCanvas: (projectId: string, options?: CreateCanvasOptions) => string;
+  createCanvas: (projectId: string, options: CreateCanvasOptions) => string;
 
   createProject: (directory: string) => string;
   projects: Project[];
@@ -39,6 +40,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       createdAt: now,
     };
 
+    useLayoutStore.getState().setActiveCanvas(null);
     set((state) => ({
       projects: [...state.projects, project],
       activeProjectId: projectId,
@@ -55,6 +57,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         ?.canvases.slice()
         .sort((a, b) => b.lastActiveAt - a.lastActiveAt)[0]?.id ?? null;
 
+    useLayoutStore.getState().setActiveCanvas(mostRecentCanvasId);
     set({
       activeProjectId: projectId,
       activeCanvasId: mostRecentCanvasId,
@@ -62,15 +65,20 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   closeProject: (projectId: string) => {
-    set((state) => {
-      const project = state.projects.find((p) => p.id === projectId);
-      if (!project) {
-        return state;
-      }
+    const state = get();
+    const project = state.projects.find((p) => p.id === projectId);
+    if (!project) {
+      return;
+    }
 
-      const remaining = state.projects.filter((p) => p.id !== projectId);
+    if (state.activeProjectId === projectId) {
+      useLayoutStore.getState().setActiveCanvas(null);
+    }
 
-      if (state.activeProjectId !== projectId) {
+    set((prev) => {
+      const remaining = prev.projects.filter((p) => p.id !== projectId);
+
+      if (prev.activeProjectId !== projectId) {
         return { projects: remaining };
       }
 
@@ -92,13 +100,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
     const canvas: Canvas = {
       id: canvasId,
-      name: options?.name ?? "Canvas",
-      branch: options?.branch ?? null,
-      worktreePath: options?.worktreePath ?? null,
+      name: options.name ?? "Canvas",
+      branch: options.branch ?? null,
+      worktreePath: options.worktreePath,
       createdAt: now,
       lastActiveAt: now,
     };
 
+    useLayoutStore.getState().setActiveCanvas(canvasId);
     set((state) => ({
       projects: state.projects.map((p) =>
         p.id === projectId
@@ -125,6 +134,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       p.canvases.some((c) => c.id === canvasId)
     )?.id;
 
+    useLayoutStore.getState().setActiveCanvas(canvasId);
     set((state) => ({
       activeCanvasId: canvasId,
       activeProjectId: ownerProjectId ?? state.activeProjectId,
@@ -144,18 +154,30 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   closeCanvas: (canvasId: string) => {
-    set((state) => {
-      const project = state.projects.find((p) =>
-        p.canvases.some((canvas) => canvas.id === canvasId)
-      );
-      if (!project) {
-        return state;
-      }
+    const state = get();
+    const project = state.projects.find((p) =>
+      p.canvases.some((canvas) => canvas.id === canvasId)
+    );
+    if (!project) {
+      return;
+    }
 
+    const isClosingActive = state.activeCanvasId === canvasId;
+    if (isClosingActive) {
       const nextCanvases = project.canvases.filter(
         (canvas) => canvas.id !== canvasId
       );
-      const isClosingActive = state.activeCanvasId === canvasId;
+      const fallbackCanvasId =
+        nextCanvases.slice().sort((a, b) => b.lastActiveAt - a.lastActiveAt)[0]
+          ?.id ?? null;
+      useLayoutStore.getState().setActiveCanvas(fallbackCanvasId);
+    }
+    useLayoutStore.getState().removeCanvasLayout(canvasId);
+
+    set((prev) => {
+      const nextCanvases = project.canvases.filter(
+        (canvas) => canvas.id !== canvasId
+      );
       const fallbackCanvasId = nextCanvases
         .slice()
         .sort((a, b) => b.lastActiveAt - a.lastActiveAt)[0]?.id;
@@ -163,8 +185,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return {
         activeCanvasId: isClosingActive
           ? (fallbackCanvasId ?? null)
-          : state.activeCanvasId,
-        projects: state.projects.map((p) =>
+          : prev.activeCanvasId,
+        projects: prev.projects.map((p) =>
           p.id === project.id
             ? {
                 ...p,

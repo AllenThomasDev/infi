@@ -12,5 +12,5 @@ export interface Canvas {
   id: string;
   lastActiveAt: number;
   name: string;
-  worktreePath: string | null;
+  worktreePath: string;
 }

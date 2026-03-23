@@ -1,30 +1,16 @@
 import { useEffect, useRef } from "react";
-import { useShallow } from "zustand/react/shallow";
 import { NiriColumn } from "@/components/workspace/niri-column";
+import type { NiriCanvasLayout } from "@/layout/layout-types";
 import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/layout-types";
-import { useLayoutStore } from "@/stores/layout-store";
 import { cn } from "@/utils/tailwind";
 
-type LayoutStoreState = ReturnType<typeof useLayoutStore.getState>;
+interface NiriRendererProps {
+  layout: NiriCanvasLayout;
+}
 
-export function NiriRenderer() {
-  const {
-    activeColumnId,
-    activeWorkspaceId,
-    focusedItemId,
-    isOverviewOpen,
-    workspaces,
-  } = useLayoutStore(
-    useShallow((state: LayoutStoreState) => {
-      return {
-        activeColumnId: state.layout.camera.activeColumnId,
-        activeWorkspaceId: state.layout.camera.activeWorkspaceId,
-        focusedItemId: state.layout.camera.focusedItemId,
-        isOverviewOpen: state.layout.isOverviewOpen,
-        workspaces: state.layout.workspaces,
-      };
-    })
-  );
+export function NiriRenderer({ layout }: NiriRendererProps) {
+  const { activeColumnId, activeWorkspaceId, focusedItemId } = layout.camera;
+  const { isOverviewOpen, workspaces } = layout;
   const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
@@ -53,7 +39,7 @@ export function NiriRenderer() {
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-gradient-to-br from-background via-background to-muted/20">
       <div
         className={cn(
-          "flex min-h-0 w-full flex-1 flex-col overflow-y-auto px-4 snap-y snap-mandatory scroll-smooth",
+          "flex min-h-0 w-full flex-1 snap-y snap-mandatory flex-col overflow-y-auto scroll-smooth px-4",
           isOverviewOpen ? "gap-5" : "gap-6"
         )}
       >

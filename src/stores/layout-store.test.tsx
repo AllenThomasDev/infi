@@ -54,6 +54,30 @@ describe("useLayoutStore", () => {
     expect(layout.workspaces).toHaveLength(0);
   });
 
+  it("keeps layout isolated per active canvas", () => {
+    const first = makeItem("canvas-a-item", { type: "browser" });
+    const second = makeItem("canvas-b-item", { type: "terminal" });
+
+    useLayoutStore.getState().setActiveCanvas("canvas-a");
+    useLayoutStore.getState().addColumnRight(first);
+
+    useLayoutStore.getState().setActiveCanvas("canvas-b");
+    expect(currentLayout().workspaces).toHaveLength(0);
+    useLayoutStore.getState().addColumnRight(second);
+
+    useLayoutStore.getState().setActiveCanvas("canvas-a");
+    const firstCanvasItems = currentLayout().workspaces[0]?.columns.flatMap(
+      (column) => column.items.map((item) => item.id)
+    );
+    expect(firstCanvasItems).toEqual([first.id]);
+
+    useLayoutStore.getState().setActiveCanvas("canvas-b");
+    const secondCanvasItems = currentLayout().workspaces[0]?.columns.flatMap(
+      (column) => column.items.map((item) => item.id)
+    );
+    expect(secondCanvasItems).toEqual([second.id]);
+  });
+
   it("toggles tabbed display without changing items or focus", () => {
     const first = makeItem("first");
     const second = makeItem("second", { type: "picker" });

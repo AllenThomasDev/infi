@@ -11,7 +11,7 @@ import type {
   NiriItemRef,
   NiriLayoutItem,
 } from "@/layout/layout-types";
-import { useLayoutStore } from "@/stores/layout-store";
+import { createInitialLayout, useLayoutStore } from "@/stores/layout-store";
 
 function isInputFocused() {
   return (
@@ -76,6 +76,7 @@ function createLayoutItem(ref: NiriItemRef): NiriLayoutItem {
   };
 }
 
+const EMPTY_LAYOUT = createInitialLayout();
 const NOOP = () => undefined;
 
 function moveFocusedItem(horizontal: number, vertical: number) {
@@ -120,6 +121,7 @@ export interface CanvasKeybindingState {
 
 interface CanvasProps {
   branchPickerOpen: boolean;
+  canvasId: string;
   commandPaletteOpen: boolean;
   directory?: string;
   isActive?: boolean;
@@ -128,11 +130,17 @@ interface CanvasProps {
 
 export function Canvas({
   branchPickerOpen,
+  canvasId,
   commandPaletteOpen,
   directory,
   isActive = true,
   onKeybindingStateChange,
 }: CanvasProps) {
+  const layout = useLayoutStore((state) =>
+    isActive
+      ? state.layout
+      : (state.layoutsByCanvas[canvasId] ?? EMPTY_LAYOUT)
+  );
   const focusedItemId = useLayoutStore(
     (state) => state.layout.camera.focusedItemId
   );
@@ -221,7 +229,7 @@ export function Canvas({
 
   return (
     <WorkspaceContext.Provider value={{ directory }}>
-      <NiriRenderer />
+      <NiriRenderer layout={layout} />
     </WorkspaceContext.Provider>
   );
 }
