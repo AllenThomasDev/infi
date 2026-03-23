@@ -3,6 +3,7 @@ import { Globe, Plus, Terminal } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { BaseNode } from "@/components/base-node";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/utils/tailwind";
 import {
   Command,
   CommandEmpty,
@@ -32,15 +33,21 @@ const PICKER_OPTIONS: PickerOption[] = [
 ];
 
 interface PickerTileContentProps {
+  className?: string;
   isFocused: boolean;
   onCancel: () => void;
+  onSelect: () => void;
   onSelectType: (type: PickerOption["type"]) => void;
+  style?: React.CSSProperties;
 }
 
 export function PickerTileContent({
+  className,
   isFocused,
   onCancel,
+  onSelect,
   onSelectType,
+  style,
 }: PickerTileContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(false);
@@ -66,42 +73,24 @@ export function PickerTileContent({
 
   useEffect(() => {
     if (!isFocused) {
+      cancel();
       return;
     }
+
     doneRef.current = false;
-    const timer = window.setTimeout(() => {
+    const frame = requestAnimationFrame(() => {
       const container = containerRef.current;
       const target = container?.querySelector<HTMLElement>("input");
       if (target && !container?.contains(document.activeElement)) {
         target.focus();
       }
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [isFocused]);
+    });
 
-  useEffect(() => {
-    if (!isFocused) {
-      cancel();
-      return;
-    }
-
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-
-    const handleFocusOut = (event: FocusEvent) => {
-      if (!container.contains(event.relatedTarget as Node)) {
-        cancel();
-      }
-    };
-
-    container.addEventListener("focusout", handleFocusOut);
-    return () => container.removeEventListener("focusout", handleFocusOut);
+    return () => cancelAnimationFrame(frame);
   }, [cancel, isFocused]);
 
   return (
-    <div className="h-full w-full" ref={containerRef}>
+    <div className={cn("h-full w-full", className)} onMouseDown={onSelect} ref={containerRef} style={style}>
       <BaseNode
         className="h-full w-full border-primary/35 border-dashed bg-primary/5 shadow-none backdrop-blur-sm"
         selected={isFocused}

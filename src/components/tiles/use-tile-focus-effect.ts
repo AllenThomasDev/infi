@@ -12,21 +12,22 @@ export function useTileFocusEffect({
   isFocused = false,
 }: UseTileFocusEffectOptions) {
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) {
+    if (!isFocused) {
       return;
     }
 
-    if (isFocused) {
+    const frame = requestAnimationFrame(() => {
+      const container = containerRef.current;
+      if (!container) {
+        return;
+      }
+
       const target = container.querySelector<HTMLElement>(focusTarget);
       if (target && !container.contains(document.activeElement)) {
         target.focus();
       }
-      return;
-    }
+    });
 
-    if (container.contains(document.activeElement)) {
-      (document.activeElement as HTMLElement).blur?.();
-    }
+    return () => cancelAnimationFrame(frame);
   }, [containerRef, focusTarget, isFocused]);
 }

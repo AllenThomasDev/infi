@@ -1,7 +1,7 @@
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { Terminal } from "@xterm/xterm";
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { useWorkspaceContext } from "@/components/workspace/workspace-context";
 import { ipc } from "@/ipc/manager";
 import "@xterm/xterm/css/xterm.css";
@@ -25,11 +25,15 @@ function getTerminalTheme(): Record<string, string> {
   };
 }
 
+export interface TerminalViewHandle {
+  focus: () => void;
+}
+
 interface TerminalViewProps {
   terminalId: string;
 }
 
-export default function TerminalView({ terminalId }: TerminalViewProps) {
+const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(function TerminalView({ terminalId }, ref) {
   const { directory } = useWorkspaceContext();
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -40,6 +44,10 @@ export default function TerminalView({ terminalId }: TerminalViewProps) {
   // Incremented on each mount so a stale cleanup's deferred kill is cancelled
   // when strict mode remounts the component.
   const mountGenRef = useRef(0);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => terminalRef.current?.focus(),
+  }));
 
   // Initialize terminal, spawn PTY, wire up listeners
   useEffect(() => {
@@ -167,4 +175,6 @@ export default function TerminalView({ terminalId }: TerminalViewProps) {
   }, [terminalId]);
 
   return <div className="h-full w-full" ref={containerRef} />;
-}
+});
+
+export default TerminalView;

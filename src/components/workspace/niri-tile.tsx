@@ -1,4 +1,4 @@
-import type { CSSProperties, KeyboardEvent } from "react";
+import type { CSSProperties } from "react";
 import {
   BrowserTileContent,
   DEFAULT_BROWSER_URL,
@@ -7,27 +7,12 @@ import { PickerTileContent } from "@/components/tiles/picker-tile";
 import { TerminalTileContent } from "@/components/tiles/terminal-tile";
 import type { NiriLayoutItem } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
-import { cn } from "@/utils/tailwind";
 
 interface NiriTileProps {
   className?: string;
   isFocused: boolean;
   item: NiriLayoutItem;
   style?: CSSProperties;
-}
-
-function interactiveTileProps(onSelect: () => void) {
-  return {
-    onClick: onSelect,
-    onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        onSelect();
-      }
-    },
-    role: "button" as const,
-    tabIndex: 0,
-  };
 }
 
 function itemLabel(item: NiriLayoutItem) {
@@ -53,47 +38,38 @@ export function NiriTile({ className, isFocused, item, style }: NiriTileProps) {
   switch (item.ref.type) {
     case "browser":
       return (
-        <div
-          {...interactiveTileProps(() => selectItem(item.id))}
-          className={cn("h-full min-h-0", className)}
+        <BrowserTileContent
+          className={className}
+          initialUrl={DEFAULT_BROWSER_URL}
+          isFocused={isFocused}
+          onClose={() => removeItem(item.id)}
+          onSelect={() => selectItem(item.id)}
           style={style}
-        >
-          <BrowserTileContent
-            initialUrl={DEFAULT_BROWSER_URL}
-            isFocused={isFocused}
-            onClose={() => removeItem(item.id)}
-            title={itemLabel(item)}
-          />
-        </div>
+          title={itemLabel(item)}
+        />
       );
     case "picker":
       return (
-        <div
-          {...interactiveTileProps(() => selectItem(item.id))}
-          className={cn("h-full min-h-0", className)}
+        <PickerTileContent
+          className={className}
+          isFocused={isFocused}
+          onCancel={() => removeItem(item.id)}
+          onSelect={() => selectItem(item.id)}
+          onSelectType={(type) => replaceItem(item.id, { type })}
           style={style}
-        >
-          <PickerTileContent
-            isFocused={isFocused}
-            onCancel={() => removeItem(item.id)}
-            onSelectType={(type) => replaceItem(item.id, { type })}
-          />
-        </div>
+        />
       );
     case "terminal":
       return (
-        <div
-          {...interactiveTileProps(() => selectItem(item.id))}
-          className={cn("h-full min-h-0", className)}
+        <TerminalTileContent
+          className={className}
+          isFocused={isFocused}
+          onClose={() => removeItem(item.id)}
+          onSelect={() => selectItem(item.id)}
           style={style}
-        >
-          <TerminalTileContent
-            isFocused={isFocused}
-            onClose={() => removeItem(item.id)}
-            terminalId={item.id}
-            title={itemLabel(item)}
-          />
-        </div>
+          terminalId={item.id}
+          title={itemLabel(item)}
+        />
       );
     default:
       return null;

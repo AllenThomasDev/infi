@@ -12,6 +12,7 @@ import {
   BrowserToolbarButton,
 } from "@/components/browser/browser-chrome";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/utils/tailwind";
 
 const SHARED_PARTITION = "persist:browser";
 export const DEFAULT_BROWSER_URL = "https://google.com";
@@ -29,9 +30,12 @@ interface LoadErrorState {
 }
 
 interface BrowserTileContentProps {
+  className?: string;
   initialUrl?: string;
   isFocused: boolean;
   onClose: () => void;
+  onSelect: () => void;
+  style?: React.CSSProperties;
   title: string;
 }
 
@@ -97,9 +101,12 @@ function normalizeUrl(input: string): string {
 }
 
 export function BrowserTileContent({
+  className,
   initialUrl,
   isFocused,
   onClose,
+  onSelect,
+  style,
   title,
 }: BrowserTileContentProps) {
   const webviewRef = useRef<Electron.WebviewTag>(null);
@@ -203,9 +210,11 @@ export function BrowserTileContent({
 
   return (
     <BaseNode
-      className="h-full w-full data-[webview-focused=true]:border-primary data-[webview-focused=true]:ring-1 data-[webview-focused=true]:ring-primary/50"
+      className={cn("data-[webview-focused=true]:border-primary data-[webview-focused=true]:ring-1 data-[webview-focused=true]:ring-primary/50", className)}
       data-webview-focused={webviewFocused}
+      onMouseDown={onSelect}
       selected={isFocused}
+      style={style}
     >
       <BaseNodeHeader className="border-b">
         <BaseNodeHeaderTitle className="text-xs">{title}</BaseNodeHeaderTitle>
