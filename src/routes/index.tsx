@@ -3,6 +3,7 @@ import { FolderGit2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BranchPicker } from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
+import { StatusBar } from "@/components/status-bar";
 import { Button } from "@/components/ui/button";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import type { CanvasKeybindingState } from "@/components/workspace/canvas";
@@ -78,32 +79,35 @@ function HomePage() {
         onCreateCanvas={openBranchPickerForProject}
         onOpenProject={openProjectAndPromptForBranch}
       />
-      <div className="relative h-full w-full overflow-hidden">
-        {hasProjects ? (
-          <WorkspaceContainer
-            branchPickerOpen={branchPickerOpen}
-            commandPaletteOpen={commandPaletteOpen}
-            onCreateCanvas={openBranchPicker}
-            onKeybindingStateChange={setCanvasKeybindingState}
+      <div className="flex h-full w-full min-w-0 flex-col overflow-hidden">
+        <StatusBar />
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          {hasProjects ? (
+            <WorkspaceContainer
+              branchPickerOpen={branchPickerOpen}
+              commandPaletteOpen={commandPaletteOpen}
+              onCreateCanvas={openBranchPicker}
+              onKeybindingStateChange={setCanvasKeybindingState}
+            />
+          ) : (
+            <WelcomeScreen onOpenProject={openProjectAndPromptForBranch} />
+          )}
+          <CommandPalette
+            handlers={commandHandlers}
+            keybindings={keybindings}
+            onOpenChange={setCommandPaletteOpen}
+            open={commandPaletteOpen}
           />
-        ) : (
-          <WelcomeScreen onOpenProject={openProjectAndPromptForBranch} />
-        )}
-        <CommandPalette
-          handlers={commandHandlers}
-          keybindings={keybindings}
-          onOpenChange={setCommandPaletteOpen}
-          open={commandPaletteOpen}
-        />
-        <BranchPicker
-          canvasByBranch={canvasByBranch}
-          directory={branchPickerProject?.directory}
-          onOpenChange={handleBranchPickerOpenChange}
-          onSelectBranch={handleBranchSelected}
-          open={branchPickerOpen}
-          projectName={branchPickerProject?.name}
-        />
-        {confirmDialog}
+          <BranchPicker
+            canvasByBranch={canvasByBranch}
+            directory={branchPickerProject?.directory}
+            onOpenChange={handleBranchPickerOpenChange}
+            onSelectBranch={handleBranchSelected}
+            open={branchPickerOpen}
+            projectName={branchPickerProject?.name}
+          />
+          {confirmDialog}
+        </div>
       </div>
     </SidebarProvider>
   );

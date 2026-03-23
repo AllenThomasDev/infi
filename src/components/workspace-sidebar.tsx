@@ -157,7 +157,11 @@ export function WorkspaceSidebar({
   const switchCanvas = useWorkspaceStore((s) => s.switchCanvas);
 
   return (
-    <Sidebar collapsible="offcanvas" side="left">
+    <Sidebar
+      className="border-sidebar-border border-r"
+      collapsible="offcanvas"
+      side="left"
+    >
       <SidebarContent>
         <SidebarGroup className={isMac ? "pt-14" : undefined}>
           <div className="flex items-center justify-between px-2">
