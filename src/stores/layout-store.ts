@@ -21,9 +21,7 @@ interface FocusTarget {
 }
 
 interface LayoutState {
-  addColumnLeft: (item: NiriLayoutItem) => void;
   addColumnRight: (item: NiriLayoutItem) => void;
-  addItemAbove: (item: NiriLayoutItem) => void;
   addItemBelow: (item: NiriLayoutItem) => void;
   focusNeighbor: (horizontal: number, vertical: number) => void;
   layout: NiriCanvasLayout;
@@ -455,25 +453,14 @@ function insertColumn(
   );
 }
 
-function insertItemInActiveColumn(
+function appendItemToActiveColumn(
   layout: NiriCanvasLayout,
-  item: NiriLayoutItem,
-  offset: number
+  item: NiriLayoutItem
 ) {
   const active = getActiveColumn(layout);
   if (!active?.column) {
     return insertColumn(layout, item, 1);
   }
-
-  const focusedIndex = active.column.items.findIndex(
-    (candidate) => candidate.id === layout.camera.focusedItemId
-  );
-  const baseIndex =
-    focusedIndex >= 0 ? focusedIndex : active.column.items.length - 1;
-  const insertAt =
-    offset < 0
-      ? clampIndex(baseIndex, active.column.items.length)
-      : clampIndex(baseIndex + 1, active.column.items.length);
 
   return applyFocus(
     {
@@ -486,11 +473,7 @@ function insertItemInActiveColumn(
                 column.id === active.column?.id
                   ? {
                       ...column,
-                      items: [
-                        ...column.items.slice(0, insertAt),
-                        item,
-                        ...column.items.slice(insertAt),
-                      ],
+                      items: [...column.items, item],
                       focusedItemId: item.id,
                     }
                   : column
@@ -523,27 +506,15 @@ export const useLayoutStore = create<LayoutState>((set) => ({
     });
   },
 
-  addColumnLeft: (item) => {
-    set((state) => ({
-      layout: insertColumn(state.layout, item, 0),
-    }));
-  },
-
   addColumnRight: (item) => {
     set((state) => ({
       layout: insertColumn(state.layout, item, 1),
     }));
   },
 
-  addItemAbove: (item) => {
-    set((state) => ({
-      layout: insertItemInActiveColumn(state.layout, item, -1),
-    }));
-  },
-
   addItemBelow: (item) => {
     set((state) => ({
-      layout: insertItemInActiveColumn(state.layout, item, 1),
+      layout: appendItemToActiveColumn(state.layout, item),
     }));
   },
 

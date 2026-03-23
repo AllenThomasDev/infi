@@ -136,9 +136,7 @@ export function Canvas({
   const focusedItemId = useLayoutStore(
     (state) => state.layout.camera.focusedItemId
   );
-  const addColumnLeft = useLayoutStore((state) => state.addColumnLeft);
   const addColumnRight = useLayoutStore((state) => state.addColumnRight);
-  const addItemAbove = useLayoutStore((state) => state.addItemAbove);
   const addItemBelow = useLayoutStore((state) => state.addItemBelow);
   const removeItem = useLayoutStore((state) => state.removeItem);
   const focusNeighbor = useLayoutStore((state) => state.focusNeighbor);
@@ -158,21 +156,9 @@ export function Canvas({
           removeItem(focusedItemId);
         }
       },
-      "tiling.createLeft": () =>
-        addColumnLeft(createLayoutItem({ type: "terminal" })),
-      "tiling.createRight": () =>
-        addColumnRight(createLayoutItem({ type: "terminal" })),
-      "tiling.createUp": () =>
-        addItemAbove(createLayoutItem({ type: "terminal" })),
-      "tiling.createDown": () =>
-        addItemBelow(createLayoutItem({ type: "terminal" })),
-      "tiling.insertLeft": () =>
-        addColumnLeft(createLayoutItem({ type: "picker" })),
-      "tiling.insertRight": () =>
+      "tiling.addRight": () =>
         addColumnRight(createLayoutItem({ type: "picker" })),
-      "tiling.insertUp": () =>
-        addItemAbove(createLayoutItem({ type: "picker" })),
-      "tiling.insertDown": () =>
+      "tiling.addBelow": () =>
         addItemBelow(createLayoutItem({ type: "picker" })),
       "tiling.focusLeft": () => focusNeighbor(-1, 0),
       "tiling.focusRight": () => focusNeighbor(1, 0),
@@ -187,9 +173,7 @@ export function Canvas({
       "theme.toggle": toggleTheme,
     }),
     [
-      addColumnLeft,
       addColumnRight,
-      addItemAbove,
       addItemBelow,
       focusNeighbor,
       focusedItemId,
