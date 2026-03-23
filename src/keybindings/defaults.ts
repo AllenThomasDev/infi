@@ -29,16 +29,22 @@ export const DEFAULT_KEYBINDINGS: readonly KeybindingRule[] = [
     when: "canvasFocus && !inputFocus",
   },
   {
-    key: "mod+\\",
+    key: "mod+enter",
     command: "tiling.addRight",
     label: "Add Tile Right",
     when: "!pickerSelected",
   },
   {
-    key: "mod+shift+\\",
+    key: "mod+shift+enter",
     command: "tiling.addBelow",
     label: "Add Tile Below",
     when: "!pickerSelected",
+  },
+  {
+    key: "mod+n",
+    command: "tiling.addWorkspaceBelow",
+    label: "Add Workspace Below",
+    when: "canvasFocus && !inputFocus",
   },
   {
     key: "mod+left",

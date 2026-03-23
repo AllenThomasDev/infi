@@ -138,6 +138,7 @@ export function Canvas({
   );
   const addColumnRight = useLayoutStore((state) => state.addColumnRight);
   const addItemBelow = useLayoutStore((state) => state.addItemBelow);
+  const addWorkspaceBelow = useLayoutStore((state) => state.addWorkspaceBelow);
   const removeItem = useLayoutStore((state) => state.removeItem);
   const focusNeighbor = useLayoutStore((state) => state.focusNeighbor);
   const toggleOverview = useLayoutStore((state) => state.toggleOverview);
@@ -160,6 +161,7 @@ export function Canvas({
         addColumnRight(createLayoutItem({ type: "picker" })),
       "tiling.addBelow": () =>
         addItemBelow(createLayoutItem({ type: "picker" })),
+      "tiling.addWorkspaceBelow": addWorkspaceBelow,
       "tiling.focusLeft": () => focusNeighbor(-1, 0),
       "tiling.focusRight": () => focusNeighbor(1, 0),
       "tiling.focusUp": () => focusNeighbor(0, -1),
@@ -175,6 +177,7 @@ export function Canvas({
     [
       addColumnRight,
       addItemBelow,
+      addWorkspaceBelow,
       focusNeighbor,
       focusedItemId,
       removeItem,

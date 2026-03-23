@@ -30,7 +30,7 @@ function makeColumn(
 }
 
 function makeWorkspace(id: string, columns: NiriColumn[]): NiriWorkspace {
-  return { id, columns };
+  return { id, name: id, columns };
 }
 
 function seedLayout(layout: NiriCanvasLayout) {
@@ -117,6 +117,40 @@ describe("useLayoutStore", () => {
     useLayoutStore.getState().selectItem(tile4.id);
     useLayoutStore.getState().focusNeighbor(-1, 0);
     expect(currentLayout().camera.focusedItemId).toBe(tile1.id);
+  });
+
+  it("creates a workspace below with monotonically increasing names", () => {
+    const first = makeWorkspace("ws-1", [
+      makeColumn("col-1", [makeItem("one")]),
+    ]);
+    const second = makeWorkspace("ws-2", [
+      makeColumn("col-2", [makeItem("two")]),
+    ]);
+
+    seedLayout({
+      workspaces: [
+        { ...first, name: "Workspace 2" },
+        { ...second, name: "Workspace 5" },
+      ],
+      camera: {
+        activeWorkspaceId: first.id,
+        activeColumnId: "col-1",
+        focusedItemId: "one",
+      },
+      isOverviewOpen: false,
+    });
+
+    useLayoutStore.getState().addWorkspaceBelow();
+
+    const next = currentLayout();
+    expect(next.workspaces).toHaveLength(3);
+    expect(next.workspaces[1]?.name).toBe("Workspace 6");
+    expect(next.camera.activeWorkspaceId).toBe(next.workspaces[1]?.id);
+    expect(next.workspaces.map((workspace) => workspace.name)).toEqual([
+      "Workspace 2",
+      "Workspace 6",
+      "Workspace 5",
+    ]);
   });
 
   it("creates a new column for each item added to the right", () => {

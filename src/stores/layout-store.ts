@@ -11,6 +11,7 @@ const MIN_COLUMN_WIDTH = Math.round(TILE_WIDTH * 0.25);
 const MIN_ITEM_HEIGHT = Math.round(TILE_HEIGHT * 0.25);
 const MAX_COLUMN_WIDTH = 2400;
 const MAX_ITEM_HEIGHT = 2400;
+const WORKSPACE_NAME_PREFIX = "Workspace";
 
 type ResizeMap = Record<string, number | undefined>;
 
@@ -23,6 +24,7 @@ interface FocusTarget {
 interface LayoutState {
   addColumnRight: (item: NiriLayoutItem) => void;
   addItemBelow: (item: NiriLayoutItem) => void;
+  addWorkspaceBelow: () => void;
   focusNeighbor: (horizontal: number, vertical: number) => void;
   layout: NiriCanvasLayout;
   moveColumn: (columnId: string, toWorkspaceId: string, index: number) => void;
@@ -38,8 +40,37 @@ interface LayoutState {
   toggleTabbed: () => void;
 }
 
-function createWorkspace(id = crypto.randomUUID()): NiriWorkspace {
-  return { id, columns: [] };
+function createWorkspace({
+  id = crypto.randomUUID(),
+  name,
+}: {
+  id?: string;
+  name?: string;
+} = {}): NiriWorkspace {
+  return { id, name: name ?? `${WORKSPACE_NAME_PREFIX} 1`, columns: [] };
+}
+
+function parseWorkspaceNameIndex(name: string) {
+  const match = new RegExp(`^${WORKSPACE_NAME_PREFIX}\\s+(\\d+)$`).exec(name);
+  if (!match) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(match[1], 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function getNextWorkspaceName(layout: NiriCanvasLayout) {
+  let maxIndex = 0;
+
+  for (const workspace of layout.workspaces) {
+    const parsedIndex = parseWorkspaceNameIndex(workspace.name);
+    if (parsedIndex && parsedIndex > maxIndex) {
+      maxIndex = parsedIndex;
+    }
+  }
+
+  return `${WORKSPACE_NAME_PREFIX} ${maxIndex + 1}`;
 }
 
 function createColumn(item: NiriLayoutItem): NiriColumn {
@@ -52,7 +83,7 @@ function createColumn(item: NiriLayoutItem): NiriColumn {
 }
 
 function createInitialLayout(): NiriCanvasLayout {
-  const workspace = createWorkspace();
+  const workspace = createWorkspace({ name: `${WORKSPACE_NAME_PREFIX} 1` });
   return {
     workspaces: [workspace],
     camera: {
@@ -412,7 +443,10 @@ function normalizeLayout(layout: NiriCanvasLayout) {
 
   return {
     ...layout,
-    workspaces: workspaces.length > 0 ? workspaces : [createWorkspace()],
+    workspaces:
+      workspaces.length > 0
+        ? workspaces
+        : [createWorkspace({ name: `${WORKSPACE_NAME_PREFIX} 1` })],
   } satisfies NiriCanvasLayout;
 }
 
@@ -488,6 +522,37 @@ function appendItemToActiveColumn(
 
 export const useLayoutStore = create<LayoutState>((set) => ({
   layout: createInitialLayout(),
+
+  addWorkspaceBelow: () => {
+    set((state) => {
+      const currentLayout = state.layout;
+      const activeWorkspaceIndex = workspaceIndexById(
+        currentLayout,
+        currentLayout.camera.activeWorkspaceId
+      );
+      const insertAt =
+        activeWorkspaceIndex >= 0
+          ? activeWorkspaceIndex + 1
+          : currentLayout.workspaces.length;
+      const nextWorkspace = createWorkspace({
+        name: getNextWorkspaceName(currentLayout),
+      });
+
+      return {
+        layout: {
+          ...currentLayout,
+          workspaces: [
+            ...currentLayout.workspaces.slice(0, insertAt),
+            nextWorkspace,
+            ...currentLayout.workspaces.slice(insertAt),
+          ],
+          camera: {
+            activeWorkspaceId: nextWorkspace.id,
+          },
+        },
+      };
+    });
+  },
 
   selectItem: (itemId) => {
     set((state) => {

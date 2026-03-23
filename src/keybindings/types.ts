@@ -7,6 +7,7 @@ export const KEYBINDING_COMMANDS = [
   "canvas.deleteSelected",
   "tiling.addRight",
   "tiling.addBelow",
+  "tiling.addWorkspaceBelow",
   "tiling.focusLeft",
   "tiling.focusRight",
   "tiling.focusUp",

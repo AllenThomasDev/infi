@@ -21,58 +21,60 @@ export function NiriColumn({
     return null;
   }
 
-  return (
-    <section
-      className={cn(
-        "flex min-h-0 flex-col overflow-hidden rounded-lg border bg-background/40 backdrop-blur-sm",
-        isActive
-          ? "border-primary/40 shadow-lg shadow-primary/5"
-          : "border-border/70"
-      )}
-      data-active={isActive}
-      data-column-id={column.id}
-      style={{ height: "100%" }}
-    >
-      {column.displayMode === "tabbed" ? (
-        <>
-          <div className="flex items-center gap-1 overflow-x-auto border-b bg-muted/40 p-2">
-            {column.items.map((item) => (
-              <div
-                className={cn(
-                  "truncate rounded-md px-2 py-1 font-medium text-xs",
-                  item.id === focusedItemId
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground"
-                )}
-                key={item.id}
-              >
-                {item.ref.type}
-              </div>
-            ))}
-          </div>
-          <div className="min-h-0 flex-1 p-2">
-            <NiriTile
-              isFocused={tabbedItem.id === focusedItemId}
-              item={tabbedItem}
-            />
-          </div>
-        </>
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-2 p-2">
+  if (column.displayMode === "tabbed") {
+    return (
+      <section
+        className={cn(
+          "flex h-full min-h-0 flex-col overflow-hidden rounded-lg border bg-background/40 backdrop-blur-sm",
+          isActive
+            ? "border-primary/40 shadow-lg shadow-primary/5"
+            : "border-border/70"
+        )}
+        data-active={isActive}
+        data-column-id={column.id}
+      >
+        <div className="flex items-center gap-1 overflow-x-auto border-b bg-muted/40 p-2">
           {column.items.map((item) => (
             <div
-              className="min-h-0"
+              className={cn(
+                "truncate rounded-md px-2 py-1 font-medium text-xs",
+                item.id === focusedItemId
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground"
+              )}
               key={item.id}
-              style={{
-                flex: item.preferredHeight ? "0 0 auto" : "1 1 0",
-                height: item.preferredHeight ?? defaultItemHeight,
-              }}
             >
-              <NiriTile isFocused={item.id === focusedItemId} item={item} />
+              {item.ref.type}
             </div>
           ))}
         </div>
-      )}
-    </section>
+        <div className="min-h-0 flex-1 p-2">
+          <NiriTile
+            isFocused={tabbedItem.id === focusedItemId}
+            item={tabbedItem}
+          />
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <div
+      className="flex h-full min-h-0 flex-col gap-2"
+      data-column-id={column.id}
+    >
+      {column.items.map((item) => (
+        <NiriTile
+          className="min-h-0"
+          isFocused={item.id === focusedItemId}
+          item={item}
+          key={item.id}
+          style={{
+            flex: item.preferredHeight ? "0 0 auto" : "1 1 0",
+            height: item.preferredHeight ?? defaultItemHeight,
+          }}
+        />
+      ))}
+    </div>
   );
 }

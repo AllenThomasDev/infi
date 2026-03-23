@@ -23,6 +23,7 @@ export interface NiriColumn {
 export interface NiriWorkspace {
   columns: NiriColumn[];
   id: string;
+  name: string;
 }
 
 export interface NiriCameraState {

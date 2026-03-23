@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "react";
+import type { CSSProperties, KeyboardEvent } from "react";
 import {
   BrowserTileContent,
   DEFAULT_BROWSER_URL,
@@ -7,10 +7,13 @@ import { PickerTileContent } from "@/components/tiles/picker-tile";
 import { TerminalTileContent } from "@/components/tiles/terminal-tile";
 import type { NiriLayoutItem } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
+import { cn } from "@/utils/tailwind";
 
 interface NiriTileProps {
+  className?: string;
   isFocused: boolean;
   item: NiriLayoutItem;
+  style?: CSSProperties;
 }
 
 function interactiveTileProps(onSelect: () => void) {
@@ -42,7 +45,7 @@ function itemLabel(item: NiriLayoutItem) {
   }
 }
 
-export function NiriTile({ isFocused, item }: NiriTileProps) {
+export function NiriTile({ className, isFocused, item, style }: NiriTileProps) {
   const removeItem = useLayoutStore((state) => state.removeItem);
   const replaceItem = useLayoutStore((state) => state.replaceItem);
   const selectItem = useLayoutStore((state) => state.selectItem);
@@ -52,7 +55,8 @@ export function NiriTile({ isFocused, item }: NiriTileProps) {
       return (
         <div
           {...interactiveTileProps(() => selectItem(item.id))}
-          className="h-full min-h-0"
+          className={cn("h-full min-h-0", className)}
+          style={style}
         >
           <BrowserTileContent
             initialUrl={DEFAULT_BROWSER_URL}
@@ -66,7 +70,8 @@ export function NiriTile({ isFocused, item }: NiriTileProps) {
       return (
         <div
           {...interactiveTileProps(() => selectItem(item.id))}
-          className="h-full min-h-0"
+          className={cn("h-full min-h-0", className)}
+          style={style}
         >
           <PickerTileContent
             isFocused={isFocused}
@@ -79,7 +84,8 @@ export function NiriTile({ isFocused, item }: NiriTileProps) {
       return (
         <div
           {...interactiveTileProps(() => selectItem(item.id))}
-          className="h-full min-h-0"
+          className={cn("h-full min-h-0", className)}
+          style={style}
         >
           <TerminalTileContent
             isFocused={isFocused}
