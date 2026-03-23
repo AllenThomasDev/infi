@@ -22,6 +22,7 @@ import type {
   CommandHandlerMap,
   ShortcutMatchContext,
 } from "@/keybindings/types";
+import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/tile-constants";
 import { useTilingLayout } from "@/layout/use-tiling-layout";
 
 function isInputFocused() {
@@ -75,12 +76,26 @@ export function Canvas({
   const pendingMoveViewportId = useRef<string | null>(null);
   const fitNodeIntoView = useCallback(
     (nodeId: string) => {
+      const node = reactFlow.getNode(nodeId);
+      if (!node) {
+        return;
+      }
+
+      const width =
+        node.measured?.width ??
+        node.width ??
+        (typeof node.style?.width === "number" ? node.style.width : TILE_WIDTH);
+      const height =
+        node.measured?.height ??
+        node.height ??
+        (typeof node.style?.height === "number"
+          ? node.style.height
+          : TILE_HEIGHT);
+
       lastFocusedId.current = nodeId;
-      reactFlow.fitView({
-        nodes: [{ id: nodeId }],
+      reactFlow.setCenter(node.position.x + width / 2, node.position.y + height / 2, {
         duration: 300,
-        maxZoom: 1.4,
-        padding: 0.1,
+        zoom: reactFlow.getZoom(),
       });
     },
     [reactFlow]
