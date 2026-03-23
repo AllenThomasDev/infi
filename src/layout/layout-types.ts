@@ -1,5 +1,6 @@
 export const TILE_WIDTH = 840;
 export const TILE_HEIGHT = 520;
+export const PLACEHOLDER_PICKER_ITEM_ID_PREFIX = "placeholder-picker-item-";
 
 export type NiriItemRef =
   | { type: "terminal" }

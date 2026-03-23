@@ -84,38 +84,32 @@ export function NiriRenderer() {
                   )}
                   style={{ height: TILE_HEIGHT }}
                 >
-                  {workspace.columns.length === 0 ? (
-                    <div className="flex h-full w-full min-w-[360px] items-center justify-center px-4 text-muted-foreground text-sm">
-                      Empty workspace
-                    </div>
-                  ) : (
-                    workspace.columns.map((column) => {
-                      const itemCount = Math.max(column.items.length, 1);
-                      const defaultItemHeight = `calc((100% - ${(itemCount - 1) * 8}px) / ${itemCount})`;
+                  {workspace.columns.map((column) => {
+                    const itemCount = Math.max(column.items.length, 1);
+                    const defaultItemHeight = `calc((100% - ${(itemCount - 1) * 8}px) / ${itemCount})`;
 
-                      return (
-                        <div
-                          className="h-full min-h-0 shrink-0"
-                          key={column.id}
-                          ref={(node) => {
-                            columnRefs.current[column.id] = node;
-                          }}
-                          style={{ width: column.preferredWidth ?? TILE_WIDTH }}
-                        >
-                          <NiriColumn
-                            column={column}
-                            defaultItemHeight={defaultItemHeight}
-                            isActive={
-                              column.id === activeColumnId ||
-                              column.items.some(
-                                (item) => item.id === focusedItemId
-                              )
-                            }
-                          />
-                        </div>
-                      );
-                    })
-                  )}
+                    return (
+                      <div
+                        className="h-full min-h-0 shrink-0"
+                        key={column.id}
+                        ref={(node) => {
+                          columnRefs.current[column.id] = node;
+                        }}
+                        style={{ width: column.preferredWidth ?? TILE_WIDTH }}
+                      >
+                        <NiriColumn
+                          column={column}
+                          defaultItemHeight={defaultItemHeight}
+                          isActive={
+                            column.id === activeColumnId ||
+                            column.items.some(
+                              (item) => item.id === focusedItemId
+                            )
+                          }
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </section>

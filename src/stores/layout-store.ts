@@ -5,7 +5,11 @@ import type {
   NiriLayoutItem,
   NiriWorkspace,
 } from "@/layout/layout-types";
-import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/layout-types";
+import {
+  PLACEHOLDER_PICKER_ITEM_ID_PREFIX,
+  TILE_HEIGHT,
+  TILE_WIDTH,
+} from "@/layout/layout-types";
 
 const MIN_COLUMN_WIDTH = Math.round(TILE_WIDTH * 0.25);
 const MIN_ITEM_HEIGHT = Math.round(TILE_HEIGHT * 0.25);
@@ -82,15 +86,69 @@ function createColumn(item: NiriLayoutItem): NiriColumn {
   };
 }
 
+function isPlaceholderPickerItem(item: NiriLayoutItem) {
+  return (
+    item.ref.type === "picker" &&
+    item.id.startsWith(PLACEHOLDER_PICKER_ITEM_ID_PREFIX)
+  );
+}
+
+function createPlaceholderPickerItem(): NiriLayoutItem {
+  return {
+    id: `${PLACEHOLDER_PICKER_ITEM_ID_PREFIX}${crypto.randomUUID()}`,
+    ref: { type: "picker" },
+  };
+}
+
+function sanitizeColumn(column: NiriColumn): NiriColumn {
+  const focusedItemId = column.items.some(
+    (item) => item.id === column.focusedItemId
+  )
+    ? column.focusedItemId
+    : column.items[0]?.id;
+
+  return {
+    ...column,
+    focusedItemId,
+  };
+}
+
+function normalizeWorkspaceColumns(workspace: NiriWorkspace): NiriWorkspace {
+  const items = workspace.columns.flatMap((column) => column.items);
+  const hasNonPlaceholderItems = items.some(
+    (item) => !isPlaceholderPickerItem(item)
+  );
+
+  if (!hasNonPlaceholderItems) {
+    const placeholderItem =
+      items.find(isPlaceholderPickerItem) ?? createPlaceholderPickerItem();
+    return {
+      ...workspace,
+      columns: [createColumn(placeholderItem)],
+    };
+  }
+
+  return {
+    ...workspace,
+    columns: workspace.columns
+      .map((column) => ({
+        ...column,
+        items: column.items.filter((item) => !isPlaceholderPickerItem(item)),
+      }))
+      .filter((column) => column.items.length > 0)
+      .map(sanitizeColumn),
+  };
+}
+
 function createInitialLayout(): NiriCanvasLayout {
   const workspace = createWorkspace({ name: `${WORKSPACE_NAME_PREFIX} 1` });
-  return {
+  return normalizeLayout({
     workspaces: [workspace],
     camera: {
       activeWorkspaceId: workspace.id,
     },
     isOverviewOpen: false,
-  };
+  });
 }
 
 function clampIndex(index: number, length: number) {
@@ -434,20 +492,41 @@ function removeItemFromLayout(layout: NiriCanvasLayout, itemId: string) {
 }
 
 function normalizeLayout(layout: NiriCanvasLayout) {
-  const workspaces = layout.workspaces
-    .map((workspace) => ({
-      ...workspace,
-      columns: workspace.columns.filter((column) => column.items.length > 0),
-    }))
-    .filter((workspace) => workspace.columns.length > 0);
-
-  return {
+  const workspaces =
+    layout.workspaces.length > 0
+      ? layout.workspaces
+      : [createWorkspace({ name: `${WORKSPACE_NAME_PREFIX} 1` })];
+  const normalizedLayout = {
     ...layout,
-    workspaces:
-      workspaces.length > 0
-        ? workspaces
-        : [createWorkspace({ name: `${WORKSPACE_NAME_PREFIX} 1` })],
+    workspaces: workspaces.map(normalizeWorkspaceColumns),
   } satisfies NiriCanvasLayout;
+
+  const focused = normalizedLayout.camera.focusedItemId
+    ? findItemLocation(normalizedLayout, normalizedLayout.camera.focusedItemId)
+    : null;
+  if (focused) {
+    return applyFocus(normalizedLayout, {
+      workspace: focused.workspace,
+      column: focused.column,
+      item: focused.item,
+    });
+  }
+
+  const activeWorkspace =
+    normalizedLayout.workspaces.find(
+      (workspace) => workspace.id === normalizedLayout.camera.activeWorkspaceId
+    ) ?? normalizedLayout.workspaces[0];
+  const activeColumn = activeWorkspace?.columns[0];
+  const activeItem = activeColumn?.items[0];
+  if (activeWorkspace && activeColumn && activeItem) {
+    return applyFocus(normalizedLayout, {
+      workspace: activeWorkspace,
+      column: activeColumn,
+      item: activeItem,
+    });
+  }
+
+  return normalizedLayout;
 }
 
 function insertColumn(
@@ -539,7 +618,7 @@ export const useLayoutStore = create<LayoutState>((set) => ({
       });
 
       return {
-        layout: {
+        layout: normalizeLayout({
           ...currentLayout,
           workspaces: [
             ...currentLayout.workspaces.slice(0, insertAt),
@@ -549,7 +628,7 @@ export const useLayoutStore = create<LayoutState>((set) => ({
           camera: {
             activeWorkspaceId: nextWorkspace.id,
           },
-        },
+        }),
       };
     });
   },
@@ -573,13 +652,13 @@ export const useLayoutStore = create<LayoutState>((set) => ({
 
   addColumnRight: (item) => {
     set((state) => ({
-      layout: insertColumn(state.layout, item, 1),
+      layout: normalizeLayout(insertColumn(state.layout, item, 1)),
     }));
   },
 
   addItemBelow: (item) => {
     set((state) => ({
-      layout: appendItemToActiveColumn(state.layout, item),
+      layout: normalizeLayout(appendItemToActiveColumn(state.layout, item)),
     }));
   },
 
@@ -651,12 +730,17 @@ export const useLayoutStore = create<LayoutState>((set) => ({
           ),
         })),
       } satisfies NiriCanvasLayout;
+      const normalizedLayout = normalizeLayout(nextLayout);
+      const nextLocation = findItemLocation(normalizedLayout, itemId);
+      if (!nextLocation) {
+        return { layout: normalizedLayout };
+      }
 
       return {
-        layout: applyFocus(nextLayout, {
-          workspace: location.workspace,
-          column: location.column,
-          item: { ...location.item, ref },
+        layout: applyFocus(normalizedLayout, {
+          workspace: nextLocation.workspace,
+          column: nextLocation.column,
+          item: nextLocation.item,
         }),
       };
     });

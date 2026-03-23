@@ -5,7 +5,11 @@ import type {
   NiriLayoutItem,
   NiriWorkspace,
 } from "@/layout/layout-types";
-import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/layout-types";
+import {
+  PLACEHOLDER_PICKER_ITEM_ID_PREFIX,
+  TILE_HEIGHT,
+  TILE_WIDTH,
+} from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
 
 function makeItem(
@@ -47,6 +51,18 @@ function currentLayout() {
 describe("useLayoutStore", () => {
   beforeEach(() => {
     useLayoutStore.setState(useLayoutStore.getInitialState(), true);
+  });
+
+  it("seeds a placeholder picker in an empty workspace", () => {
+    const layout = currentLayout();
+    const workspace = layout.workspaces[0];
+    const column = workspace.columns[0];
+    const item = column.items[0];
+
+    expect(workspace.columns).toHaveLength(1);
+    expect(column.items).toHaveLength(1);
+    expect(item.ref.type).toBe("picker");
+    expect(item.id.startsWith(PLACEHOLDER_PICKER_ITEM_ID_PREFIX)).toBe(true);
   });
 
   it("toggles tabbed display without changing items or focus", () => {
@@ -272,5 +288,50 @@ describe("useLayoutStore", () => {
       keep.id,
     ]);
     expect(next.camera.focusedItemId).toBe(keep.id);
+  });
+
+  it("restores a placeholder picker after deleting the last real tile", () => {
+    const tile = makeItem("terminal-1", { type: "terminal" });
+
+    useLayoutStore.getState().addColumnRight(tile);
+    useLayoutStore.getState().removeItem(tile.id);
+
+    const workspace = currentLayout().workspaces[0];
+    const item = workspace.columns[0]?.items[0];
+    expect(item?.ref.type).toBe("picker");
+    expect(item?.id.startsWith(PLACEHOLDER_PICKER_ITEM_ID_PREFIX)).toBe(true);
+  });
+
+  it("restores a placeholder picker when moving the last tile away", () => {
+    const sourceTile = makeItem("source-terminal", { type: "terminal" });
+    const destinationTile = makeItem("destination-terminal", {
+      type: "terminal",
+    });
+    const sourceWorkspace = makeWorkspace("ws-1", [
+      makeColumn("col-1", [sourceTile]),
+    ]);
+    const destinationWorkspace = makeWorkspace("ws-2", [
+      makeColumn("col-2", [destinationTile]),
+    ]);
+
+    seedLayout({
+      workspaces: [sourceWorkspace, destinationWorkspace],
+      camera: {
+        activeWorkspaceId: sourceWorkspace.id,
+        activeColumnId: "col-1",
+        focusedItemId: sourceTile.id,
+      },
+      isOverviewOpen: false,
+    });
+
+    useLayoutStore.getState().moveItem(sourceTile.id, "col-2");
+
+    const next = currentLayout();
+    const source = next.workspaces.find((workspace) => workspace.id === "ws-1");
+    const sourceItem = source?.columns[0]?.items[0];
+    expect(sourceItem?.ref.type).toBe("picker");
+    expect(sourceItem?.id.startsWith(PLACEHOLDER_PICKER_ITEM_ID_PREFIX)).toBe(
+      true
+    );
   });
 });

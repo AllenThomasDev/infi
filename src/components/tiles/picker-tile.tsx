@@ -32,12 +32,14 @@ const PICKER_OPTIONS: PickerOption[] = [
 ];
 
 interface PickerTileContentProps {
+  canCancel?: boolean;
   isFocused: boolean;
   onCancel: () => void;
   onSelectType: (type: PickerOption["type"]) => void;
 }
 
 export function PickerTileContent({
+  canCancel = true,
   isFocused,
   onCancel,
   onSelectType,
@@ -81,7 +83,13 @@ export function PickerTileContent({
 
   useEffect(() => {
     if (!isFocused) {
-      cancel();
+      if (canCancel) {
+        cancel();
+      }
+      return;
+    }
+
+    if (!canCancel) {
       return;
     }
 
@@ -98,7 +106,7 @@ export function PickerTileContent({
 
     container.addEventListener("focusout", handleFocusOut);
     return () => container.removeEventListener("focusout", handleFocusOut);
-  }, [cancel, isFocused]);
+  }, [canCancel, cancel, isFocused]);
 
   return (
     <div className="h-full w-full" ref={containerRef}>
@@ -115,7 +123,7 @@ export function PickerTileContent({
             <div className="w-full max-w-md rounded-xl border border-primary/30 border-dashed bg-background/80 p-3 shadow-sm">
               <Command className="rounded-lg border-0 bg-transparent shadow-none">
                 <CommandInput
-                  onKeyDown={(e) => e.key === "Escape" && cancel()}
+                  onKeyDown={(e) => e.key === "Escape" && canCancel && cancel()}
                   placeholder="Choose what to open here..."
                 />
                 <CommandList>
@@ -138,11 +146,13 @@ export function PickerTileContent({
               </Command>
             </div>
           </div>
-          <div className="flex justify-end">
-            <Button onClick={cancel} size="sm" variant="ghost">
-              Cancel
-            </Button>
-          </div>
+          {canCancel ? (
+            <div className="flex justify-end">
+              <Button onClick={cancel} size="sm" variant="ghost">
+                Cancel
+              </Button>
+            </div>
+          ) : null}
         </div>
       </BaseNode>
     </div>
