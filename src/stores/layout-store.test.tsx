@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type {
   NiriCanvasLayout,
-  NiriColumn,
   NiriLayoutItem,
   NiriWorkspace,
 } from "@/layout/layout-types";
-import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/layout-types";
+import { TILE_WIDTH } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
 
 function makeItem(
@@ -15,22 +14,22 @@ function makeItem(
   return { id, ref };
 }
 
-function makeColumn(
-  id: string,
-  items: NiriLayoutItem[],
-  overrides: Partial<NiriColumn> = {}
-): NiriColumn {
-  return {
-    id,
-    items,
-    displayMode: "normal",
-    focusedItemId: items[0]?.id,
-    ...overrides,
-  };
+function makeWorkspace(id: string, items: NiriLayoutItem[]): NiriWorkspace {
+  return { id, items };
 }
 
-function makeWorkspace(id: string, columns: NiriColumn[]): NiriWorkspace {
-  return { id, name: id, columns };
+function makeLayout(
+  workspaces: NiriWorkspace[],
+  selectedItemId?: string,
+  lastColumnByWorkspaceId: Record<string, number> = {}
+): NiriCanvasLayout {
+  return {
+    focusTick: 0,
+    isOverviewOpen: false,
+    lastColumnByWorkspaceId,
+    selectedItemId,
+    workspaces,
+  };
 }
 
 function seedLayout(layout: NiriCanvasLayout) {
@@ -50,8 +49,8 @@ describe("useLayoutStore", () => {
   });
 
   it("starts with an empty layout", () => {
-    const layout = currentLayout();
-    expect(layout.workspaces).toHaveLength(0);
+    expect(currentLayout().workspaces).toHaveLength(0);
+    expect(currentLayout().selectedItemId).toBeUndefined();
   });
 
   it("keeps layout isolated per active canvas", () => {
@@ -59,51 +58,27 @@ describe("useLayoutStore", () => {
     const second = makeItem("canvas-b-item", { type: "terminal" });
 
     useLayoutStore.getState().setActiveCanvas("canvas-a");
-    useLayoutStore.getState().addColumnRight(first);
+    useLayoutStore.getState().addItem(first);
 
     useLayoutStore.getState().setActiveCanvas("canvas-b");
     expect(currentLayout().workspaces).toHaveLength(0);
-    useLayoutStore.getState().addColumnRight(second);
+    useLayoutStore.getState().addItem(second);
 
     useLayoutStore.getState().setActiveCanvas("canvas-a");
-    const firstCanvasItems = currentLayout().workspaces[0]?.columns.flatMap(
-      (column) => column.items.map((item) => item.id)
+    expect(currentLayout().workspaces[0]?.items.map((item) => item.id)).toEqual(
+      [first.id]
     );
-    expect(firstCanvasItems).toEqual([first.id]);
 
     useLayoutStore.getState().setActiveCanvas("canvas-b");
-    const secondCanvasItems = currentLayout().workspaces[0]?.columns.flatMap(
-      (column) => column.items.map((item) => item.id)
+    expect(currentLayout().workspaces[0]?.items.map((item) => item.id)).toEqual(
+      [second.id]
     );
-    expect(secondCanvasItems).toEqual([second.id]);
   });
 
-  it("toggles tabbed display without changing items or focus", () => {
-    const first = makeItem("first");
-    const second = makeItem("second", { type: "picker" });
-
-    useLayoutStore.getState().addItemBelow(first);
-    useLayoutStore.getState().addItemBelow(second);
-    useLayoutStore.getState().selectItem(first.id);
-
-    const before = currentLayout();
-    const workspace = before.workspaces[0];
-    const column = workspace.columns[0];
-
-    useLayoutStore.getState().toggleTabbed();
-
-    const afterColumn = currentLayout().workspaces[0].columns[0];
-    expect(afterColumn.items.map((item) => item.id)).toEqual(
-      column.items.map((item) => item.id)
-    );
-    expect(afterColumn.focusedItemId).toBe(first.id);
-    expect(afterColumn.displayMode).toBe("tabbed");
-  });
-
-  it("toggles overview mode without changing focus", () => {
+  it("toggles overview mode without changing selection", () => {
     const first = makeItem("first");
 
-    useLayoutStore.getState().addColumnRight(first);
+    useLayoutStore.getState().addItem(first);
     useLayoutStore.getState().selectItem(first.id);
 
     const before = currentLayout();
@@ -111,247 +86,248 @@ describe("useLayoutStore", () => {
 
     const after = currentLayout();
     expect(after.isOverviewOpen).toBe(!before.isOverviewOpen);
-    expect(after.camera.focusedItemId).toBe(before.camera.focusedItemId);
-    expect(after.camera.activeColumnId).toBe(before.camera.activeColumnId);
+    expect(after.selectedItemId).toBe(before.selectedItemId);
   });
 
-  it("moves horizontally using row-aligned targets", () => {
-    const tile1 = makeItem("tile-1");
-    const tile2 = makeItem("tile-2");
-    const tile3 = makeItem("tile-3", { type: "browser" });
-    const tile4 = makeItem("tile-4", { type: "picker" });
-    const workspace = makeWorkspace("ws-1", [
-      makeColumn("col-1", [tile1]),
-      makeColumn("col-2", [tile2, tile4], { focusedItemId: tile4.id }),
-      makeColumn("col-3", [tile3]),
-    ]);
+  it("moves focus horizontally and vertically with remembered column", () => {
+    const a = makeItem("a");
+    const b = makeItem("b");
+    const c = makeItem("c");
+    const d = makeItem("d");
+    const e = makeItem("e");
 
-    seedLayout({
-      workspaces: [workspace],
-      camera: {
-        activeWorkspaceId: workspace.id,
-        activeColumnId: "col-1",
-        focusedItemId: tile1.id,
-      },
-      isOverviewOpen: true,
-    });
+    seedLayout(
+      makeLayout(
+        [makeWorkspace("ws-1", [a, b, c]), makeWorkspace("ws-2", [d, e])],
+        c.id
+      )
+    );
 
-    useLayoutStore.getState().focusNeighbor(1, 0);
-    expect(currentLayout().camera.focusedItemId).toBe(tile2.id);
-
-    useLayoutStore.getState().selectItem(tile4.id);
-    useLayoutStore.getState().focusNeighbor(1, 0);
-    expect(currentLayout().camera.focusedItemId).toBe(tile3.id);
-
-    useLayoutStore.getState().selectItem(tile4.id);
     useLayoutStore.getState().focusNeighbor(-1, 0);
-    expect(currentLayout().camera.focusedItemId).toBe(tile1.id);
+    expect(currentLayout().selectedItemId).toBe(b.id);
+
+    useLayoutStore.getState().focusNeighbor(0, 1);
+    expect(currentLayout().selectedItemId).toBe(e.id);
   });
 
-  it("creates a workspace below with monotonically increasing names", () => {
-    const first = makeWorkspace("ws-1", [
-      makeColumn("col-1", [makeItem("one")]),
-    ]);
-    const second = makeWorkspace("ws-2", [
-      makeColumn("col-2", [makeItem("two")]),
-    ]);
-
-    seedLayout({
-      workspaces: [
-        { ...first, name: "Workspace 2" },
-        { ...second, name: "Workspace 5" },
-      ],
-      camera: {
-        activeWorkspaceId: first.id,
-        activeColumnId: "col-1",
-        focusedItemId: "one",
-      },
-      isOverviewOpen: false,
-    });
+  it("creates a workspace below and selects the inserted item", () => {
+    seedLayout(
+      makeLayout(
+        [
+          makeWorkspace("ws-1", [makeItem("one")]),
+          makeWorkspace("ws-2", [makeItem("two")]),
+        ],
+        "one"
+      )
+    );
 
     const pickerItem = makeItem("picker-1", { type: "picker" });
     useLayoutStore.getState().addWorkspaceBelow(pickerItem);
 
     const next = currentLayout();
     expect(next.workspaces).toHaveLength(3);
-    expect(next.workspaces[1]?.name).toBe("Workspace 6");
-    expect(next.camera.activeWorkspaceId).toBe(next.workspaces[1]?.id);
-    expect(next.workspaces.map((workspace) => workspace.name)).toEqual([
-      "Workspace 2",
-      "Workspace 6",
-      "Workspace 5",
+    expect(next.workspaces[1]?.id).not.toBe("ws-1");
+    expect(next.workspaces[1]?.id).not.toBe("ws-2");
+    expect(next.workspaces[1]?.items[0]?.id).toBe(pickerItem.id);
+    expect(next.selectedItemId).toBe(pickerItem.id);
+  });
+
+  it("adds a tile to the right of the selected tile", () => {
+    const first = makeItem("first", { type: "browser" });
+    const second = makeItem("second", { type: "browser" });
+    const third = makeItem("third", { type: "browser" });
+
+    seedLayout(makeLayout([makeWorkspace("ws-1", [first, third])], first.id));
+
+    useLayoutStore.getState().addItem(second);
+
+    const items = currentLayout().workspaces[0].items;
+    expect(items.map((item) => item.id)).toEqual([
+      first.id,
+      second.id,
+      third.id,
     ]);
+    expect(currentLayout().selectedItemId).toBe(second.id);
   });
 
-  it("creates a new column for each item added to the right", () => {
-    const firstBrowser = makeItem("browser-1", { type: "browser" });
-    const secondBrowser = makeItem("browser-2", { type: "browser" });
-
-    useLayoutStore.getState().addColumnRight(firstBrowser);
-    useLayoutStore.getState().addColumnRight(secondBrowser);
-
-    const layout = currentLayout();
-    const items = layout.workspaces[0].columns.flatMap(
-      (column) => column.items
-    );
-
-    expect(
-      items.filter((item) => item.ref.type === "browser").map((item) => item.id)
-    ).toEqual([firstBrowser.id, secondBrowser.id]);
-    expect(layout.camera.focusedItemId).toBe(secondBrowser.id);
-  });
-
-  it("persists resized column widths and clamps them", () => {
+  it("persists preferred item widths and clamps them", () => {
     const left = makeItem("left");
     const right = makeItem("right");
 
-    useLayoutStore.getState().addColumnRight(left);
-    useLayoutStore.getState().addColumnRight(right);
+    seedLayout(makeLayout([makeWorkspace("ws-1", [left, right])], left.id));
 
-    const [leftColumn, rightColumn] = currentLayout().workspaces[0].columns;
     useLayoutStore.getState().setColumnWidths({
-      [leftColumn.id]: 640,
-      [rightColumn.id]: 1,
+      [left.id]: 640,
+      [right.id]: 1,
     });
 
-    const resized = currentLayout().workspaces[0].columns;
+    const resized = currentLayout().workspaces[0].items;
     expect(resized[0].preferredWidth).toBe(640);
     expect(resized[1].preferredWidth).toBe(Math.round(TILE_WIDTH * 0.25));
   });
 
-  it("persists resized item heights and clamps them", () => {
-    const top = makeItem("top");
-    const bottom = makeItem("bottom");
-
-    useLayoutStore.getState().addItemBelow(top);
-    useLayoutStore.getState().addItemBelow(bottom);
-
-    const items = currentLayout().workspaces[0].columns[0].items;
-    useLayoutStore.getState().setItemHeights({
-      [items[0].id]: 300,
-      [items[1].id]: 1,
-    });
-
-    const resized = currentLayout().workspaces[0].columns[0].items;
-    expect(resized[0].preferredHeight).toBe(300);
-    expect(resized[1].preferredHeight).toBe(Math.round(TILE_HEIGHT * 0.25));
-  });
-
-  it("moves an item across workspaces and updates camera focus", () => {
+  it("moves an item across workspaces and updates selection", () => {
     const source = makeItem("source");
     const destination = makeItem("destination");
-    const layout = {
-      workspaces: [
-        makeWorkspace("ws-1", [makeColumn("col-1", [source])]),
-        makeWorkspace("ws-2", [makeColumn("col-2", [destination])]),
-      ],
-      camera: {
-        activeWorkspaceId: "ws-1",
-        activeColumnId: "col-1",
-        focusedItemId: source.id,
-      },
-      isOverviewOpen: false,
-    } satisfies NiriCanvasLayout;
 
-    seedLayout(layout);
-    useLayoutStore.getState().moveItem(source.id, "col-2");
+    seedLayout(
+      makeLayout(
+        [makeWorkspace("ws-1", [source]), makeWorkspace("ws-2", [destination])],
+        source.id
+      )
+    );
+
+    useLayoutStore.getState().moveItem(source.id, "ws-2", 1);
 
     const next = currentLayout();
-    const destinationWorkspace = next.workspaces.find(
-      (workspace) => workspace.id === "ws-2"
-    );
-    const destinationColumn = destinationWorkspace?.columns[0];
-    expect(destinationColumn).toBeDefined();
-    if (!destinationColumn) {
-      throw new Error("Expected destination column after move");
-    }
-    expect(destinationColumn.items.map((item) => item.id)).toEqual([
+    expect(next.workspaces).toHaveLength(1);
+    expect(next.workspaces[0].id).toBe("ws-2");
+    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([
       destination.id,
       source.id,
     ]);
-    expect(next.camera.activeWorkspaceId).toBe("ws-2");
-    expect(next.camera.activeColumnId).toBe("col-2");
-    expect(next.camera.focusedItemId).toBe(source.id);
+    expect(next.selectedItemId).toBe(source.id);
   });
 
-  it("removes an item, drops empty containers, and preserves focus", () => {
+  it("reorders within the same workspace", () => {
+    const first = makeItem("first");
+    const second = makeItem("second");
+
+    seedLayout(makeLayout([makeWorkspace("ws-1", [first, second])], first.id));
+
+    useLayoutStore.getState().moveItem(first.id, "ws-1", 1);
+
+    const next = currentLayout();
+    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([
+      second.id,
+      first.id,
+    ]);
+    expect(next.selectedItemId).toBe(first.id);
+  });
+
+  it("removes an item and preserves focus on nearest sibling", () => {
     const keep = makeItem("keep");
     const remove = makeItem("remove");
-    const other = makeItem("other");
-    const layout = {
-      workspaces: [
-        makeWorkspace("ws-1", [
-          makeColumn("col-1", [keep, remove], { focusedItemId: remove.id }),
-        ]),
-        makeWorkspace("ws-2", [makeColumn("col-2", [other])]),
-      ],
-      camera: {
-        activeWorkspaceId: "ws-1",
-        activeColumnId: "col-1",
-        focusedItemId: remove.id,
-      },
-      isOverviewOpen: false,
-    } satisfies NiriCanvasLayout;
 
-    seedLayout(layout);
+    seedLayout(makeLayout([makeWorkspace("ws-1", [keep, remove])], remove.id));
+
     useLayoutStore.getState().removeItem(remove.id);
 
     const next = currentLayout();
-    expect(next.workspaces).toHaveLength(2);
-    expect(next.workspaces[0].columns[0].items.map((item) => item.id)).toEqual([
-      keep.id,
-    ]);
-    expect(next.camera.focusedItemId).toBe(keep.id);
+    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([keep.id]);
+    expect(next.selectedItemId).toBe(keep.id);
   });
 
   it("removes empty workspace when last tile is deleted", () => {
     const tile = makeItem("terminal-1", { type: "terminal" });
     const other = makeItem("terminal-2", { type: "terminal" });
 
-    seedLayout({
-      workspaces: [
-        makeWorkspace("ws-1", [makeColumn("col-1", [tile])]),
-        makeWorkspace("ws-2", [makeColumn("col-2", [other])]),
-      ],
-      camera: {
-        activeWorkspaceId: "ws-1",
-        activeColumnId: "col-1",
-        focusedItemId: tile.id,
-      },
-      isOverviewOpen: false,
-    });
+    seedLayout(
+      makeLayout(
+        [makeWorkspace("ws-1", [tile]), makeWorkspace("ws-2", [other])],
+        tile.id
+      )
+    );
 
     useLayoutStore.getState().removeItem(tile.id);
 
     const next = currentLayout();
     expect(next.workspaces).toHaveLength(1);
     expect(next.workspaces[0].id).toBe("ws-2");
-    expect(next.camera.focusedItemId).toBe(other.id);
+    expect(next.selectedItemId).toBe(other.id);
   });
 
-  it("removes empty workspace when last tile is moved away", () => {
-    const sourceTile = makeItem("source-terminal", { type: "terminal" });
-    const destinationTile = makeItem("destination-terminal", {
-      type: "terminal",
-    });
+  it("does not churn workspace id when moving down at edge with a single tile", () => {
+    const tile = makeItem("tile");
 
-    seedLayout({
-      workspaces: [
-        makeWorkspace("ws-1", [makeColumn("col-1", [sourceTile])]),
-        makeWorkspace("ws-2", [makeColumn("col-2", [destinationTile])]),
-      ],
-      camera: {
-        activeWorkspaceId: "ws-1",
-        activeColumnId: "col-1",
-        focusedItemId: sourceTile.id,
-      },
-      isOverviewOpen: false,
-    });
+    seedLayout(makeLayout([makeWorkspace("ws-1", [tile])], tile.id));
 
-    useLayoutStore.getState().moveItem(sourceTile.id, "col-2");
+    useLayoutStore.getState().moveItemToAdjacentWorkspace(tile.id, 1);
 
     const next = currentLayout();
     expect(next.workspaces).toHaveLength(1);
-    expect(next.workspaces[0].id).toBe("ws-2");
+    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([tile.id]);
+    expect(next.selectedItemId).toBe(tile.id);
+    expect(next.workspaces[0].id).toBe("ws-1");
+  });
+
+  it("does not churn workspace id when moving up at edge with a single tile", () => {
+    const tile = makeItem("tile");
+
+    seedLayout(makeLayout([makeWorkspace("ws-1", [tile])], tile.id));
+
+    useLayoutStore.getState().moveItemToAdjacentWorkspace(tile.id, -1);
+
+    const next = currentLayout();
+    expect(next.workspaces).toHaveLength(1);
+    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([tile.id]);
+    expect(next.selectedItemId).toBe(tile.id);
+    expect(next.workspaces[0].id).toBe("ws-1");
+  });
+
+  it("creates a workspace at edge when source workspace has multiple tiles", () => {
+    const a = makeItem("a");
+    const b = makeItem("b");
+
+    seedLayout(makeLayout([makeWorkspace("ws-1", [a, b])], b.id));
+
+    useLayoutStore.getState().moveItemToAdjacentWorkspace(b.id, 1);
+
+    const next = currentLayout();
+    expect(next.workspaces).toHaveLength(2);
+    expect(next.workspaces[0].id).toBe("ws-1");
+    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([a.id]);
+    expect(next.workspaces[1].items.map((item) => item.id)).toEqual([b.id]);
+    expect(next.selectedItemId).toBe(b.id);
+  });
+
+  it("inserts after target row last active column", () => {
+    const a = makeItem("a");
+    const b = makeItem("b");
+    const c = makeItem("c");
+
+    seedLayout(
+      makeLayout(
+        [makeWorkspace("ws-1", [a, b]), makeWorkspace("ws-2", [c])],
+        c.id,
+        { "ws-1": 0 }
+      )
+    );
+
+    useLayoutStore.getState().moveItemToAdjacentWorkspace(c.id, -1);
+
+    const next = currentLayout();
+    expect(next.workspaces).toHaveLength(1);
+    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([
+      a.id,
+      c.id,
+      b.id,
+    ]);
+    expect(next.selectedItemId).toBe(c.id);
+  });
+
+  it("appends when target row last active is its last tile", () => {
+    const a = makeItem("a");
+    const b = makeItem("b");
+    const c = makeItem("c");
+
+    seedLayout(
+      makeLayout(
+        [makeWorkspace("ws-1", [a, b]), makeWorkspace("ws-2", [c])],
+        c.id,
+        { "ws-1": 1 }
+      )
+    );
+
+    useLayoutStore.getState().moveItemToAdjacentWorkspace(c.id, -1);
+
+    const next = currentLayout();
+    expect(next.workspaces).toHaveLength(1);
+    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([
+      a.id,
+      b.id,
+      c.id,
+    ]);
+    expect(next.selectedItemId).toBe(c.id);
   });
 });

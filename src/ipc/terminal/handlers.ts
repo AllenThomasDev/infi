@@ -13,8 +13,7 @@ import {
 } from "./schemas";
 
 export const spawn = os.input(spawnTerminalInputSchema).handler(({ input }) => {
-  const pid = spawnTerminal(input.id, input.cols, input.rows, input.cwd);
-  return { pid };
+  return spawnTerminal(input.id, input.cols, input.rows, input.cwd);
 });
 
 export const write = os.input(writeTerminalInputSchema).handler(({ input }) => {

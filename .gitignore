@@ -106,3 +106,6 @@ out/
 # Examples
 .examples/
 .collaborator
+.agents/skills/react-native-best-practices
+skills-lock.json
+.claude/skills/react-native-best-practices

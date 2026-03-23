@@ -43,9 +43,6 @@ const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
     // A terminal should spawn in the workspace directory that existed when this
     // view mounted; later context changes should not retarget an existing PTY.
     const spawnDirectoryRef = useRef(directory);
-    // Incremented on each mount so a stale cleanup's deferred kill is cancelled
-    // when strict mode remounts the component.
-    const mountGenRef = useRef(0);
 
     useImperativeHandle(ref, () => ({
       focus: () => terminalRef.current?.focus(),
@@ -56,8 +53,6 @@ const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
       if (!containerRef.current) {
         return;
       }
-
-      const currentGen = ++mountGenRef.current;
 
       const terminal = new Terminal({
         cursorBlink: true,
@@ -117,10 +112,12 @@ const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
           rows: terminal.rows,
           cwd: spawnDirectoryRef.current,
         })
-        .then(() => {
-          if (
-            useLayoutStore.getState().layout.camera.focusedItemId === terminalId
-          ) {
+        .then(({ backlog }) => {
+          if (backlog) {
+            terminal.write(backlog);
+          }
+
+          if (useLayoutStore.getState().layout.selectedItemId === terminalId) {
             terminal.focus();
           }
         })
@@ -136,16 +133,6 @@ const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
         terminal.dispose();
         terminalRef.current = null;
         fitAddonRef.current = null;
-
-        // Defer PTY kill so a strict-mode remount can reclaim the session
-        // before this fires. If mountGenRef has advanced, a new mount took
-        // over and we skip the kill.
-        const gen = currentGen;
-        setTimeout(() => {
-          if (mountGenRef.current === gen) {
-            ipc.client.terminal.kill({ id: terminalId }).catch(console.error);
-          }
-        }, 50);
       };
     }, [terminalId]);
 

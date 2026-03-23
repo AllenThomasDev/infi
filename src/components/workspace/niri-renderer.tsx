@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { NiriColumn } from "@/components/workspace/niri-column";
+import { NiriTile } from "@/components/workspace/niri-tile";
 import type { NiriCanvasLayout } from "@/layout/layout-types";
 import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/layout-types";
 import { cn } from "@/utils/tailwind";
@@ -9,27 +9,32 @@ interface NiriRendererProps {
 }
 
 export function NiriRenderer({ layout }: NiriRendererProps) {
-  const { activeColumnId, activeWorkspaceId, focusedItemId } = layout.camera;
+  const selectedItemId = layout.selectedItemId;
+  const focusTick = layout.focusTick;
   const { isOverviewOpen, workspaces } = layout;
-  const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const activeWorkspaceId = workspaces.find((workspace) =>
+    workspace.items.some((item) => item.id === selectedItemId)
+  )?.id;
 
   useEffect(() => {
-    if (!activeColumnId || isOverviewOpen) {
+    if (!selectedItemId || isOverviewOpen) {
       return;
     }
 
-    // Double rAF ensures the browser has painted the new column
-    // before we attempt to scroll to it.
+    const scheduledTick = focusTick;
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        columnRefs.current[activeColumnId]?.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
+        itemRefs.current[selectedItemId]?.scrollIntoView({
+          behavior: scheduledTick > 1 ? "smooth" : "auto",
+          block: "center",
           inline: "center",
         });
       });
     });
-  }, [activeColumnId, isOverviewOpen]);
+  }, [focusTick, selectedItemId, isOverviewOpen]);
 
   if (workspaces.length === 0) {
     return <div className="flex h-full items-center justify-center" />;
@@ -48,8 +53,7 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
           style={{ height: `calc(50% - ${TILE_HEIGHT / 2}px)` }}
         />
         {workspaces.map((workspace, workspaceIndex) => {
-          const workspaceName =
-            workspace.name || `Workspace ${workspaceIndex + 1}`;
+          const workspaceName = `Workspace ${workspaceIndex + 1}`;
           const isActiveWorkspace =
             workspace.id === activeWorkspaceId ||
             (!activeWorkspaceId && workspaceIndex === 0);
@@ -81,28 +85,20 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
                     className="shrink-0"
                     style={{ width: `calc(50% - ${TILE_WIDTH / 2}px)` }}
                   />
-                  {workspace.columns.map((column) => {
-                    const itemCount = Math.max(column.items.length, 1);
-                    const defaultItemHeight = `calc((100% - ${(itemCount - 1) * 8}px) / ${itemCount})`;
-
+                  {workspace.items.map((item) => {
                     return (
                       <div
                         className="h-full min-h-0 shrink-0 snap-center"
-                        key={column.id}
+                        key={item.id}
                         ref={(node) => {
-                          columnRefs.current[column.id] = node;
+                          itemRefs.current[item.id] = node;
                         }}
-                        style={{ width: column.preferredWidth ?? TILE_WIDTH }}
+                        style={{ width: item.preferredWidth ?? TILE_WIDTH }}
                       >
-                        <NiriColumn
-                          column={column}
-                          defaultItemHeight={defaultItemHeight}
-                          isActive={
-                            column.id === activeColumnId ||
-                            column.items.some(
-                              (item) => item.id === focusedItemId
-                            )
-                          }
+                        <NiriTile
+                          className="h-full"
+                          item={item}
+                          selected={item.id === selectedItemId}
                         />
                       </div>
                     );

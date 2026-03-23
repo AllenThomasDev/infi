@@ -2,24 +2,22 @@ import { useEffect } from "react";
 import { useLayoutStore } from "@/stores/layout-store";
 
 export function useFocusWhenSelected(itemId: string, focus: () => void) {
-  const focusedItemId = useLayoutStore(
-    (state) => state.layout.camera.focusedItemId
-  );
-  const focusTick = useLayoutStore((state) => state.layout.camera.focusTick);
+  const selectedItemId = useLayoutStore((state) => state.layout.selectedItemId);
+  const focusTick = useLayoutStore((state) => state.layout.focusTick);
 
   useEffect(() => {
-    if (focusedItemId !== itemId) {
+    if (selectedItemId !== itemId) {
       return;
     }
 
     const scheduledTick = focusTick;
     const frame = requestAnimationFrame(() => {
       const {
-        focusedItemId: currentFocusedItemId,
+        selectedItemId: currentSelectedItemId,
         focusTick: currentFocusTick,
-      } = useLayoutStore.getState().layout.camera;
+      } = useLayoutStore.getState().layout;
       if (
-        currentFocusedItemId !== itemId ||
+        currentSelectedItemId !== itemId ||
         currentFocusTick !== scheduledTick
       ) {
         return;
@@ -29,5 +27,5 @@ export function useFocusWhenSelected(itemId: string, focus: () => void) {
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [focus, focusTick, focusedItemId, itemId]);
+  }, [focus, focusTick, selectedItemId, itemId]);
 }

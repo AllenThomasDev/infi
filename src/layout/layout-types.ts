@@ -8,34 +8,19 @@ export type NiriItemRef =
 
 export interface NiriLayoutItem {
   id: string;
-  preferredHeight?: number;
+  preferredWidth?: number;
   ref: NiriItemRef;
 }
 
-export interface NiriColumn {
-  displayMode: "normal" | "tabbed";
-  focusedItemId?: string;
+export interface NiriWorkspace {
   id: string;
   items: NiriLayoutItem[];
-  preferredWidth?: number;
-}
-
-export interface NiriWorkspace {
-  columns: NiriColumn[];
-  focusedColumnId?: string;
-  id: string;
-  name: string;
-}
-
-export interface NiriCameraState {
-  activeColumnId?: string;
-  activeWorkspaceId?: string;
-  focusedItemId?: string;
-  focusTick?: number;
 }
 
 export interface NiriCanvasLayout {
-  camera: NiriCameraState;
+  focusTick: number;
   isOverviewOpen: boolean;
+  lastColumnByWorkspaceId: Record<string, number>;
+  selectedItemId?: string;
   workspaces: NiriWorkspace[];
 }

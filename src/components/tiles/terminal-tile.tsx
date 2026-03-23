@@ -11,6 +11,7 @@ import TerminalView, {
 } from "@/components/terminal/terminal-view";
 import { useFocusWhenSelected } from "@/components/tiles/use-tile-focus-effect";
 import { Button } from "@/components/ui/button";
+import { ipc } from "@/ipc/manager";
 import type { NiriLayoutItem } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
 
@@ -40,6 +41,11 @@ export function TerminalTileContent({
   const focusTerminal = useCallback(() => terminalViewRef.current?.focus(), []);
   useFocusWhenSelected(item.id, focusTerminal);
 
+  const closeTerminal = useCallback(() => {
+    ipc.client.terminal.kill({ id: item.id }).catch(console.error);
+    removeItem(item.id);
+  }, [item.id, removeItem]);
+
   return (
     <BaseNode
       className={className}
@@ -51,7 +57,7 @@ export function TerminalTileContent({
         <BaseNodeHeaderTitle className="text-xs">{title}</BaseNodeHeaderTitle>
         <Button
           aria-label={`Close ${title}`}
-          onClick={() => removeItem(item.id)}
+          onClick={closeTerminal}
           size="icon-sm"
           variant="ghost"
         >

@@ -2,9 +2,12 @@ import type { BrowserWindow } from "electron";
 import * as nodePty from "node-pty";
 
 export interface PtySession {
+  buffer: string;
   id: string;
   pty: nodePty.IPty;
 }
+
+const MAX_BUFFER_CHARS = 250_000;
 
 const sessions = new Map<string, PtySession>();
 
@@ -19,10 +22,10 @@ export function spawnTerminal(
   cols: number,
   rows: number,
   cwd?: string
-): number {
+): { backlog: string; pid: number } {
   const existing = sessions.get(id);
   if (existing) {
-    return existing.pty.pid;
+    return { pid: existing.pty.pid, backlog: existing.buffer };
   }
 
   const shell =
@@ -38,9 +41,14 @@ export function spawnTerminal(
     env: process.env as Record<string, string>,
   });
 
-  sessions.set(id, { pty, id });
+  const session: PtySession = { pty, id, buffer: "" };
+  sessions.set(id, session);
 
   pty.onData((data) => {
+    session.buffer += data;
+    if (session.buffer.length > MAX_BUFFER_CHARS) {
+      session.buffer = session.buffer.slice(-MAX_BUFFER_CHARS);
+    }
     mainWindow?.webContents.send("terminal:data", id, data);
   });
 
@@ -49,7 +57,7 @@ export function spawnTerminal(
     sessions.delete(id);
   });
 
-  return pty.pid;
+  return { pid: pty.pid, backlog: "" };
 }
 
 export function writeTerminal(id: string, data: string) {

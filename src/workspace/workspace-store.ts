@@ -1,7 +1,23 @@
 import path from "pathe";
 import { create } from "zustand";
+import { ipc } from "@/ipc/manager";
+import type { NiriCanvasLayout } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
 import type { Canvas, Project } from "./types";
+
+function killTerminalItems(layout?: NiriCanvasLayout) {
+  if (!layout) {
+    return;
+  }
+
+  for (const workspace of layout.workspaces) {
+    for (const item of workspace.items) {
+      if (item.ref.type === "terminal") {
+        ipc.client.terminal.kill({ id: item.id }).catch(console.error);
+      }
+    }
+  }
+}
 
 interface CreateCanvasOptions {
   branch?: string | null;
@@ -69,6 +85,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const project = state.projects.find((p) => p.id === projectId);
     if (!project) {
       return;
+    }
+
+    const layoutState = useLayoutStore.getState();
+    for (const canvas of project.canvases) {
+      const layout =
+        layoutState.layoutsByCanvas[canvas.id] ??
+        (layoutState.activeCanvasId === canvas.id
+          ? layoutState.layout
+          : undefined);
+      killTerminalItems(layout);
+      useLayoutStore.getState().removeCanvasLayout(canvas.id);
     }
 
     if (state.activeProjectId === projectId) {
@@ -172,6 +199,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           ?.id ?? null;
       useLayoutStore.getState().setActiveCanvas(fallbackCanvasId);
     }
+
+    const layoutState = useLayoutStore.getState();
+    const layout =
+      layoutState.layoutsByCanvas[canvasId] ??
+      (layoutState.activeCanvasId === canvasId
+        ? layoutState.layout
+        : undefined);
+    killTerminalItems(layout);
     useLayoutStore.getState().removeCanvasLayout(canvasId);
 
     set((prev) => {

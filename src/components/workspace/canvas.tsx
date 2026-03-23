@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useTheme } from "@/components/theme-provider";
 import { NiriRenderer } from "@/components/workspace/niri-renderer";
 import { WorkspaceContext } from "@/components/workspace/workspace-context";
+import { ipc } from "@/ipc/manager";
 import type {
   CommandHandlerMap,
   ShortcutMatchContext,
@@ -21,49 +22,44 @@ function isInputFocused() {
 }
 
 interface LayoutLocation {
-  column: NiriCanvasLayout["workspaces"][number]["columns"][number];
-  columnIndex: number;
   item: NiriLayoutItem;
   itemIndex: number;
   workspace: NiriCanvasLayout["workspaces"][number];
+  workspaceIndex: number;
 }
 
 function getFocusedLocation(layout: NiriCanvasLayout): LayoutLocation | null {
-  const focusedId = layout.camera.focusedItemId;
+  const focusedId = layout.selectedItemId;
 
-  for (const workspace of layout.workspaces) {
-    const columnIndex = workspace.columns.findIndex((column) =>
-      column.items.some((item) => item.id === focusedId)
+  for (const [workspaceIndex, workspace] of layout.workspaces.entries()) {
+    const itemIndex = workspace.items.findIndex(
+      (item) => item.id === focusedId
     );
-    if (columnIndex < 0) {
+    if (itemIndex < 0) {
       continue;
     }
 
-    const column = workspace.columns[columnIndex];
-    const itemIndex = column.items.findIndex((item) => item.id === focusedId);
     return {
       workspace,
-      column,
-      columnIndex,
-      item: column.items[itemIndex],
+      workspaceIndex,
+      item: workspace.items[itemIndex],
       itemIndex,
     };
   }
 
   const workspace =
-    layout.workspaces.find(
-      (candidate) => candidate.id === layout.camera.activeWorkspaceId
-    ) ?? layout.workspaces[0];
-  const column = workspace?.columns[0];
-  const item = column?.items[0];
-  if (!(workspace && column && item)) {
+    layout.workspaces.find((candidate) => candidate.items.length > 0) ??
+    layout.workspaces[0];
+  const item = workspace?.items[0];
+  if (!(workspace && item)) {
     return null;
   }
 
   return {
     workspace,
-    column,
-    columnIndex: 0,
+    workspaceIndex: layout.workspaces.findIndex(
+      (candidate) => candidate.id === workspace.id
+    ),
     item,
     itemIndex: 0,
   };
@@ -87,12 +83,7 @@ function moveFocusedItem(horizontal: number, vertical: number) {
   }
 
   if (vertical !== 0) {
-    const targetIndex = focused.itemIndex + vertical;
-    if (targetIndex < 0 || targetIndex >= focused.column.items.length) {
-      return;
-    }
-
-    store.moveItem(focused.item.id, focused.column.id, targetIndex);
+    store.moveItemToAdjacentWorkspace(focused.item.id, vertical > 0 ? 1 : -1);
     return;
   }
 
@@ -100,18 +91,25 @@ function moveFocusedItem(horizontal: number, vertical: number) {
     return;
   }
 
-  if (focused.column.items.length === 1) {
-    const targetIndex = focused.columnIndex + horizontal;
-    if (targetIndex < 0 || targetIndex >= focused.workspace.columns.length) {
-      return;
-    }
-
-    store.moveColumn(focused.column.id, focused.workspace.id, targetIndex);
+  const targetIndex = focused.itemIndex + horizontal;
+  if (targetIndex < 0 || targetIndex >= focused.workspace.items.length) {
     return;
   }
 
-  const targetIndex = focused.columnIndex + (horizontal > 0 ? 1 : 0);
-  store.moveItemToNewColumn(focused.item.id, targetIndex);
+  store.moveItem(focused.item.id, focused.workspace.id, targetIndex);
+}
+
+function moveFocusedColumnToWorkspace(vertical: number) {
+  if (vertical === 0) {
+    return;
+  }
+
+  const store = useLayoutStore.getState();
+  const focused = getFocusedLocation(store.layout);
+  if (!focused) {
+    return;
+  }
+  store.moveItemToAdjacentWorkspace(focused.item.id, vertical > 0 ? 1 : -1);
 }
 
 export interface CanvasKeybindingState {
@@ -137,17 +135,13 @@ export function Canvas({
   onKeybindingStateChange,
 }: CanvasProps) {
   const layout = useLayoutStore((state) =>
-    isActive
-      ? state.layout
-      : (state.layoutsByCanvas[canvasId] ?? EMPTY_LAYOUT)
+    isActive ? state.layout : (state.layoutsByCanvas[canvasId] ?? EMPTY_LAYOUT)
   );
-  const addColumnRight = useLayoutStore((state) => state.addColumnRight);
-  const addItemBelow = useLayoutStore((state) => state.addItemBelow);
+  const addItem = useLayoutStore((state) => state.addItem);
   const addWorkspaceBelow = useLayoutStore((state) => state.addWorkspaceBelow);
   const removeItem = useLayoutStore((state) => state.removeItem);
   const focusNeighbor = useLayoutStore((state) => state.focusNeighbor);
   const toggleOverview = useLayoutStore((state) => state.toggleOverview);
-  const toggleTabbed = useLayoutStore((state) => state.toggleTabbed);
   const { toggleTheme } = useTheme();
 
   const canvasHandlers = useMemo<CommandHandlerMap>(
@@ -158,16 +152,22 @@ export function Canvas({
       "canvas.zoomOut": NOOP,
       "canvas.selectAll": NOOP,
       "canvas.deleteSelected": () => {
-        const focused =
-          useLayoutStore.getState().layout.camera.focusedItemId;
-        if (focused) {
-          removeItem(focused);
+        const store = useLayoutStore.getState();
+        const focused = getFocusedLocation(store.layout);
+        if (!focused) {
+          return;
         }
+
+        if (focused.item.ref.type === "terminal") {
+          ipc.client.terminal
+            .kill({ id: focused.item.id })
+            .catch(console.error);
+        }
+
+        removeItem(focused.item.id);
       },
-      "tiling.addRight": () =>
-        addColumnRight(createLayoutItem({ type: "picker" })),
-      "tiling.addBelow": () =>
-        addItemBelow(createLayoutItem({ type: "picker" })),
+      "tiling.addRight": () => addItem(createLayoutItem({ type: "picker" })),
+      "tiling.addBelow": () => addItem(createLayoutItem({ type: "picker" })),
       "tiling.addWorkspaceBelow": () =>
         addWorkspaceBelow(createLayoutItem({ type: "picker" })),
       "tiling.focusLeft": () => focusNeighbor(-1, 0),
@@ -178,18 +178,17 @@ export function Canvas({
       "tiling.moveRight": () => moveFocusedItem(1, 0),
       "tiling.moveUp": () => moveFocusedItem(0, -1),
       "tiling.moveDown": () => moveFocusedItem(0, 1),
+      "tiling.moveColumnToWorkspaceUp": () => moveFocusedColumnToWorkspace(-1),
+      "tiling.moveColumnToWorkspaceDown": () => moveFocusedColumnToWorkspace(1),
       "tiling.toggleOverview": toggleOverview,
-      "tiling.toggleTabbed": toggleTabbed,
       "theme.toggle": toggleTheme,
     }),
     [
-      addColumnRight,
-      addItemBelow,
+      addItem,
       addWorkspaceBelow,
       focusNeighbor,
       removeItem,
       toggleOverview,
-      toggleTabbed,
       toggleTheme,
     ]
   );
