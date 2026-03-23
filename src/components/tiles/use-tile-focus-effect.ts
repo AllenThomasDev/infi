@@ -1,23 +1,23 @@
 import { useEffect } from "react";
 
-interface UseNodeSelectionEffectsOptions {
+interface UseTileFocusEffectOptions {
   containerRef: React.RefObject<HTMLElement | null>;
   focusTarget: string;
-  selected?: boolean;
+  isFocused?: boolean;
 }
 
-export function useNodeSelectionEffects({
+export function useTileFocusEffect({
   containerRef,
   focusTarget,
-  selected = false,
-}: UseNodeSelectionEffectsOptions) {
+  isFocused = false,
+}: UseTileFocusEffectOptions) {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) {
       return;
     }
 
-    if (selected) {
+    if (isFocused) {
       const target = container.querySelector<HTMLElement>(focusTarget);
       if (target && !container.contains(document.activeElement)) {
         target.focus();
@@ -28,5 +28,5 @@ export function useNodeSelectionEffects({
     if (container.contains(document.activeElement)) {
       (document.activeElement as HTMLElement).blur?.();
     }
-  }, [containerRef, focusTarget, selected]);
+  }, [containerRef, focusTarget, isFocused]);
 }

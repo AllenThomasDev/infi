@@ -1,4 +1,3 @@
-import { ReactFlowProvider } from "@xyflow/react";
 import {
   Canvas,
   type CanvasKeybindingState,
@@ -37,15 +36,13 @@ export function WorkspaceContainer({
               className={isCanvasActive ? "absolute inset-0" : "hidden"}
               key={canvas.id}
             >
-              <ReactFlowProvider>
-                <Canvas
-                  branchPickerOpen={branchPickerOpen}
-                  commandPaletteOpen={commandPaletteOpen}
-                  directory={directory}
-                  isActive={isCanvasActive}
-                  onKeybindingStateChange={onKeybindingStateChange}
-                />
-              </ReactFlowProvider>
+              <Canvas
+                branchPickerOpen={branchPickerOpen}
+                commandPaletteOpen={commandPaletteOpen}
+                directory={directory}
+                isActive={isCanvasActive}
+                onKeybindingStateChange={onKeybindingStateChange}
+              />
             </div>
           );
         })

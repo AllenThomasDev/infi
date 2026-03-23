@@ -5,7 +5,7 @@ import type {
   NiriLayoutItem,
   NiriWorkspace,
 } from "@/layout/layout-types";
-import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/tile-constants";
+import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
 
 function makeItem(

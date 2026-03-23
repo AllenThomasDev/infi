@@ -1,11 +1,7 @@
-import type { NodeProps } from "@xyflow/react";
 import type { LucideIcon } from "lucide-react";
-import { Plus } from "lucide-react";
+import { Globe, Plus, Terminal } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { BaseNode } from "@/components/base-node";
-import { pickerNodeOptions } from "@/components/flow/node-registry";
-import type { PickerFlowNode } from "@/components/flow/types";
-import { useNodeActions } from "@/components/flow/use-node-actions";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -22,10 +18,18 @@ interface PickerOption {
   type: "browser" | "terminal";
 }
 
-const NIRI_PICKER_OPTIONS: PickerOption[] = pickerNodeOptions.flatMap(
-  (option) =>
-    option.type === "browser" || option.type === "terminal" ? [option] : []
-);
+const PICKER_OPTIONS: PickerOption[] = [
+  {
+    type: "browser",
+    icon: Globe,
+    label: "Browser",
+  },
+  {
+    type: "terminal",
+    icon: Terminal,
+    label: "Terminal",
+  },
+];
 
 interface PickerTileContentProps {
   isFocused: boolean;
@@ -117,7 +121,7 @@ export function PickerTileContent({
                 <CommandList>
                   <CommandEmpty>No types found.</CommandEmpty>
                   <CommandGroup>
-                    {NIRI_PICKER_OPTIONS.map((option) => {
+                    {PICKER_OPTIONS.map((option) => {
                       const Icon = option.icon;
                       return (
                         <CommandItem
@@ -142,19 +146,5 @@ export function PickerTileContent({
         </div>
       </BaseNode>
     </div>
-  );
-}
-
-export default function PickerNode({
-  id,
-  selected,
-}: NodeProps<PickerFlowNode>) {
-  const { removeSelf, replaceSelf } = useNodeActions(id);
-  return (
-    <PickerTileContent
-      isFocused={selected}
-      onCancel={removeSelf}
-      onSelectType={replaceSelf}
-    />
   );
 }

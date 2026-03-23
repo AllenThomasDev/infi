@@ -1,4 +1,3 @@
-import type { NodeProps } from "@xyflow/react";
 import { ArrowLeftIcon, ArrowRightIcon, RefreshCcwIcon, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -12,8 +11,6 @@ import {
   BrowserToolbar,
   BrowserToolbarButton,
 } from "@/components/browser/browser-chrome";
-import type { BrowserFlowNode } from "@/components/flow/types";
-import { useNodeActions } from "@/components/flow/use-node-actions";
 import { Button } from "@/components/ui/button";
 
 const SHARED_PARTITION = "persist:browser";
@@ -99,29 +96,12 @@ function normalizeUrl(input: string): string {
   return `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`;
 }
 
-export default function BrowserNode({
-  id,
-  data,
-  selected,
-}: NodeProps<BrowserFlowNode>) {
-  const { removeSelf } = useNodeActions(id);
-  return (
-    <BrowserTileContent
-      initialUrl={data.url}
-      isFocused={selected}
-      onClose={removeSelf}
-      title={data.title}
-    />
-  );
-}
-
 export function BrowserTileContent({
   initialUrl,
   isFocused,
   onClose,
   title,
 }: BrowserTileContentProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const webviewRef = useRef<Electron.WebviewTag>(null);
   const [currentUrl, setCurrentUrl] = useState(
     initialUrl || DEFAULT_BROWSER_URL
@@ -266,7 +246,7 @@ export function BrowserTileContent({
           <BrowserAddressInput />
         </BrowserToolbar>
 
-        <div className="relative min-h-0 flex-1" ref={containerRef}>
+        <div className="relative min-h-0 flex-1">
           <webview
             className="absolute inset-0"
             partition={SHARED_PARTITION}

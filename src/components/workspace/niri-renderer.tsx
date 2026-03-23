@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { NiriColumn } from "@/components/workspace/niri-column";
-import { TILE_WIDTH } from "@/layout/tile-constants";
+import { TILE_WIDTH } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
 import { cn } from "@/utils/tailwind";
 

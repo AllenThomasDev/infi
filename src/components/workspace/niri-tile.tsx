@@ -2,9 +2,9 @@ import type { KeyboardEvent } from "react";
 import {
   BrowserTileContent,
   DEFAULT_BROWSER_URL,
-} from "@/components/flow/browser-node";
-import { PickerTileContent } from "@/components/flow/picker-node";
-import { TerminalTileContent } from "@/components/flow/terminal-node";
+} from "@/components/tiles/browser-tile";
+import { PickerTileContent } from "@/components/tiles/picker-tile";
+import { TerminalTileContent } from "@/components/tiles/terminal-tile";
 import type { NiriLayoutItem } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
 

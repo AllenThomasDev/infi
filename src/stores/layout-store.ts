@@ -5,7 +5,7 @@ import type {
   NiriLayoutItem,
   NiriWorkspace,
 } from "@/layout/layout-types";
-import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/tile-constants";
+import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/layout-types";
 
 const MIN_COLUMN_WIDTH = Math.round(TILE_WIDTH * 0.25);
 const MIN_ITEM_HEIGHT = Math.round(TILE_HEIGHT * 0.25);

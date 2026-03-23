@@ -1,4 +1,3 @@
-import type { NodeProps } from "@xyflow/react";
 import { X } from "lucide-react";
 import { useRef } from "react";
 import {
@@ -6,10 +5,8 @@ import {
   BaseNodeHeader,
   BaseNodeHeaderTitle,
 } from "@/components/base-node";
-import type { TerminalFlowNode } from "@/components/flow/types";
-import { useNodeActions } from "@/components/flow/use-node-actions";
-import { useNodeSelectionEffects } from "@/components/flow/use-node-selection-effects";
 import TerminalView from "@/components/terminal/terminal-view";
+import { useTileFocusEffect } from "@/components/tiles/use-tile-focus-effect";
 import { Button } from "@/components/ui/button";
 
 interface TerminalTileContentProps {
@@ -27,10 +24,10 @@ export function TerminalTileContent({
 }: TerminalTileContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useNodeSelectionEffects({
+  useTileFocusEffect({
     containerRef,
     focusTarget: "textarea, input, [tabindex]",
-    selected: isFocused,
+    isFocused,
   });
 
   return (
@@ -50,22 +47,5 @@ export function TerminalTileContent({
         <TerminalView terminalId={terminalId} />
       </div>
     </BaseNode>
-  );
-}
-
-export default function TerminalNode({
-  id,
-  data,
-  selected,
-}: NodeProps<TerminalFlowNode>) {
-  const { removeSelf } = useNodeActions(id);
-
-  return (
-    <TerminalTileContent
-      isFocused={selected}
-      onClose={removeSelf}
-      terminalId={data.terminalId}
-      title={data.title}
-    />
   );
 }

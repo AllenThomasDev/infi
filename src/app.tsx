@@ -2,7 +2,6 @@ import { RouterProvider } from "@tanstack/react-router";
 import React, { useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
-import "@xyflow/react/dist/style.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LOCAL_STORAGE_KEYS } from "@/constants";
