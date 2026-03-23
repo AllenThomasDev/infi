@@ -59,7 +59,7 @@ function ProjectItem({
   return (
     <Collapsible className="group/collapsible" defaultOpen={isActive}>
       <SidebarMenuItem>
-        <SidebarMenuButton className="relative" onClick={onSwitch} tooltip={project.name}>
+        <SidebarMenuButton className="relative" onClick={onSwitch}>
           {isActive ? (
             <div className="absolute top-1/2 left-0 h-4 w-1 -translate-y-1/2 rounded-r-full bg-sidebar-primary" />
           ) : null}
