@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Globe, Plus, Terminal } from "lucide-react";
+import { Plus, Terminal } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { BaseNode } from "@/components/base-node";
 import {
@@ -23,15 +23,10 @@ import { cn } from "@/utils/tailwind";
 interface PickerOption {
   icon: LucideIcon;
   label: string;
-  type: "browser" | "terminal";
+  type: "terminal";
 }
 
 const PICKER_OPTIONS: PickerOption[] = [
-  {
-    type: "browser",
-    icon: Globe,
-    label: "Browser",
-  },
   {
     type: "terminal",
     icon: Terminal,

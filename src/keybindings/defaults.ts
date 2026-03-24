@@ -81,12 +81,6 @@ export const DEFAULT_KEYBINDINGS: readonly KeybindingRule[] = [
     command: "tiling.toggleOverview",
     label: "Toggle Overview",
   },
-  {
-    key: "enter",
-    command: "browser.activate",
-    label: "Activate Browser",
-    when: "browserSelected && !inputFocus",
-  },
   { key: "mod+shift+p", command: "app.commandPalette" },
   { key: "mod+shift+n", command: "workspace.newCanvas", label: "New Canvas" },
   { key: "mod+o", command: "workspace.openProject", label: "Open Project" },

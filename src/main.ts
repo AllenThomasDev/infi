@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow, session, webContents } from "electron";
+import { app, BrowserWindow, session } from "electron";
 import { ipcMain } from "electron/main";
 import { UpdateSourceType, updateElectronApp } from "update-electron-app";
 import { ipcContext } from "@/ipc/context";
@@ -31,8 +31,6 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: true,
       nodeIntegrationInSubFrames: false,
-      webviewTag: true,
-
       preload,
     },
   });
@@ -90,41 +88,9 @@ async function setupORPC() {
   });
 }
 
-function setupWebviewKeyForwarding() {
-  const registered = new Map<number, () => void>();
-
-  ipcMain.on(IPC_CHANNELS.WEBVIEW_REGISTER, (event, webContentsId: number) => {
-    const wc = webContents.fromId(webContentsId);
-    if (!wc) {
-      return;
-    }
-
-    const handler = (_e: Electron.Event, input: Electron.Input) => {
-      if (input.type === "keyDown" && input.key === "Escape") {
-        event.sender.send(IPC_CHANNELS.WEBVIEW_ESCAPE, webContentsId);
-      }
-    };
-
-    wc.on("before-input-event", handler);
-    registered.set(webContentsId, () => wc.off("before-input-event", handler));
-  });
-
-  ipcMain.on(
-    IPC_CHANNELS.WEBVIEW_UNREGISTER,
-    (_event, webContentsId: number) => {
-      const cleanup = registered.get(webContentsId);
-      if (cleanup) {
-        cleanup();
-        registered.delete(webContentsId);
-      }
-    }
-  );
-}
-
 app.whenReady().then(async () => {
   try {
     createWindow();
-    setupWebviewKeyForwarding();
     await installExtensions();
     checkForUpdates();
     await setupORPC();

@@ -1,5 +1,4 @@
 import type { CSSProperties } from "react";
-import { BrowserTileContent } from "@/components/tiles/browser-tile";
 import { PickerTileContent } from "@/components/tiles/picker-tile";
 import { TerminalTileContent } from "@/components/tiles/terminal-tile";
 import type { TileCoordinates } from "@/components/tiles/tile-coordinates";
@@ -21,16 +20,6 @@ export function NiriTile({
   style,
 }: NiriTileProps) {
   switch (item.ref.type) {
-    case "browser":
-      return (
-        <BrowserTileContent
-          className={className}
-          coordinates={coordinates}
-          item={item}
-          selected={selected}
-          style={style}
-        />
-      );
     case "picker":
       return (
         <PickerTileContent

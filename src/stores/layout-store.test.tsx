@@ -54,7 +54,7 @@ describe("useLayoutStore", () => {
   });
 
   it("keeps layout isolated per active canvas", () => {
-    const first = makeItem("canvas-a-item", { type: "browser" });
+    const first = makeItem("canvas-a-item", { type: "terminal" });
     const second = makeItem("canvas-b-item", { type: "terminal" });
 
     useLayoutStore.getState().setActiveCanvas("canvas-a");
@@ -133,9 +133,9 @@ describe("useLayoutStore", () => {
   });
 
   it("adds a tile to the right of the selected tile", () => {
-    const first = makeItem("first", { type: "browser" });
-    const second = makeItem("second", { type: "browser" });
-    const third = makeItem("third", { type: "browser" });
+    const first = makeItem("first", { type: "terminal" });
+    const second = makeItem("second", { type: "terminal" });
+    const third = makeItem("third", { type: "terminal" });
 
     seedLayout(makeLayout([makeWorkspace("ws-1", [first, third])], first.id));
 

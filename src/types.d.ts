@@ -11,13 +11,6 @@ interface TerminalBridge {
   ) => () => void;
 }
 
-interface WebviewBridge {
-  onEscape: (callback: (webContentsId: number) => void) => () => void;
-  registerWebview: (webContentsId: number) => void;
-  unregisterWebview: (webContentsId: number) => void;
-}
-
 interface Window {
   terminalBridge: TerminalBridge;
-  webviewBridge: WebviewBridge;
 }

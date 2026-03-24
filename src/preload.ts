@@ -9,22 +9,6 @@ window.addEventListener("message", (event) => {
   }
 });
 
-contextBridge.exposeInMainWorld("webviewBridge", {
-  registerWebview: (webContentsId: number) =>
-    ipcRenderer.send(IPC_CHANNELS.WEBVIEW_REGISTER, webContentsId),
-  unregisterWebview: (webContentsId: number) =>
-    ipcRenderer.send(IPC_CHANNELS.WEBVIEW_UNREGISTER, webContentsId),
-  onEscape: (callback: (webContentsId: number) => void) => {
-    const listener = (
-      _event: Electron.IpcRendererEvent,
-      webContentsId: number
-    ) => callback(webContentsId);
-    ipcRenderer.on(IPC_CHANNELS.WEBVIEW_ESCAPE, listener);
-    return () =>
-      ipcRenderer.removeListener(IPC_CHANNELS.WEBVIEW_ESCAPE, listener);
-  },
-});
-
 contextBridge.exposeInMainWorld("terminalBridge", {
   onData: (callback: (id: string, data: string) => void) => {
     const listener = (
