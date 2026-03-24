@@ -11,7 +11,7 @@ import { WorkspaceContainer } from "@/components/workspace/workspace-container";
 import { WorkspaceSidebar } from "@/components/workspace-sidebar";
 import { useConfirm } from "@/hooks/use-confirm";
 import type { CommandHandlerMap } from "@/keybindings/types";
-import { useKeybindings } from "@/keybindings/useKeybindings";
+import { useKeybindings } from "@/keybindings/use-keybindings";
 import { useBranchPickerState } from "@/workspace/use-branch-picker-state";
 import { useWorkspaceActions } from "@/workspace/use-workspace-actions";
 import { useWorkspaceCommandHandlers } from "@/workspace/use-workspace-command-handlers";

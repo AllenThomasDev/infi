@@ -1,10 +1,10 @@
 import type { BrowserWindow } from "electron";
-import * as nodePty from "node-pty";
+import { type IPty, spawn } from "node-pty";
 
 export interface PtySession {
   buffer: string;
   id: string;
-  pty: nodePty.IPty;
+  pty: IPty;
 }
 
 const MAX_BUFFER_CHARS = 250_000;
@@ -33,7 +33,7 @@ export function spawnTerminal(
       ? (process.env.COMSPEC ?? "cmd.exe")
       : (process.env.SHELL ?? "/bin/zsh");
 
-  const pty = nodePty.spawn(shell, [], {
+  const pty = spawn(shell, [], {
     name: "xterm-256color",
     cols,
     rows,

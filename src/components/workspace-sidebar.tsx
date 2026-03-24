@@ -85,6 +85,7 @@ function ProjectItem({
         </SidebarMenuAction>
 
         <SidebarMenuAction
+          className="hover:bg-foreground/10"
           onClick={(e) => {
             e.stopPropagation();
             Promise.resolve(onCloseProject()).catch(console.error);

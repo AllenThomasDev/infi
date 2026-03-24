@@ -22,7 +22,7 @@ export function useWorkspaceCommandHandlers({
 
   const switchCanvasByOffset = useCallback(
     (offset: number) => {
-      if (!activeCanvasId || !activeProject) {
+      if (!(activeCanvasId && activeProject)) {
         return;
       }
 
@@ -59,9 +59,7 @@ export function useWorkspaceCommandHandlers({
       },
       "workspace.closeCanvas": () => {
         if (activeCanvasId) {
-          Promise.resolve(onCloseCanvas(activeCanvasId)).catch(
-            console.error
-          );
+          Promise.resolve(onCloseCanvas(activeCanvasId)).catch(console.error);
         }
       },
       "workspace.prevCanvas": () => switchCanvasByOffset(-1),

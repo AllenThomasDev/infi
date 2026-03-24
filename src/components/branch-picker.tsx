@@ -1,5 +1,5 @@
 import { GitBranch, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   Command,
   CommandDialog,
@@ -176,6 +176,27 @@ export function BranchPicker({
                 <CommandGroup heading="Branches">
                   {branches.map((branch) => {
                     const hasCanvas = canvasByBranch?.has(branch.name) ?? false;
+                    let status: ReactNode = null;
+
+                    if (hasCanvas) {
+                      status = (
+                        <span className="ml-auto text-[0.625rem] text-muted-foreground uppercase tracking-[0.2em]">
+                          open
+                        </span>
+                      );
+                    } else if (branch.current) {
+                      status = (
+                        <span className="ml-auto text-[0.625rem] text-muted-foreground uppercase tracking-[0.2em]">
+                          current
+                        </span>
+                      );
+                    } else if (branch.worktreePath) {
+                      status = (
+                        <span className="text-[0.625rem] text-muted-foreground uppercase tracking-[0.2em]">
+                          reuse
+                        </span>
+                      );
+                    }
 
                     return (
                       <CommandItem
@@ -187,19 +208,7 @@ export function BranchPicker({
                       >
                         <GitBranch />
                         <span>{branch.name}</span>
-                        {hasCanvas ? (
-                          <span className="ml-auto text-[0.625rem] text-muted-foreground uppercase tracking-[0.2em]">
-                            open
-                          </span>
-                        ) : branch.current ? (
-                          <span className="ml-auto text-[0.625rem] text-muted-foreground uppercase tracking-[0.2em]">
-                            current
-                          </span>
-                        ) : branch.worktreePath ? (
-                          <span className="text-[0.625rem] text-muted-foreground uppercase tracking-[0.2em]">
-                            reuse
-                          </span>
-                        ) : null}
+                        {status}
                       </CommandItem>
                     );
                   })}

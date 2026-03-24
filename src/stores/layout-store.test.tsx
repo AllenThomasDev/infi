@@ -65,14 +65,14 @@ describe("useLayoutStore", () => {
     useLayoutStore.getState().addItem(second);
 
     useLayoutStore.getState().setActiveCanvas("canvas-a");
-    expect(currentLayout().rows[0]?.items.map((item) => item.id)).toEqual(
-      [first.id]
-    );
+    expect(currentLayout().rows[0]?.items.map((item) => item.id)).toEqual([
+      first.id,
+    ]);
 
     useLayoutStore.getState().setActiveCanvas("canvas-b");
-    expect(currentLayout().rows[0]?.items.map((item) => item.id)).toEqual(
-      [second.id]
-    );
+    expect(currentLayout().rows[0]?.items.map((item) => item.id)).toEqual([
+      second.id,
+    ]);
   });
 
   it("toggles overview mode without changing selection", () => {

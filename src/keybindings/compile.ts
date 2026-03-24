@@ -26,7 +26,7 @@ export function compileResolvedKeybindingRule(
 }
 
 export function compileResolvedKeybindingsConfig(
-  config: ReadonlyArray<KeybindingRule>
+  config: readonly KeybindingRule[]
 ): ResolvedKeybindingsConfig {
   const compiled: ResolvedKeybindingsConfig = [];
   for (const rule of config) {

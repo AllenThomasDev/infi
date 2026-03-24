@@ -32,7 +32,7 @@ export function parseKeybindingShortcut(
   const tokens = [...rawTokens];
 
   let trailingEmptyCount = 0;
-  while (tokens[tokens.length - 1] === "") {
+  while (tokens.at(-1) === "") {
     trailingEmptyCount += 1;
     tokens.pop();
   }
