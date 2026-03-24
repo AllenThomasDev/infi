@@ -8,6 +8,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandState,
 } from "@/components/ui/command";
 import { ipc } from "@/ipc/manager";
 
@@ -147,13 +148,11 @@ export function BranchPicker({
           value={query}
         />
         <CommandList>
-          {loading ? (
-            <div className="px-3 py-6 text-muted-foreground text-xs">
-              Loading branches...
-            </div>
-          ) : null}
+          {loading ? <CommandState>Loading branches...</CommandState> : null}
           {!loading && error ? (
-            <div className="px-3 py-4 text-destructive text-xs">{error}</div>
+            <CommandState className="py-4 text-destructive">
+              {error}
+            </CommandState>
           ) : null}
           {loading ? null : (
             <>

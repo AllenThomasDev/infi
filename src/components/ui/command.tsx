@@ -116,6 +116,19 @@ function CommandEmpty({
   )
 }
 
+function CommandState({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="command-state"
+      className={cn("px-3 py-6 text-xs/relaxed text-muted-foreground", className)}
+      {...props}
+    />
+  )
+}
+
 function CommandGroup({
   className,
   ...props
@@ -187,6 +200,7 @@ export {
   CommandInput,
   CommandList,
   CommandEmpty,
+  CommandState,
   CommandGroup,
   CommandItem,
   CommandShortcut,

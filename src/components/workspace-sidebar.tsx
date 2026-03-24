@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import ModeToggle from "@/components/mode-toggle";
+import { Button } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
@@ -18,6 +19,7 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
@@ -74,18 +76,19 @@ function ProjectItem({
         </SidebarMenuButton>
 
         <SidebarMenuAction
-          className="right-7 hover:bg-foreground/10"
+          className="right-7"
           onClick={(e) => {
             e.stopPropagation();
             onSwitch();
             onCreateCanvas();
           }}
+          showOnHover
+          title="New Branch"
         >
           <GitBranchPlus />
         </SidebarMenuAction>
 
         <SidebarMenuAction
-          className="hover:bg-foreground/10"
           onClick={(e) => {
             e.stopPropagation();
             Promise.resolve(onCloseProject()).catch(console.error);
@@ -130,13 +133,13 @@ function CanvasItem({
   onSwitch: () => void;
 }) {
   return (
-    <SidebarMenuSubItem className="group/canvas-item">
+    <SidebarMenuSubItem>
       <SidebarMenuSubButton
         asChild
         className={
           isActive
-            ? "w-full group-hover/canvas-item:bg-sidebar-accent group-hover/canvas-item:text-sidebar-accent-foreground [&>svg]:text-inherit"
-            : "w-full text-sidebar-foreground/70 group-hover/canvas-item:bg-sidebar-accent group-hover/canvas-item:text-sidebar-accent-foreground [&>svg]:text-inherit"
+            ? "w-full pr-8 [&>svg]:text-inherit"
+            : "w-full pr-8 text-sidebar-foreground/70 [&>svg]:text-inherit"
         }
         isActive={isActive}
       >
@@ -145,16 +148,18 @@ function CanvasItem({
           <span>{canvas.name}</span>
         </button>
       </SidebarMenuSubButton>
-      <button
-        className="absolute top-1 right-1 rounded-sm p-0.5 opacity-0 transition-opacity hover:bg-sidebar-accent group-hover/canvas-item:opacity-100"
+      <Button
+        className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-[calc(var(--radius-sm)-2px)] p-0 text-sidebar-foreground opacity-0 transition-[color,opacity,background-color] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring group-focus-within/menu-sub-item:opacity-100 group-hover/menu-sub-item:opacity-100 md:opacity-0"
         onClick={(e) => {
           e.stopPropagation();
           onClose();
         }}
+        title="Close Canvas"
         type="button"
+        variant="ghost"
       >
         <X className="size-3" />
-      </button>
+      </Button>
     </SidebarMenuSubItem>
   );
 }
@@ -180,19 +185,16 @@ export function WorkspaceSidebar({
     >
       <SidebarContent>
         <SidebarGroup className={isMac ? "pt-14" : undefined}>
-          <div className="flex items-center justify-between px-2">
-            <SidebarGroupLabel className="px-0">Projects</SidebarGroupLabel>
-            <button
-              className="flex size-8 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              onClick={() => {
-                Promise.resolve(onOpenProject()).catch(console.error);
-              }}
-              title="Open Project"
-              type="button"
-            >
-              <Import className="size-4" />
-            </button>
-          </div>
+          <SidebarGroupLabel>Projects</SidebarGroupLabel>
+          <SidebarGroupAction
+            onClick={() => {
+              Promise.resolve(onOpenProject()).catch(console.error);
+            }}
+            title="Open Project"
+            type="button"
+          >
+            <Import className="size-4" />
+          </SidebarGroupAction>
           <SidebarGroupContent>
             <SidebarMenu>
               {projects.map((project) => (

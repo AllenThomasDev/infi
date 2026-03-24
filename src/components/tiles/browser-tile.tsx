@@ -276,21 +276,41 @@ export function BrowserTileContent({
           />
           {webviewFocused ? null : (
             <button
-              aria-label="Focus browser"
-              className="absolute inset-0 cursor-pointer"
-              onClick={() => {
-                webviewRef.current?.focus();
-                setWebviewFocused(true);
-              }}
+              aria-label="Activate browser"
+              className="absolute inset-0 z-10 flex cursor-pointer items-center justify-center bg-background/68 p-4 text-left backdrop-blur-[1px]"
+              onClick={focusWebview}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  webviewRef.current?.focus();
-                  setWebviewFocused(true);
+                  focusWebview();
                 }
               }}
               type="button"
             />
+          )}
+          {webviewFocused ? null : (
+            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-4">
+              <div className="max-w-sm rounded-xl border bg-card/96 p-4 text-center shadow-lg backdrop-blur-sm">
+                <p className="font-medium text-sm">
+                  Browser controls are inactive
+                </p>
+                <p className="mt-1 text-muted-foreground text-xs">
+                  Click anywhere or use the button below to interact with the
+                  page.
+                </p>
+                <Button
+                  className="pointer-events-auto mt-3"
+                  onClick={focusWebview}
+                  size="sm"
+                  type="button"
+                >
+                  Activate Browser
+                </Button>
+                <p className="mt-2 text-[0.625rem] text-muted-foreground uppercase tracking-wide">
+                  Press Esc to return to tile controls
+                </p>
+              </div>
+            </div>
           )}
           {loadError ? (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/90 p-4 text-center">

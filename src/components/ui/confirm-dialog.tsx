@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -49,11 +50,12 @@ export function ConfirmDialog({
         </DialogHeader>
         {checkboxLabel ? (
           <label className="flex items-start gap-3 text-xs">
-            <input
+            <Checkbox
               checked={checked}
-              className="mt-0.5 size-4 rounded border-input"
-              onChange={(event) => setChecked(event.target.checked)}
-              type="checkbox"
+              className="mt-0.5"
+              onCheckedChange={(nextChecked) => {
+                setChecked(nextChecked === true);
+              }}
             />
             <span className="space-y-1">
               <span className="block font-medium text-foreground">
