@@ -24,6 +24,12 @@ const SUBPROCESS_POLL_INTERVAL_MS = 1000;
 const sessions = new Map<string, PtySession>();
 
 let mainWindow: BrowserWindow | null = null;
+
+function sendToRenderer(channel: string, ...args: unknown[]) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(channel, ...args);
+  }
+}
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let shuttingDown = false;
 
@@ -68,7 +74,7 @@ function updatePollingState() {
             return;
           }
           session.hasRunningSubprocess = isRunning;
-          mainWindow?.webContents.send(
+          sendToRenderer(
             "terminal:activity",
             session.id,
             isRunning
@@ -173,7 +179,7 @@ export function spawnTerminal(
     if (session.buffer.length > MAX_BUFFER_CHARS) {
       session.buffer = session.buffer.slice(-MAX_BUFFER_CHARS);
     }
-    mainWindow?.webContents.send("terminal:data", id, data);
+    sendToRenderer("terminal:data", id, data);
   });
 
   pty.onExit(({ exitCode, signal }) => {
@@ -192,8 +198,8 @@ export function spawnTerminal(
       return;
     }
 
-    mainWindow?.webContents.send("terminal:activity", id, false);
-    mainWindow?.webContents.send("terminal:exit", id, exitCode, signal);
+    sendToRenderer("terminal:activity", id, false);
+    sendToRenderer("terminal:exit", id, exitCode, signal);
   });
 
   return {
@@ -214,7 +220,7 @@ export function resizeTerminal(id: string, cols: number, rows: number) {
 export function killTerminal(id: string) {
   const session = sessions.get(id);
   if (session) {
-    mainWindow?.webContents.send("terminal:activity", id, false);
+    sendToRenderer("terminal:activity", id, false);
     session.pty.kill();
     sessions.delete(id);
   }

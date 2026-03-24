@@ -230,6 +230,10 @@ export const useLayoutStore = create<LayoutState>()(
 
         state.activeCanvasId = canvasId;
         state.layout = nextLayout;
+
+        if (nextLayout.selectedItemId) {
+          bumpFocusTick(state.layout);
+        }
       });
     },
 
@@ -257,7 +261,6 @@ export const useLayoutStore = create<LayoutState>()(
         bumpFocusTick(state.layout);
         setSelection(state.layout, item.id);
       });
-      scrollToItem(item.id);
     },
 
     addItem: (item) => {
@@ -284,11 +287,9 @@ export const useLayoutStore = create<LayoutState>()(
         bumpFocusTick(state.layout);
         setSelection(state.layout, item.id);
       });
-      scrollToItem(item.id);
     },
 
     selectItem: (itemId, options) => {
-      let selected = false;
       set((state) => {
         const location = findItemLocation(state.layout, itemId);
         if (!location) {
@@ -296,15 +297,13 @@ export const useLayoutStore = create<LayoutState>()(
         }
 
         setSelection(state.layout, location.item.id);
-        selected = true;
+        if (options?.scroll) {
+          bumpFocusTick(state.layout);
+        }
       });
-      if (selected && options?.scroll) {
-        scrollToItem(itemId);
-      }
     },
 
     focusNeighbor: (horizontal, vertical) => {
-      let targetId: string | undefined;
       set((state) => {
         const selected = getSelectedLocation(state.layout);
         if (!selected) {
@@ -317,12 +316,8 @@ export const useLayoutStore = create<LayoutState>()(
 
         if (moved) {
           bumpFocusTick(state.layout);
-          targetId = state.layout.selectedItemId;
         }
       });
-      if (targetId) {
-        scrollToItem(targetId);
-      }
     },
 
     moveItem: (itemId, toRowId, index) => {
@@ -352,7 +347,6 @@ export const useLayoutStore = create<LayoutState>()(
         bumpFocusTick(state.layout);
         setSelection(state.layout, item.id);
       });
-      scrollToItem(itemId);
     },
 
     moveItemToAdjacentRow: (itemId, direction) => {
@@ -389,7 +383,6 @@ export const useLayoutStore = create<LayoutState>()(
         bumpFocusTick(state.layout);
         setSelection(state.layout, item.id);
       });
-      scrollToItem(itemId);
     },
 
     removeItem: (itemId) => {
@@ -427,10 +420,6 @@ export const useLayoutStore = create<LayoutState>()(
         bumpFocusTick(state.layout);
         setSelection(state.layout, first?.item.id);
       });
-      const nextId = useLayoutStore.getState().layout.selectedItemId;
-      if (nextId) {
-        scrollToItem(nextId);
-      }
     },
 
     replaceItem: (itemId, ref) => {
@@ -468,23 +457,4 @@ export const useLayoutStore = create<LayoutState>()(
 
 export function getLayoutStore() {
   return useLayoutStore.getState();
-}
-
-let scrollToItemCallback:
-  | ((itemId: string, behavior: ScrollBehavior) => void)
-  | null = null;
-
-export function registerScrollToItem(
-  cb: (itemId: string, behavior: ScrollBehavior) => void
-) {
-  scrollToItemCallback = cb;
-  return () => {
-    if (scrollToItemCallback === cb) {
-      scrollToItemCallback = null;
-    }
-  };
-}
-
-function scrollToItem(itemId: string, behavior: ScrollBehavior = "smooth") {
-  scrollToItemCallback?.(itemId, behavior);
 }

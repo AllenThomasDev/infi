@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { NiriTile } from "@/components/workspace/niri-tile";
 import type { NiriCanvasLayout } from "@/layout/layout-types";
 import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/layout-types";
-import { registerScrollToItem, useLayoutStore } from "@/stores/layout-store";
+import { useLayoutStore } from "@/stores/layout-store";
 import { cn } from "@/utils/tailwind";
 
 interface NiriRendererProps {
@@ -11,6 +11,7 @@ interface NiriRendererProps {
 
 export function NiriRenderer({ layout }: NiriRendererProps) {
   const selectedItemId = layout.selectedItemId;
+  const focusTick = layout.focusTick;
   const { isOverviewOpen, rows } = layout;
   const selectItem = useLayoutStore((state) => state.selectItem);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -95,29 +96,35 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
     });
   }, [markImperativeScrollActive, syncSelectionToViewport]);
 
+  // Scroll to the selected item whenever focusTick changes.
   useEffect(() => {
-    const unregister = registerScrollToItem((itemId, behavior) => {
-      markImperativeScrollActive();
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          itemRefs.current[itemId]?.scrollIntoView({
-            behavior,
-            block: "center",
-            inline: "center",
-          });
-          markImperativeScrollActive();
-        });
+    if (!selectedItemId) {
+      return;
+    }
+
+    markImperativeScrollActive();
+
+    const frame = requestAnimationFrame(() => {
+      itemRefs.current[selectedItemId]?.scrollIntoView({
+        behavior: "instant",
+        block: "center",
+        inline: "center",
       });
+      markImperativeScrollActive();
     });
 
+    return () => cancelAnimationFrame(frame);
+  }, [focusTick, markImperativeScrollActive]); // eslint-disable-line react-hooks/exhaustive-deps -- intentionally keyed on focusTick, not selectedItemId
+
+  // Clean up timers on unmount.
+  useEffect(() => {
     return () => {
-      unregister();
       if (scrollSyncTimeoutRef.current !== null) {
         cancelAnimationFrame(scrollSyncTimeoutRef.current);
       }
       releaseImperativeScroll();
     };
-  }, [markImperativeScrollActive, releaseImperativeScroll]);
+  }, [releaseImperativeScroll]);
 
   if (rows.length === 0) {
     return <div className="flex h-full items-center justify-center" />;
@@ -130,7 +137,7 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
     >
       <div
         className={cn(
-          "no-scrollbar flex min-h-0 w-full flex-1 snap-y snap-mandatory flex-col overflow-y-auto scroll-smooth px-4",
+          "no-scrollbar flex min-h-0 w-full flex-1 snap-y snap-mandatory flex-col overflow-y-auto scroll-auto px-4",
           isOverviewOpen ? "gap-5" : "gap-6"
         )}
         onScroll={handleScroll}
@@ -143,7 +150,7 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
           return (
             <section className="shrink-0 snap-center" key={row.id}>
               <div
-                className="no-scrollbar w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden scroll-smooth"
+                className="no-scrollbar w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden scroll-auto"
                 onScroll={handleScroll}
               >
                 <div
