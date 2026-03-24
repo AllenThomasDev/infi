@@ -4,10 +4,14 @@ import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { KeybindingsProvider } from "@/keybindings/keybindings-context";
 import { LOCAL_STORAGE_KEYS } from "@/constants";
+import { initializeWorkspacePersistence } from "@/workspace/persisted-workspace-state";
 import { updateAppLanguage } from "./actions/language";
 import { router } from "./utils/routes";
 import "./localization/i18n";
+
+initializeWorkspacePersistence();
 
 export default function App() {
   const { i18n } = useTranslation();
@@ -18,9 +22,11 @@ export default function App() {
 
   return (
     <ThemeProvider defaultTheme="dark" storageKey={LOCAL_STORAGE_KEYS.THEME}>
-      <TooltipProvider>
-        <RouterProvider router={router} />
-      </TooltipProvider>
+      <KeybindingsProvider>
+        <TooltipProvider>
+          <RouterProvider router={router} />
+        </TooltipProvider>
+      </KeybindingsProvider>
     </ThemeProvider>
   );
 }

@@ -1,11 +1,11 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow, session } from "electron";
+import { app, BrowserWindow, Menu, session } from "electron";
 import { ipcMain } from "electron/main";
 import { UpdateSourceType, updateElectronApp } from "update-electron-app";
 import { ipcContext } from "@/ipc/context";
 import {
-  killAllTerminals,
+  detachAllTerminals,
   setTerminalWindow,
 } from "@/ipc/terminal/pty-manager";
 import { IPC_CHANNELS } from "./constants";
@@ -20,12 +20,8 @@ function createWindow() {
     width: 800,
     height: 600,
     autoHideMenuBar: true,
-    ...(process.platform === "darwin"
-      ? {
-          titleBarStyle: "hiddenInset" as const,
-          trafficLightPosition: { x: 16, y: 18 },
-        }
-      : {}),
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 16, y: 18 },
     webPreferences: {
       devTools: inDevelopment,
       contextIsolation: true,
@@ -88,8 +84,50 @@ async function setupORPC() {
   });
 }
 
+function setupMenu() {
+  const template: Electron.MenuItemConstructorOptions[] = [
+    { role: "appMenu" },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+      ],
+    },
+    ...(inDevelopment
+      ? [
+          {
+            label: "View",
+            submenu: [
+              { role: "reload" as const },
+              { role: "forceReload" as const },
+              { role: "toggleDevTools" as const },
+            ],
+          },
+        ]
+      : []),
+    {
+      role: "windowMenu",
+      submenu: [
+        { role: "minimize" },
+        { role: "zoom" },
+        { type: "separator" },
+        { role: "front" },
+      ],
+    },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 app.whenReady().then(async () => {
   try {
+    setupMenu();
     createWindow();
     await installExtensions();
     checkForUpdates();
@@ -99,12 +137,12 @@ app.whenReady().then(async () => {
   }
 });
 
-//osX only
+app.on("before-quit", () => {
+  detachAllTerminals();
+});
+
 app.on("window-all-closed", () => {
-  killAllTerminals();
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  detachAllTerminals();
 });
 
 app.on("activate", () => {
@@ -112,4 +150,3 @@ app.on("activate", () => {
     createWindow();
   }
 });
-//osX only ends

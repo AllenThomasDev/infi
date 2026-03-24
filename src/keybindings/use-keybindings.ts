@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { ipc } from "@/ipc/manager";
+import { useEffect, useRef } from "react";
+import { useKeybindingsConfig } from "./keybindings-context";
 import { resolveShortcutCommand } from "./match";
 import type {
   CommandHandlerMap,
-  ResolvedKeybindingsConfig,
   ShortcutMatchContext,
 } from "./types";
 
@@ -20,18 +19,11 @@ export function useKeybindings({
   context,
   enabled = true,
 }: UseKeybindingsOptions) {
-  const [keybindings, setKeybindings] = useState<ResolvedKeybindingsConfig>([]);
+  const keybindings = useKeybindingsConfig();
   const handlersRef = useRef(handlers);
   const contextRef = useRef(context);
   handlersRef.current = handlers;
   contextRef.current = context;
-
-  useEffect(() => {
-    ipc.client.keybindings
-      .getKeybindings()
-      .then((bindings) => setKeybindings(bindings as ResolvedKeybindingsConfig))
-      .catch(console.error);
-  }, []);
 
   useEffect(() => {
     if (!enabled || keybindings.length === 0) {

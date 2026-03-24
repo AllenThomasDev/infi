@@ -32,7 +32,6 @@ export const DEFAULT_KEYBINDINGS: readonly KeybindingRule[] = [
     key: "mod+w",
     command: "canvas.deleteSelected",
     label: "Close Tile",
-    when: "canvasFocus && !inputFocus",
   },
   { key: "mod+t", command: "tiling.addRight", label: "Add Tile Right" },
   {

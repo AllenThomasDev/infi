@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import ModeToggle from "@/components/mode-toggle";
+import { ShortcutTooltip } from "@/components/shortcut-tooltip";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -148,18 +149,19 @@ function CanvasItem({
           <span>{canvas.name}</span>
         </button>
       </SidebarMenuSubButton>
-      <Button
-        className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-[calc(var(--radius-sm)-2px)] p-0 text-sidebar-foreground opacity-0 transition-[color,opacity,background-color] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring group-focus-within/menu-sub-item:opacity-100 group-hover/menu-sub-item:opacity-100 md:opacity-0"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-        title="Close Canvas"
-        type="button"
-        variant="ghost"
-      >
-        <X className="size-3" />
-      </Button>
+      <ShortcutTooltip command="workspace.closeCanvas" label="Close Canvas">
+        <Button
+          className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-[calc(var(--radius-sm)-2px)] p-0 text-sidebar-foreground opacity-0 transition-[color,opacity,background-color] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring group-focus-within/menu-sub-item:opacity-100 group-hover/menu-sub-item:opacity-100 md:opacity-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          type="button"
+          variant="ghost"
+        >
+          <X className="size-3" />
+        </Button>
+      </ShortcutTooltip>
     </SidebarMenuSubItem>
   );
 }
@@ -186,15 +188,16 @@ export function WorkspaceSidebar({
       <SidebarContent>
         <SidebarGroup className={isMac ? "pt-14" : undefined}>
           <SidebarGroupLabel>Projects</SidebarGroupLabel>
-          <SidebarGroupAction
-            onClick={() => {
-              Promise.resolve(onOpenProject()).catch(console.error);
-            }}
-            title="Open Project"
-            type="button"
-          >
-            <Import className="size-4" />
-          </SidebarGroupAction>
+          <ShortcutTooltip command="workspace.openProject" label="Open Project" side="right">
+            <SidebarGroupAction
+              onClick={() => {
+                Promise.resolve(onOpenProject()).catch(console.error);
+              }}
+              type="button"
+            >
+              <Import className="size-4" />
+            </SidebarGroupAction>
+          </ShortcutTooltip>
           <SidebarGroupContent>
             <SidebarMenu>
               {projects.map((project) => (

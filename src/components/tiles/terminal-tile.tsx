@@ -73,35 +73,35 @@ export function TerminalTileContent({
       selected={selected}
       style={style}
     >
-        <BaseNodeHeader className="border-b">
-          <BaseNodeHeaderTitle className="truncate text-xs">
-            {title}
-          </BaseNodeHeaderTitle>
-          <span
-            className={`user-select-none text-[10px] ${
-              isRunning ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            {isRunning ? "Running" : "Idle"}
-          </span>
-          <Button
-            aria-label={`Close ${title}`}
-            onClick={closeTerminal}
-            size="icon-sm"
-            variant="ghost"
-          >
-            <X />
-          </Button>
-        </BaseNodeHeader>
-        <div className="min-h-0 flex-1 cursor-text p-1">
-          <TerminalView
-            onExit={handleTerminalExit}
-            onRunningChange={setIsRunning}
-            onTitleChange={setTerminalTitle}
-            ref={terminalViewRef}
-            terminalId={item.id}
-          />
-        </div>
+      <BaseNodeHeader className="border-b">
+        <BaseNodeHeaderTitle className="truncate text-xs">
+          {title}
+        </BaseNodeHeaderTitle>
+        <span
+          className={`user-select-none text-[10px] ${
+            isRunning ? "text-primary" : "text-muted-foreground"
+          }`}
+        >
+          {isRunning ? "Running" : "Idle"}
+        </span>
+        <Button
+          aria-label={`Close ${title}`}
+          onClick={closeTerminal}
+          size="icon-sm"
+          variant="ghost"
+        >
+          <X />
+        </Button>
+      </BaseNodeHeader>
+      <div className="min-h-0 flex-1 cursor-text p-1">
+        <TerminalView
+          onExit={handleTerminalExit}
+          onRunningChange={setIsRunning}
+          onTitleChange={setTerminalTitle}
+          ref={terminalViewRef}
+          terminalId={item.id}
+        />
+      </div>
     </BaseNode>
   );
 }

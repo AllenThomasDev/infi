@@ -1,5 +1,6 @@
 import { os } from "@orpc/server";
 import {
+  killAllTerminals,
   killTerminal,
   resizeTerminal,
   spawnTerminal,
@@ -28,4 +29,8 @@ export const resize = os
 
 export const kill = os.input(killTerminalInputSchema).handler(({ input }) => {
   killTerminal(input.id);
+});
+
+export const killAll = os.handler(() => {
+  killAllTerminals();
 });

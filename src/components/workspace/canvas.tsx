@@ -150,9 +150,9 @@ export function Canvas({
 
         removeItem(focused.item.id);
       },
-      "tiling.addRight": () => addItem(createLayoutItem({ type: "picker" })),
+      "tiling.addRight": () => addItem(createLayoutItem({ type: "terminal" })),
       "tiling.addBelow": () =>
-        addRowBelow(createLayoutItem({ type: "picker" })),
+        addRowBelow(createLayoutItem({ type: "terminal" })),
       "tiling.focusLeft": () => focusNeighbor(-1, 0),
       "tiling.focusRight": () => focusNeighbor(1, 0),
       "tiling.focusUp": () => focusNeighbor(0, -1),
@@ -208,6 +208,7 @@ export function Canvas({
     return (
       <WorkspaceContext.Provider value={{ directory }}>
         <EmptyCanvasState
+          actionCommand="tiling.addRight"
           actionLabel="Add Tile"
           description="This canvas is empty. Add a tile to start working here."
           onAction={() => addItem(createLayoutItem({ type: "picker" }))}

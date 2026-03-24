@@ -1,7 +1,15 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import path from "node:path";
 import type { BrowserWindow } from "electron";
 import { type IPty, spawn } from "node-pty";
+import {
+  getTmuxBin,
+  getTmuxConf,
+  hasSession as hasTmuxSession,
+  hasWindow as hasTmuxWindow,
+  MASTER_SESSION,
+  tmuxExec,
+  viewSessionName,
+} from "./tmux";
 
 export interface PtySession {
   buffer: string;
@@ -14,49 +22,26 @@ const MAX_BUFFER_CHARS = 250_000;
 const SUBPROCESS_POLL_INTERVAL_MS = 1000;
 
 const sessions = new Map<string, PtySession>();
-const execFileAsync = promisify(execFile);
 
 let mainWindow: BrowserWindow | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let shuttingDown = false;
 
-async function hasRunningSubprocess(pid: number): Promise<boolean> {
-  if (!Number.isInteger(pid) || pid <= 0) {
-    return false;
-  }
+function tmuxBaseArgs(): string[] {
+  return ["-L", "infi", "-u", "-f", getTmuxConf()];
+}
 
-  if (process.platform === "win32") {
-    const command =
-      `(Get-CimInstance Win32_Process -Filter "ParentProcessId = ${pid}" ` +
-      "-ErrorAction SilentlyContinue | Select-Object -First 1 | Measure-Object).Count";
-
-    for (const executable of ["powershell.exe", "pwsh.exe"]) {
-      const result = await execFileAsync(
-        executable,
-        ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command],
-        {
-          timeout: 1000,
-          windowsHide: true,
-        }
-      ).catch(() => null);
-
-      if (!result) {
-        continue;
-      }
-
-      const count = Number.parseInt(result.stdout.trim(), 10);
-      if (Number.isFinite(count)) {
-        return count > 0;
-      }
-    }
-
-    return false;
-  }
-
+async function checkSubprocess(session: PtySession): Promise<boolean> {
   try {
-    const result = await execFileAsync("pgrep", ["-P", String(pid)], {
-      timeout: 1000,
-    });
-    return result.stdout.trim().length > 0;
+    const cmd = tmuxExec(
+      "list-panes",
+      "-t",
+      `${MASTER_SESSION}:${session.id}`,
+      "-F",
+      "#{pane_current_command}"
+    ).trim();
+    const shellName = path.basename(process.env.SHELL ?? "zsh");
+    return cmd !== shellName;
   } catch {
     return false;
   }
@@ -77,7 +62,7 @@ function updatePollingState() {
 
   pollTimer = setInterval(() => {
     for (const session of sessions.values()) {
-      hasRunningSubprocess(session.pty.pid)
+      checkSubprocess(session)
         .then((isRunning) => {
           if (session.hasRunningSubprocess === isRunning) {
             return;
@@ -99,6 +84,64 @@ export function setTerminalWindow(window: BrowserWindow) {
   mainWindow = window;
 }
 
+function spawnTmuxTerminal(
+  id: string,
+  cols: number,
+  rows: number,
+  cwd?: string
+): IPty {
+  const resolvedCwd = cwd ?? process.env.HOME ?? process.cwd();
+  const viewName = viewSessionName(id);
+
+  if (hasTmuxWindow(id)) {
+    // Reconnect: window survives from previous app run.
+    // Kill stale linked session if it exists from a previous attach.
+    try {
+      tmuxExec("kill-session", "-t", viewName);
+    } catch {
+      // No stale session — fine.
+    }
+  } else if (hasTmuxSession()) {
+    // Master session exists, add a new window.
+    tmuxExec(
+      "new-window",
+      "-t",
+      MASTER_SESSION,
+      "-n",
+      id,
+      "-c",
+      resolvedCwd
+    );
+  } else {
+    // First terminal — create master session with initial window.
+    tmuxExec(
+      "new-session",
+      "-d",
+      "-s",
+      MASTER_SESSION,
+      "-n",
+      id,
+      "-c",
+      resolvedCwd,
+      "-x",
+      String(cols),
+      "-y",
+      String(rows)
+    );
+  }
+
+  // Create a linked session so this PTY has its own independent window view.
+  tmuxExec("new-session", "-d", "-t", MASTER_SESSION, "-s", viewName);
+  tmuxExec("select-window", "-t", `${viewName}:${id}`);
+
+  return spawn(getTmuxBin(), [...tmuxBaseArgs(), "attach-session", "-t", viewName], {
+    name: "xterm-256color",
+    cols,
+    rows,
+    env: process.env as Record<string, string>,
+  });
+}
+
 export function spawnTerminal(
   id: string,
   cols: number,
@@ -114,18 +157,7 @@ export function spawnTerminal(
     };
   }
 
-  const shell =
-    process.platform === "win32"
-      ? (process.env.COMSPEC ?? "cmd.exe")
-      : (process.env.SHELL ?? "/bin/zsh");
-
-  const pty = spawn(shell, [], {
-    name: "xterm-256color",
-    cols,
-    rows,
-    cwd: cwd ?? process.env.HOME ?? process.cwd(),
-    env: process.env as Record<string, string>,
-  });
+  const pty = spawnTmuxTerminal(id, cols, rows, cwd);
 
   const session: PtySession = {
     pty,
@@ -145,10 +177,23 @@ export function spawnTerminal(
   });
 
   pty.onExit(({ exitCode, signal }) => {
-    mainWindow?.webContents.send("terminal:activity", id, false);
-    mainWindow?.webContents.send("terminal:exit", id, exitCode, signal);
     sessions.delete(id);
     updatePollingState();
+
+    // During shutdown the PTY exits because we killed it to detach.
+    // The tmux window is still alive — don't notify the renderer.
+    if (shuttingDown) {
+      return;
+    }
+
+    // If tmux window is still alive, this was an unexpected detach (not user exit).
+    // Don't emit exit so the tile stays and can reconnect.
+    if (hasTmuxWindow(id)) {
+      return;
+    }
+
+    mainWindow?.webContents.send("terminal:activity", id, false);
+    mainWindow?.webContents.send("terminal:exit", id, exitCode, signal);
   });
 
   return {
@@ -168,20 +213,46 @@ export function resizeTerminal(id: string, cols: number, rows: number) {
 
 export function killTerminal(id: string) {
   const session = sessions.get(id);
-  if (!session) {
-    return;
+  if (session) {
+    mainWindow?.webContents.send("terminal:activity", id, false);
+    session.pty.kill();
+    sessions.delete(id);
   }
-  mainWindow?.webContents.send("terminal:activity", id, false);
-  session.pty.kill();
-  sessions.delete(id);
+
+  try {
+    tmuxExec("kill-session", "-t", viewSessionName(id));
+  } catch {
+    // Already dead.
+  }
+  try {
+    tmuxExec("kill-window", "-t", `${MASTER_SESSION}:${id}`);
+  } catch {
+    // Already dead.
+  }
+
   updatePollingState();
 }
 
-export function killAllTerminals() {
+export function detachAllTerminals() {
+  shuttingDown = true;
   for (const session of sessions.values()) {
-    mainWindow?.webContents.send("terminal:activity", session.id, false);
     session.pty.kill();
   }
   sessions.clear();
   updatePollingState();
+}
+
+export function killAllTerminals() {
+  shuttingDown = true;
+  for (const session of sessions.values()) {
+    session.pty.kill();
+  }
+  sessions.clear();
+  updatePollingState();
+
+  try {
+    tmuxExec("kill-server");
+  } catch {
+    // Server may not be running.
+  }
 }

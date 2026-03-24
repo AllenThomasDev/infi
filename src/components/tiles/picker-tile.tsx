@@ -109,44 +109,44 @@ export function PickerTileContent({
       selected={selected}
       style={style}
     >
-        <div className="flex h-full flex-col gap-4 p-4">
-          <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-[0.24em]">
-            <Plus className="h-3.5 w-3.5" />
-            New Pane
-          </div>
-          <div className="flex min-h-0 flex-1 items-center justify-center">
-            <div className="w-full max-w-md rounded-xl border border-primary/30 border-dashed bg-background/80 p-3 shadow-sm">
-              <Command className="rounded-lg border-0 bg-transparent shadow-none">
-                <CommandInput
-                  onKeyDown={(e) => e.key === "Escape" && cancel()}
-                  placeholder="Choose what to open here..."
-                />
-                <CommandList>
-                  <CommandEmpty>No types found.</CommandEmpty>
-                  <CommandGroup>
-                    {PICKER_OPTIONS.map((option) => {
-                      const Icon = option.icon;
-                      return (
-                        <CommandItem
-                          key={option.type}
-                          onSelect={() => confirm(option.type)}
-                        >
-                          <Icon className="mr-2 h-4 w-4" />
-                          {option.label}
-                        </CommandItem>
-                      );
-                    })}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <Button onClick={cancel} size="sm" variant="ghost">
-              Cancel
-            </Button>
+      <div className="flex h-full flex-col gap-4 p-4">
+        <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-[0.24em]">
+          <Plus className="h-3.5 w-3.5" />
+          New Pane
+        </div>
+        <div className="flex min-h-0 flex-1 items-center justify-center">
+          <div className="w-full max-w-md rounded-xl border border-primary/30 border-dashed bg-background/80 p-3 shadow-sm">
+            <Command className="rounded-lg border-0 bg-transparent shadow-none">
+              <CommandInput
+                onKeyDown={(e) => e.key === "Escape" && cancel()}
+                placeholder="Choose what to open here..."
+              />
+              <CommandList>
+                <CommandEmpty>No types found.</CommandEmpty>
+                <CommandGroup>
+                  {PICKER_OPTIONS.map((option) => {
+                    const Icon = option.icon;
+                    return (
+                      <CommandItem
+                        key={option.type}
+                        onSelect={() => confirm(option.type)}
+                      >
+                        <Icon className="mr-2 h-4 w-4" />
+                        {option.label}
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </CommandList>
+            </Command>
           </div>
         </div>
+        <div className="flex justify-end">
+          <Button onClick={cancel} size="sm" variant="ghost">
+            Cancel
+          </Button>
+        </div>
+      </div>
     </BaseNode>
   );
 }

@@ -24,7 +24,7 @@ export function BaseNode({
       )}
       <div
         className={cn(
-          "relative flex min-h-0 flex-1 flex-col rounded-[4px] border border-border bg-card text-card-foreground shadow-sm transition-[background-color,border-color,box-shadow]",
+          "relative flex min-h-0 flex-1 flex-col border border-border bg-card text-card-foreground shadow-sm transition-[background-color,border-color,box-shadow]",
           "hover:border-accent-foreground/25 hover:bg-card hover:shadow-md",
           "data-[selected=true]:border-primary/40 data-[selected=true]:bg-card data-[selected=true]:shadow-lg",
           "data-[selected=true]:hover:border-primary/50 data-[selected=true]:hover:bg-card",

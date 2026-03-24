@@ -25,9 +25,7 @@ interface GitResult {
 }
 
 function runGit(cwd: string, args: string[]) {
-  return execFileAsync("git", ["-C", cwd, ...args], {
-    windowsHide: true,
-  });
+  return execFileAsync("git", ["-C", cwd, ...args]);
 }
 
 async function branchExists(cwd: string, branch: string) {

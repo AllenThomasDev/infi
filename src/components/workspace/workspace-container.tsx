@@ -25,6 +25,7 @@ export function WorkspaceContainer({
     <>
       {activeCanvasId ? null : (
         <EmptyCanvasState
+          actionCommand="workspace.newCanvas"
           actionLabel={onCreateCanvas ? "New Branch" : undefined}
           description="Select a branch or create a new one to get started."
           onAction={onCreateCanvas}

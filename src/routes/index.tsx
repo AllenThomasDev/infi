@@ -3,6 +3,7 @@ import { FolderGit2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BranchPicker } from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
+import { ShortcutKbd } from "@/components/shortcut-tooltip";
 import { StatusBar } from "@/components/status-bar";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +42,7 @@ function WelcomeScreen({ onOpenProject }: { onOpenProject: () => void }) {
         <Button onClick={onOpenProject} size="lg" variant="outline">
           <FolderGit2 data-icon="inline-start" />
           Open Project
+          <ShortcutKbd command="workspace.openProject" />
         </Button>
       </EmptyContent>
     </Empty>

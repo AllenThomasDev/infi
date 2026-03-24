@@ -86,8 +86,16 @@ const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
       fitAddonRef.current = fitAddon;
 
       const inputDisposable = terminal.onData((data) => {
+        // Strip terminal response sequences (DA1, DA2, DA3) that xterm.js
+        // generates when queried. Without this filter, responses leak back
+        // through the PTY into the tmux pane where the shell echoes them
+        // as visible garbage like "1;2c0;276;0c".
+        const filtered = data.replace(/\x1b\[[?>=][\d;]*c/g, "");
+        if (!filtered) {
+          return;
+        }
         ipc.client.terminal
-          .write({ id: terminalId, data })
+          .write({ id: terminalId, data: filtered })
           .catch(console.error);
       });
 
