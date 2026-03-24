@@ -4,6 +4,7 @@ import {
   GitBranch,
   GitBranchPlus,
   Import,
+  Minus,
   X,
 } from "lucide-react";
 import ModeToggle from "@/components/mode-toggle";
@@ -43,6 +44,7 @@ function ProjectItem({
   activeCanvasId,
   isActive,
   onCloseCanvas,
+  onCloseProject,
   onCreateCanvas,
   onSwitch,
   onSwitchCanvas,
@@ -51,6 +53,7 @@ function ProjectItem({
   activeCanvasId: string | null;
   isActive: boolean;
   onCloseCanvas: (canvasId: string) => void | Promise<void>;
+  onCloseProject: () => void | Promise<void>;
   onCreateCanvas: () => void;
   onSwitch: () => void;
   onSwitchCanvas: (canvasId: string) => void;
@@ -71,7 +74,7 @@ function ProjectItem({
         </SidebarMenuButton>
 
         <SidebarMenuAction
-          className="hover:bg-foreground/10"
+          className="right-7 hover:bg-foreground/10"
           onClick={(e) => {
             e.stopPropagation();
             onSwitch();
@@ -79,6 +82,17 @@ function ProjectItem({
           }}
         >
           <GitBranchPlus />
+        </SidebarMenuAction>
+
+        <SidebarMenuAction
+          onClick={(e) => {
+            e.stopPropagation();
+            Promise.resolve(onCloseProject()).catch(console.error);
+          }}
+          showOnHover
+          title="Unregister Project"
+        >
+          <Minus />
         </SidebarMenuAction>
 
         <CollapsibleContent>
@@ -146,6 +160,7 @@ function CanvasItem({
 
 export function WorkspaceSidebar({
   onCloseCanvas,
+  onCloseProject,
   onCreateCanvas,
   onOpenProject,
 }: WorkspaceSidebarProps) {
@@ -185,6 +200,7 @@ export function WorkspaceSidebar({
                   isActive={project.id === activeProjectId}
                   key={project.id}
                   onCloseCanvas={onCloseCanvas}
+                  onCloseProject={() => onCloseProject(project.id)}
                   onCreateCanvas={() => onCreateCanvas(project.id)}
                   onSwitch={() => switchProject(project.id)}
                   onSwitchCanvas={switchCanvas}

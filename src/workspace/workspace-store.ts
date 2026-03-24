@@ -45,6 +45,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   activeProjectId: null,
 
   createProject: (directory: string) => {
+    const existingProject = get().projects.find(
+      (project) => project.directory === directory
+    );
+
+    if (existingProject) {
+      get().switchProject(existingProject.id);
+      return existingProject.id;
+    }
+
     const now = Date.now();
     const projectId = crypto.randomUUID();
 

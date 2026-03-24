@@ -5,12 +5,14 @@ import { ipc } from "@/ipc/manager";
 import { useWorkspaceStore } from "@/workspace/workspace-store";
 
 interface UseWorkspaceActionsOptions {
-  confirm: (options: {
+  confirmWithCheckbox: (options: {
+    checkboxDescription?: string;
+    checkboxLabel: string;
     confirmLabel?: string;
     description: string;
     title: string;
     variant?: "default" | "destructive";
-  }) => Promise<boolean>;
+  }) => Promise<{ checked: boolean; confirmed: boolean }>;
 }
 
 function getWorktreeRoot(directory: string) {
@@ -58,7 +60,9 @@ function getOrphanedWorktreePath(
   return null;
 }
 
-export function useWorkspaceActions({ confirm }: UseWorkspaceActionsOptions) {
+export function useWorkspaceActions({
+  confirmWithCheckbox,
+}: UseWorkspaceActionsOptions) {
   const projects = useWorkspaceStore((s) => s.projects);
   const createCanvasAction = useWorkspaceStore((s) => s.createCanvas);
   const closeCanvasAction = useWorkspaceStore((s) => s.closeCanvas);
@@ -69,30 +73,32 @@ export function useWorkspaceActions({ confirm }: UseWorkspaceActionsOptions) {
       const orphan = getOrphanedWorktreePath(projects, canvasId);
 
       if (orphan) {
-        const shouldRemove = await confirm({
-          title: "Delete Worktree?",
-          description: `This canvas is the only one linked to the worktree at "${path.basename(orphan.worktreePath)}". Delete the worktree too?`,
-          confirmLabel: "Delete Worktree",
-          variant: "destructive",
+        const result = await confirmWithCheckbox({
+          title: "Close canvas?",
+          description: `Close this canvas for worktree "${path.basename(orphan.worktreePath)}"?`,
+          checkboxLabel: "Also delete this worktree",
+          confirmLabel: "Close Canvas",
         });
 
-        if (!shouldRemove) {
+        if (!result.confirmed) {
           return;
         }
 
-        try {
-          await ipc.client.git.removeWorktree({
-            cwd: orphan.projectDirectory,
-            path: orphan.worktreePath,
-          });
-        } catch (error) {
-          console.error("Failed to remove worktree", error);
+        if (result.checked) {
+          try {
+            await ipc.client.git.removeWorktree({
+              cwd: orphan.projectDirectory,
+              path: orphan.worktreePath,
+            });
+          } catch (error) {
+            console.error("Failed to remove worktree", error);
+          }
         }
       }
 
       closeCanvasAction(canvasId);
     },
-    [closeCanvasAction, confirm, projects]
+    [closeCanvasAction, confirmWithCheckbox, projects]
   );
 
   const openBranch = useCallback(

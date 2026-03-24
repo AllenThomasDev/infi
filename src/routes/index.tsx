@@ -31,11 +31,14 @@ function WelcomeScreen({ onOpenProject }: { onOpenProject: () => void }) {
 }
 
 function HomePage() {
-  const closeProject = useWorkspaceStore((s) => s.closeProject);
+  const closeProjectAction = useWorkspaceStore((s) => s.closeProject);
   const hasProjects = useWorkspaceStore((s) => s.projects.length > 0);
+  const projects = useWorkspaceStore((s) => s.projects);
 
-  const { confirm, confirmDialog } = useConfirm();
-  const { closeCanvas, openBranch } = useWorkspaceActions({ confirm });
+  const { confirm, confirmDialog, confirmWithCheckbox } = useConfirm();
+  const { closeCanvas, openBranch } = useWorkspaceActions({
+    confirmWithCheckbox,
+  });
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [canvasKeybindingState, setCanvasKeybindingState] =
     useState<CanvasKeybindingState | null>(null);
@@ -70,6 +73,25 @@ function HomePage() {
     handlers: commandHandlers,
     context: canvasKeybindingState?.context,
   });
+
+  async function closeProject(projectId: string) {
+    const project = projects.find((entry) => entry.id === projectId);
+    if (!project) {
+      return;
+    }
+
+    const shouldClose = await confirm({
+      title: "Unregister project?",
+      description: `Remove ${project.name} from the workspace? Open canvases will close, but the repository and any worktrees stay on disk.`,
+      confirmLabel: "Unregister Project",
+    });
+
+    if (!shouldClose) {
+      return;
+    }
+
+    closeProjectAction(projectId);
+  }
 
   return (
     <SidebarProvider>
