@@ -40,10 +40,22 @@ export const DEFAULT_KEYBINDINGS: readonly KeybindingRule[] = [
     command: "tiling.addBelow",
     label: "Add Tile Below",
   },
-  { key: "mod+alt+left", command: "tiling.focusLeft", label: "Focus Left" },
-  { key: "mod+alt+right", command: "tiling.focusRight", label: "Focus Right" },
-  { key: "mod+alt+up", command: "tiling.focusUp", label: "Focus Up" },
-  { key: "mod+alt+down", command: "tiling.focusDown", label: "Focus Down" },
+  {
+    key: "mod+alt+left",
+    command: "tiling.focusLeft",
+    label: "Focus Tile Left",
+  },
+  {
+    key: "mod+alt+right",
+    command: "tiling.focusRight",
+    label: "Focus Tile Right",
+  },
+  { key: "mod+alt+up", command: "tiling.focusUp", label: "Focus Tile Up" },
+  {
+    key: "mod+alt+down",
+    command: "tiling.focusDown",
+    label: "Focus Tile Down",
+  },
   {
     key: "mod+alt+shift+left",
     command: "tiling.moveLeft",
