@@ -10,8 +10,8 @@ function killTerminalItems(layout?: NiriCanvasLayout) {
     return;
   }
 
-  for (const workspace of layout.workspaces) {
-    for (const item of workspace.items) {
+  for (const row of layout.rows) {
+    for (const item of row.items) {
       if (item.ref.type === "terminal") {
         ipc.client.terminal.kill({ id: item.id }).catch(console.error);
       }

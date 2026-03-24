@@ -12,7 +12,7 @@ export interface NiriLayoutItem {
   ref: NiriItemRef;
 }
 
-export interface NiriWorkspace {
+export interface NiriRow {
   id: string;
   items: NiriLayoutItem[];
 }
@@ -20,7 +20,7 @@ export interface NiriWorkspace {
 export interface NiriCanvasLayout {
   focusTick: number;
   isOverviewOpen: boolean;
-  lastColumnByWorkspaceId: Record<string, number>;
+  lastColumnByRowId: Record<string, number>;
+  rows: NiriRow[];
   selectedItemId?: string;
-  workspaces: NiriWorkspace[];
 }

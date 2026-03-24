@@ -2,6 +2,10 @@ import type { LucideIcon } from "lucide-react";
 import { Globe, Plus, Terminal } from "lucide-react";
 import { useCallback, useRef } from "react";
 import { BaseNode } from "@/components/base-node";
+import {
+  formatTileCoordinates,
+  type TileCoordinates,
+} from "@/components/tiles/tile-coordinates";
 import { useFocusWhenSelected } from "@/components/tiles/use-tile-focus-effect";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +41,7 @@ const PICKER_OPTIONS: PickerOption[] = [
 
 interface PickerTileContentProps {
   className?: string;
+  coordinates: TileCoordinates;
   item: NiriLayoutItem;
   selected: boolean;
   style?: React.CSSProperties;
@@ -44,6 +49,7 @@ interface PickerTileContentProps {
 
 export function PickerTileContent({
   className,
+  coordinates,
   item,
   selected,
   style,
@@ -97,7 +103,7 @@ export function PickerTileContent({
         <div className="flex h-full flex-col gap-4 p-4">
           <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-[0.24em]">
             <Plus className="h-3.5 w-3.5" />
-            New Pane
+            New Pane {formatTileCoordinates(coordinates)}
           </div>
           <div className="flex min-h-0 flex-1 items-center justify-center">
             <div className="w-full max-w-md rounded-xl border border-primary/30 border-dashed bg-background/80 p-3 shadow-sm">

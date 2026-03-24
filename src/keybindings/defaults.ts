@@ -32,7 +32,7 @@ export const DEFAULT_KEYBINDINGS: readonly KeybindingRule[] = [
   {
     key: "mod+n",
     command: "tiling.addWorkspaceBelow",
-    label: "Add Workspace Below",
+    label: "Add Row Below",
   },
   { key: "mod+alt+left", command: "tiling.focusLeft", label: "Focus Left" },
   { key: "mod+alt+right", command: "tiling.focusRight", label: "Focus Right" },
@@ -51,12 +51,12 @@ export const DEFAULT_KEYBINDINGS: readonly KeybindingRule[] = [
   {
     key: "mod+alt+shift+up",
     command: "tiling.moveColumnToWorkspaceUp",
-    label: "Move Column to Workspace Up",
+    label: "Move Column to Row Up",
   },
   {
     key: "mod+alt+shift+down",
     command: "tiling.moveColumnToWorkspaceDown",
-    label: "Move Column to Workspace Down",
+    label: "Move Column to Row Down",
   },
   {
     key: "mod+alt+o",

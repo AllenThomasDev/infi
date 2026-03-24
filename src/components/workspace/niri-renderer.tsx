@@ -11,12 +11,8 @@ interface NiriRendererProps {
 export function NiriRenderer({ layout }: NiriRendererProps) {
   const selectedItemId = layout.selectedItemId;
   const focusTick = layout.focusTick;
-  const { isOverviewOpen, workspaces } = layout;
+  const { isOverviewOpen, rows } = layout;
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  const activeWorkspaceId = workspaces.find((workspace) =>
-    workspace.items.some((item) => item.id === selectedItemId)
-  )?.id;
 
   useEffect(() => {
     if (!selectedItemId || isOverviewOpen) {
@@ -36,7 +32,7 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
     });
   }, [focusTick, selectedItemId, isOverviewOpen]);
 
-  if (workspaces.length === 0) {
+  if (rows.length === 0) {
     return <div className="flex h-full items-center justify-center" />;
   }
 
@@ -52,27 +48,9 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
           className="shrink-0"
           style={{ height: `calc(50% - ${TILE_HEIGHT / 2}px)` }}
         />
-        {workspaces.map((workspace, workspaceIndex) => {
-          const workspaceName = `Workspace ${workspaceIndex + 1}`;
-          const isActiveWorkspace =
-            workspace.id === activeWorkspaceId ||
-            (!activeWorkspaceId && workspaceIndex === 0);
-
+        {rows.map((row, rowIndex) => {
           return (
-            <section className="shrink-0 snap-center" key={workspace.id}>
-              <div
-                className={cn(
-                  "pointer-events-none pb-1 font-medium text-[11px] tracking-[0.02em]",
-                  isActiveWorkspace
-                    ? "text-foreground/90"
-                    : "text-muted-foreground/90"
-                )}
-                style={{
-                  paddingLeft: `calc(50% - ${TILE_WIDTH / 2}px + 4px)`,
-                }}
-              >
-                {workspaceName}
-              </div>
+            <section className="shrink-0 snap-center" key={row.id}>
               <div className="w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden scroll-smooth">
                 <div
                   className={cn(
@@ -85,7 +63,7 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
                     className="shrink-0"
                     style={{ width: `calc(50% - ${TILE_WIDTH / 2}px)` }}
                   />
-                  {workspace.items.map((item) => {
+                  {row.items.map((item, columnIndex) => {
                     return (
                       <div
                         className="h-full min-h-0 shrink-0 snap-center"
@@ -97,6 +75,10 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
                       >
                         <NiriTile
                           className="h-full"
+                          coordinates={{
+                            column: columnIndex + 1,
+                            row: rowIndex + 1,
+                          }}
                           item={item}
                           selected={item.id === selectedItemId}
                         />

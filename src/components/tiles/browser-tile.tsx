@@ -11,6 +11,10 @@ import {
   BrowserToolbar,
   BrowserToolbarButton,
 } from "@/components/browser/browser-chrome";
+import {
+  formatTileCoordinates,
+  type TileCoordinates,
+} from "@/components/tiles/tile-coordinates";
 import { useFocusWhenSelected } from "@/components/tiles/use-tile-focus-effect";
 import { Button } from "@/components/ui/button";
 import type { NiriLayoutItem } from "@/layout/layout-types";
@@ -34,6 +38,7 @@ interface LoadErrorState {
 
 interface BrowserTileContentProps {
   className?: string;
+  coordinates: TileCoordinates;
   item: NiriLayoutItem;
   selected: boolean;
   style?: React.CSSProperties;
@@ -100,20 +105,21 @@ function normalizeUrl(input: string): string {
   return `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`;
 }
 
-function tileLabel(item: NiriLayoutItem) {
+function tileLabel(item: NiriLayoutItem, coordinates: TileCoordinates) {
   const suffix = item.id.split("-").at(-1)?.slice(0, 4) ?? item.id.slice(0, 4);
-  return `Browser ${suffix}`;
+  return `Browser ${suffix} ${formatTileCoordinates(coordinates)}`;
 }
 
 export function BrowserTileContent({
   className,
+  coordinates,
   item,
   selected,
   style,
 }: BrowserTileContentProps) {
   const removeItem = useLayoutStore((state) => state.removeItem);
   const selectItem = useLayoutStore((state) => state.selectItem);
-  const title = tileLabel(item);
+  const title = tileLabel(item, coordinates);
   const webviewRef = useRef<Electron.WebviewTag>(null);
   const [currentUrl, setCurrentUrl] = useState(DEFAULT_BROWSER_URL);
   const [canGoBack, setCanGoBack] = useState(false);

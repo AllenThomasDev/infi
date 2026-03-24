@@ -3,7 +3,7 @@ import { immer } from "zustand/middleware/immer";
 import type {
   NiriCanvasLayout,
   NiriLayoutItem,
-  NiriWorkspace,
+  NiriRow,
 } from "@/layout/layout-types";
 import { TILE_WIDTH } from "@/layout/layout-types";
 
@@ -15,19 +15,19 @@ type ResizeMap = Record<string, number | undefined>;
 interface ItemLocation {
   item: NiriLayoutItem;
   itemIndex: number;
-  workspace: NiriWorkspace;
-  workspaceIndex: number;
+  row: NiriRow;
+  rowIndex: number;
 }
 
 interface LayoutState {
   activeCanvasId: string | null;
   addItem: (item: NiriLayoutItem) => void;
-  addWorkspaceBelow: (item: NiriLayoutItem) => void;
+  addRowBelow: (item: NiriLayoutItem) => void;
   focusNeighbor: (horizontal: number, vertical: number) => void;
   layout: NiriCanvasLayout;
   layoutsByCanvas: Record<string, NiriCanvasLayout>;
-  moveItem: (itemId: string, toWorkspaceId: string, index?: number) => void;
-  moveItemToAdjacentWorkspace: (itemId: string, direction: -1 | 1) => void;
+  moveItem: (itemId: string, toRowId: string, index?: number) => void;
+  moveItemToAdjacentRow: (itemId: string, direction: -1 | 1) => void;
   removeCanvasLayout: (canvasId: string) => void;
   removeItem: (itemId: string) => void;
   replaceItem: (itemId: string, ref: NiriLayoutItem["ref"]) => void;
@@ -37,7 +37,7 @@ interface LayoutState {
   toggleOverview: () => void;
 }
 
-function createWorkspace(): NiriWorkspace {
+function createRow(): NiriRow {
   return { id: crypto.randomUUID(), items: [] };
 }
 
@@ -45,9 +45,9 @@ export function createInitialLayout(): NiriCanvasLayout {
   return {
     focusTick: 0,
     isOverviewOpen: false,
-    lastColumnByWorkspaceId: {},
+    lastColumnByRowId: {},
     selectedItemId: undefined,
-    workspaces: [],
+    rows: [],
   };
 }
 
@@ -63,14 +63,14 @@ function findItemLocation(
   layout: NiriCanvasLayout,
   itemId: string
 ): ItemLocation | null {
-  for (const [workspaceIndex, workspace] of layout.workspaces.entries()) {
-    const itemIndex = workspace.items.findIndex((item) => item.id === itemId);
+  for (const [rowIndex, row] of layout.rows.entries()) {
+    const itemIndex = row.items.findIndex((item) => item.id === itemId);
     if (itemIndex >= 0) {
       return {
-        item: workspace.items[itemIndex],
+        item: row.items[itemIndex],
         itemIndex,
-        workspace,
-        workspaceIndex,
+        row,
+        rowIndex,
       };
     }
   }
@@ -79,14 +79,14 @@ function findItemLocation(
 }
 
 function firstItemLocation(layout: NiriCanvasLayout): ItemLocation | null {
-  for (const [workspaceIndex, workspace] of layout.workspaces.entries()) {
-    const item = workspace.items[0];
+  for (const [rowIndex, row] of layout.rows.entries()) {
+    const item = row.items[0];
     if (item) {
       return {
         item,
         itemIndex: 0,
-        workspace,
-        workspaceIndex,
+        row,
+        rowIndex,
       };
     }
   }
@@ -94,9 +94,9 @@ function firstItemLocation(layout: NiriCanvasLayout): ItemLocation | null {
   return null;
 }
 
-function pruneEmptyWorkspaces(layout: NiriCanvasLayout) {
-  layout.workspaces = layout.workspaces.filter(
-    (workspace) => workspace.items.length > 0
+function pruneEmptyRows(layout: NiriCanvasLayout) {
+  layout.rows = layout.rows.filter(
+    (row) => row.items.length > 0
   );
 }
 
@@ -113,13 +113,13 @@ function setSelection(layout: NiriCanvasLayout, itemId?: string) {
     return;
   }
 
-  layout.lastColumnByWorkspaceId[location.workspace.id] = location.itemIndex;
+  layout.lastColumnByRowId[location.row.id] = location.itemIndex;
 }
 
 function ensureValidSelection(layout: NiriCanvasLayout) {
-  pruneEmptyWorkspaces(layout);
+  pruneEmptyRows(layout);
 
-  if (!layout.workspaces.length) {
+  if (!layout.rows.length) {
     setSelection(layout, undefined);
     return;
   }
@@ -127,7 +127,7 @@ function ensureValidSelection(layout: NiriCanvasLayout) {
   if (layout.selectedItemId) {
     const selected = findItemLocation(layout, layout.selectedItemId);
     if (selected) {
-      layout.lastColumnByWorkspaceId[selected.workspace.id] =
+      layout.lastColumnByRowId[selected.row.id] =
         selected.itemIndex;
       return;
     }
@@ -157,7 +157,7 @@ function selectHorizontalNeighbor(
   }
 
   const targetIndex = selected.itemIndex + (horizontal > 0 ? 1 : -1);
-  const target = selected.workspace.items[targetIndex];
+  const target = selected.row.items[targetIndex];
   if (!target) {
     return false;
   }
@@ -175,19 +175,19 @@ function selectVerticalNeighbor(
     return false;
   }
 
-  const nextWorkspace =
-    layout.workspaces[selected.workspaceIndex + (vertical > 0 ? 1 : -1)];
-  if (!nextWorkspace) {
+  const nextRow =
+    layout.rows[selected.rowIndex + (vertical > 0 ? 1 : -1)];
+  if (!nextRow) {
     return false;
   }
 
   const preferredColumn =
-    layout.lastColumnByWorkspaceId[nextWorkspace.id] ?? selected.itemIndex;
+    layout.lastColumnByRowId[nextRow.id] ?? selected.itemIndex;
   const targetIndex = clampIndex(
     preferredColumn,
-    nextWorkspace.items.length - 1
+    nextRow.items.length - 1
   );
-  const target = nextWorkspace.items[targetIndex];
+  const target = nextRow.items[targetIndex];
   if (!target) {
     return false;
   }
@@ -197,15 +197,15 @@ function selectVerticalNeighbor(
 }
 
 function getVerticalMoveInsertIndex(
-  targetWorkspaceLastColumn: number | undefined,
+  targetRowLastColumn: number | undefined,
   sourceItemIndex: number,
-  targetWorkspaceLength: number
+  targetRowLength: number
 ) {
-  if (targetWorkspaceLastColumn !== undefined) {
-    return clampIndex(targetWorkspaceLastColumn + 1, targetWorkspaceLength);
+  if (targetRowLastColumn !== undefined) {
+    return clampIndex(targetRowLastColumn + 1, targetRowLength);
   }
 
-  return clampIndex(sourceItemIndex, targetWorkspaceLength);
+  return clampIndex(sourceItemIndex, targetRowLength);
 }
 
 export const useLayoutStore = create<LayoutState>()(
@@ -248,26 +248,26 @@ export const useLayoutStore = create<LayoutState>()(
       });
     },
 
-    addWorkspaceBelow: (item) => {
+    addRowBelow: (item) => {
       set((state) => {
         const selected = getSelectedLocation(state.layout);
         const insertAt = selected
-          ? selected.workspaceIndex + 1
-          : state.layout.workspaces.length;
+          ? selected.rowIndex + 1
+          : state.layout.rows.length;
 
-        const workspace = createWorkspace();
-        workspace.items.push(item);
-        state.layout.workspaces.splice(insertAt, 0, workspace);
+        const row = createRow();
+        row.items.push(item);
+        state.layout.rows.splice(insertAt, 0, row);
         setSelection(state.layout, item.id);
       });
     },
 
     addItem: (item) => {
       set((state) => {
-        if (!state.layout.workspaces.length) {
-          const workspace = createWorkspace();
-          workspace.items.push(item);
-          state.layout.workspaces.push(workspace);
+        if (!state.layout.rows.length) {
+          const row = createRow();
+          row.items.push(item);
+          state.layout.rows.push(row);
           setSelection(state.layout, item.id);
           return;
         }
@@ -279,9 +279,9 @@ export const useLayoutStore = create<LayoutState>()(
 
         const insertAt = clampIndex(
           selected.itemIndex + 1,
-          selected.workspace.items.length
+          selected.row.items.length
         );
-        selected.workspace.items.splice(insertAt, 0, item);
+        selected.row.items.splice(insertAt, 0, item);
         setSelection(state.layout, item.id);
       });
     },
@@ -312,67 +312,67 @@ export const useLayoutStore = create<LayoutState>()(
       });
     },
 
-    moveItem: (itemId, toWorkspaceId, index) => {
+    moveItem: (itemId, toRowId, index) => {
       set((state) => {
         const source = findItemLocation(state.layout, itemId);
         if (!source) {
           return;
         }
 
-        const targetWorkspace = state.layout.workspaces.find(
-          (workspace) => workspace.id === toWorkspaceId
+        const targetRow = state.layout.rows.find(
+          (row) => row.id === toRowId
         );
-        if (!targetWorkspace) {
+        if (!targetRow) {
           return;
         }
 
-        const [item] = source.workspace.items.splice(source.itemIndex, 1);
+        const [item] = source.row.items.splice(source.itemIndex, 1);
         if (!item) {
           return;
         }
 
         const insertAt = clampIndex(
-          index ?? targetWorkspace.items.length,
-          targetWorkspace.items.length
+          index ?? targetRow.items.length,
+          targetRow.items.length
         );
 
-        targetWorkspace.items.splice(insertAt, 0, item);
+        targetRow.items.splice(insertAt, 0, item);
         ensureValidSelection(state.layout);
         setSelection(state.layout, item.id);
       });
     },
 
-    moveItemToAdjacentWorkspace: (itemId, direction) => {
+    moveItemToAdjacentRow: (itemId, direction) => {
       set((state) => {
         const source = findItemLocation(state.layout, itemId);
         if (!source) {
           return;
         }
 
-        let targetWorkspace =
-          state.layout.workspaces[source.workspaceIndex + direction];
-        if (!targetWorkspace) {
-          if (source.workspace.items.length === 1) {
+        let targetRow =
+          state.layout.rows[source.rowIndex + direction];
+        if (!targetRow) {
+          if (source.row.items.length === 1) {
             return;
           }
 
           const insertAt =
-            direction > 0 ? source.workspaceIndex + 1 : source.workspaceIndex;
-          targetWorkspace = createWorkspace();
-          state.layout.workspaces.splice(insertAt, 0, targetWorkspace);
+            direction > 0 ? source.rowIndex + 1 : source.rowIndex;
+          targetRow = createRow();
+          state.layout.rows.splice(insertAt, 0, targetRow);
         }
 
-        const [item] = source.workspace.items.splice(source.itemIndex, 1);
+        const [item] = source.row.items.splice(source.itemIndex, 1);
         if (!item) {
           return;
         }
 
         const insertAt = getVerticalMoveInsertIndex(
-          state.layout.lastColumnByWorkspaceId[targetWorkspace.id],
+          state.layout.lastColumnByRowId[targetRow.id],
           source.itemIndex,
-          targetWorkspace.items.length
+          targetRow.items.length
         );
-        targetWorkspace.items.splice(insertAt, 0, item);
+        targetRow.items.splice(insertAt, 0, item);
         ensureValidSelection(state.layout);
         setSelection(state.layout, item.id);
       });
@@ -385,21 +385,21 @@ export const useLayoutStore = create<LayoutState>()(
           return;
         }
 
-        const sameWorkspace = source.workspace;
+        const sameRow = source.row;
         const nextInSameRow =
-          sameWorkspace.items[source.itemIndex + 1]?.id ??
-          sameWorkspace.items[source.itemIndex - 1]?.id;
+          sameRow.items[source.itemIndex + 1]?.id ??
+          sameRow.items[source.itemIndex - 1]?.id;
 
-        const fallbackWorkspace =
-          state.layout.workspaces[source.workspaceIndex + 1] ??
-          state.layout.workspaces[source.workspaceIndex - 1];
+        const fallbackRow =
+          state.layout.rows[source.rowIndex + 1] ??
+          state.layout.rows[source.rowIndex - 1];
         const fallbackIndex = clampIndex(
           source.itemIndex,
-          Math.max((fallbackWorkspace?.items.length ?? 1) - 1, 0)
+          Math.max((fallbackRow?.items.length ?? 1) - 1, 0)
         );
-        const fallbackItemId = fallbackWorkspace?.items[fallbackIndex]?.id;
+        const fallbackItemId = fallbackRow?.items[fallbackIndex]?.id;
 
-        source.workspace.items.splice(source.itemIndex, 1);
+        source.row.items.splice(source.itemIndex, 1);
         ensureValidSelection(state.layout);
 
         const nextSelection = nextInSameRow ?? fallbackItemId;
@@ -427,8 +427,8 @@ export const useLayoutStore = create<LayoutState>()(
 
     setColumnWidths: (widths) => {
       set((state) => {
-        for (const workspace of state.layout.workspaces) {
-          for (const item of workspace.items) {
+        for (const row of state.layout.rows) {
+          for (const item of row.items) {
             const width = widths[item.id];
             if (width !== undefined) {
               item.preferredWidth = clampPreferredWidth(width);

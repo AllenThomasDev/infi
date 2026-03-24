@@ -24,42 +24,38 @@ function isInputFocused() {
 interface LayoutLocation {
   item: NiriLayoutItem;
   itemIndex: number;
-  workspace: NiriCanvasLayout["workspaces"][number];
-  workspaceIndex: number;
+  row: NiriCanvasLayout["rows"][number];
+  rowIndex: number;
 }
 
 function getFocusedLocation(layout: NiriCanvasLayout): LayoutLocation | null {
   const focusedId = layout.selectedItemId;
 
-  for (const [workspaceIndex, workspace] of layout.workspaces.entries()) {
-    const itemIndex = workspace.items.findIndex(
-      (item) => item.id === focusedId
-    );
+  for (const [rowIndex, row] of layout.rows.entries()) {
+    const itemIndex = row.items.findIndex((item) => item.id === focusedId);
     if (itemIndex < 0) {
       continue;
     }
 
     return {
-      workspace,
-      workspaceIndex,
-      item: workspace.items[itemIndex],
+      row,
+      rowIndex,
+      item: row.items[itemIndex],
       itemIndex,
     };
   }
 
-  const workspace =
-    layout.workspaces.find((candidate) => candidate.items.length > 0) ??
-    layout.workspaces[0];
-  const item = workspace?.items[0];
-  if (!(workspace && item)) {
+  const row =
+    layout.rows.find((candidate) => candidate.items.length > 0) ??
+    layout.rows[0];
+  const item = row?.items[0];
+  if (!(row && item)) {
     return null;
   }
 
   return {
-    workspace,
-    workspaceIndex: layout.workspaces.findIndex(
-      (candidate) => candidate.id === workspace.id
-    ),
+    row,
+    rowIndex: layout.rows.findIndex((candidate) => candidate.id === row.id),
     item,
     itemIndex: 0,
   };
@@ -83,7 +79,7 @@ function moveFocusedItem(horizontal: number, vertical: number) {
   }
 
   if (vertical !== 0) {
-    store.moveItemToAdjacentWorkspace(focused.item.id, vertical > 0 ? 1 : -1);
+    store.moveItemToAdjacentRow(focused.item.id, vertical > 0 ? 1 : -1);
     return;
   }
 
@@ -92,11 +88,11 @@ function moveFocusedItem(horizontal: number, vertical: number) {
   }
 
   const targetIndex = focused.itemIndex + horizontal;
-  if (targetIndex < 0 || targetIndex >= focused.workspace.items.length) {
+  if (targetIndex < 0 || targetIndex >= focused.row.items.length) {
     return;
   }
 
-  store.moveItem(focused.item.id, focused.workspace.id, targetIndex);
+  store.moveItem(focused.item.id, focused.row.id, targetIndex);
 }
 
 function moveFocusedColumnToWorkspace(vertical: number) {
@@ -109,7 +105,7 @@ function moveFocusedColumnToWorkspace(vertical: number) {
   if (!focused) {
     return;
   }
-  store.moveItemToAdjacentWorkspace(focused.item.id, vertical > 0 ? 1 : -1);
+  store.moveItemToAdjacentRow(focused.item.id, vertical > 0 ? 1 : -1);
 }
 
 export interface CanvasKeybindingState {
@@ -138,7 +134,7 @@ export function Canvas({
     isActive ? state.layout : (state.layoutsByCanvas[canvasId] ?? EMPTY_LAYOUT)
   );
   const addItem = useLayoutStore((state) => state.addItem);
-  const addWorkspaceBelow = useLayoutStore((state) => state.addWorkspaceBelow);
+  const addRowBelow = useLayoutStore((state) => state.addRowBelow);
   const removeItem = useLayoutStore((state) => state.removeItem);
   const focusNeighbor = useLayoutStore((state) => state.focusNeighbor);
   const toggleOverview = useLayoutStore((state) => state.toggleOverview);
@@ -169,7 +165,7 @@ export function Canvas({
       "tiling.addRight": () => addItem(createLayoutItem({ type: "picker" })),
       "tiling.addBelow": () => addItem(createLayoutItem({ type: "picker" })),
       "tiling.addWorkspaceBelow": () =>
-        addWorkspaceBelow(createLayoutItem({ type: "picker" })),
+        addRowBelow(createLayoutItem({ type: "picker" })),
       "tiling.focusLeft": () => focusNeighbor(-1, 0),
       "tiling.focusRight": () => focusNeighbor(1, 0),
       "tiling.focusUp": () => focusNeighbor(0, -1),
@@ -185,7 +181,7 @@ export function Canvas({
     }),
     [
       addItem,
-      addWorkspaceBelow,
+      addRowBelow,
       focusNeighbor,
       removeItem,
       toggleOverview,

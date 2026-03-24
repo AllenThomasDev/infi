@@ -9,6 +9,10 @@ import {
 import TerminalView, {
   type TerminalViewHandle,
 } from "@/components/terminal/terminal-view";
+import {
+  formatTileCoordinates,
+  type TileCoordinates,
+} from "@/components/tiles/tile-coordinates";
 import { useFocusWhenSelected } from "@/components/tiles/use-tile-focus-effect";
 import { Button } from "@/components/ui/button";
 import { ipc } from "@/ipc/manager";
@@ -17,18 +21,20 @@ import { useLayoutStore } from "@/stores/layout-store";
 
 interface TerminalTileContentProps {
   className?: string;
+  coordinates: TileCoordinates;
   item: NiriLayoutItem;
   selected: boolean;
   style?: CSSProperties;
 }
 
-function tileLabel(item: NiriLayoutItem) {
+function tileLabel(item: NiriLayoutItem, coordinates: TileCoordinates) {
   const suffix = item.id.split("-").at(-1)?.slice(0, 4) ?? item.id.slice(0, 4);
-  return `Terminal ${suffix}`;
+  return `Terminal ${suffix} ${formatTileCoordinates(coordinates)}`;
 }
 
 export function TerminalTileContent({
   className,
+  coordinates,
   item,
   selected,
   style,
@@ -36,7 +42,7 @@ export function TerminalTileContent({
   const removeItem = useLayoutStore((state) => state.removeItem);
   const selectItem = useLayoutStore((state) => state.selectItem);
   const terminalViewRef = useRef<TerminalViewHandle>(null);
-  const title = tileLabel(item);
+  const title = tileLabel(item, coordinates);
 
   const focusTerminal = useCallback(() => terminalViewRef.current?.focus(), []);
   useFocusWhenSelected(item.id, focusTerminal);

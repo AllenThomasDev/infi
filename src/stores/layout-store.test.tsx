@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type {
   NiriCanvasLayout,
   NiriLayoutItem,
-  NiriWorkspace,
+  NiriRow,
 } from "@/layout/layout-types";
 import { TILE_WIDTH } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
@@ -14,21 +14,21 @@ function makeItem(
   return { id, ref };
 }
 
-function makeWorkspace(id: string, items: NiriLayoutItem[]): NiriWorkspace {
+function makeWorkspace(id: string, items: NiriLayoutItem[]): NiriRow {
   return { id, items };
 }
 
 function makeLayout(
-  workspaces: NiriWorkspace[],
+  rows: NiriRow[],
   selectedItemId?: string,
-  lastColumnByWorkspaceId: Record<string, number> = {}
+  lastColumnByRowId: Record<string, number> = {}
 ): NiriCanvasLayout {
   return {
     focusTick: 0,
     isOverviewOpen: false,
-    lastColumnByWorkspaceId,
+    lastColumnByRowId,
     selectedItemId,
-    workspaces,
+    rows,
   };
 }
 
@@ -49,7 +49,7 @@ describe("useLayoutStore", () => {
   });
 
   it("starts with an empty layout", () => {
-    expect(currentLayout().workspaces).toHaveLength(0);
+    expect(currentLayout().rows).toHaveLength(0);
     expect(currentLayout().selectedItemId).toBeUndefined();
   });
 
@@ -61,16 +61,16 @@ describe("useLayoutStore", () => {
     useLayoutStore.getState().addItem(first);
 
     useLayoutStore.getState().setActiveCanvas("canvas-b");
-    expect(currentLayout().workspaces).toHaveLength(0);
+    expect(currentLayout().rows).toHaveLength(0);
     useLayoutStore.getState().addItem(second);
 
     useLayoutStore.getState().setActiveCanvas("canvas-a");
-    expect(currentLayout().workspaces[0]?.items.map((item) => item.id)).toEqual(
+    expect(currentLayout().rows[0]?.items.map((item) => item.id)).toEqual(
       [first.id]
     );
 
     useLayoutStore.getState().setActiveCanvas("canvas-b");
-    expect(currentLayout().workspaces[0]?.items.map((item) => item.id)).toEqual(
+    expect(currentLayout().rows[0]?.items.map((item) => item.id)).toEqual(
       [second.id]
     );
   });
@@ -110,7 +110,7 @@ describe("useLayoutStore", () => {
     expect(currentLayout().selectedItemId).toBe(e.id);
   });
 
-  it("creates a workspace below and selects the inserted item", () => {
+  it("creates a row below and selects the inserted item", () => {
     seedLayout(
       makeLayout(
         [
@@ -122,13 +122,13 @@ describe("useLayoutStore", () => {
     );
 
     const pickerItem = makeItem("picker-1", { type: "picker" });
-    useLayoutStore.getState().addWorkspaceBelow(pickerItem);
+    useLayoutStore.getState().addRowBelow(pickerItem);
 
     const next = currentLayout();
-    expect(next.workspaces).toHaveLength(3);
-    expect(next.workspaces[1]?.id).not.toBe("ws-1");
-    expect(next.workspaces[1]?.id).not.toBe("ws-2");
-    expect(next.workspaces[1]?.items[0]?.id).toBe(pickerItem.id);
+    expect(next.rows).toHaveLength(3);
+    expect(next.rows[1]?.id).not.toBe("ws-1");
+    expect(next.rows[1]?.id).not.toBe("ws-2");
+    expect(next.rows[1]?.items[0]?.id).toBe(pickerItem.id);
     expect(next.selectedItemId).toBe(pickerItem.id);
   });
 
@@ -141,7 +141,7 @@ describe("useLayoutStore", () => {
 
     useLayoutStore.getState().addItem(second);
 
-    const items = currentLayout().workspaces[0].items;
+    const items = currentLayout().rows[0].items;
     expect(items.map((item) => item.id)).toEqual([
       first.id,
       second.id,
@@ -161,12 +161,12 @@ describe("useLayoutStore", () => {
       [right.id]: 1,
     });
 
-    const resized = currentLayout().workspaces[0].items;
+    const resized = currentLayout().rows[0].items;
     expect(resized[0].preferredWidth).toBe(640);
     expect(resized[1].preferredWidth).toBe(Math.round(TILE_WIDTH * 0.25));
   });
 
-  it("moves an item across workspaces and updates selection", () => {
+  it("moves an item across rows and updates selection", () => {
     const source = makeItem("source");
     const destination = makeItem("destination");
 
@@ -180,16 +180,16 @@ describe("useLayoutStore", () => {
     useLayoutStore.getState().moveItem(source.id, "ws-2", 1);
 
     const next = currentLayout();
-    expect(next.workspaces).toHaveLength(1);
-    expect(next.workspaces[0].id).toBe("ws-2");
-    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([
+    expect(next.rows).toHaveLength(1);
+    expect(next.rows[0].id).toBe("ws-2");
+    expect(next.rows[0].items.map((item) => item.id)).toEqual([
       destination.id,
       source.id,
     ]);
     expect(next.selectedItemId).toBe(source.id);
   });
 
-  it("reorders within the same workspace", () => {
+  it("reorders within the same row", () => {
     const first = makeItem("first");
     const second = makeItem("second");
 
@@ -198,7 +198,7 @@ describe("useLayoutStore", () => {
     useLayoutStore.getState().moveItem(first.id, "ws-1", 1);
 
     const next = currentLayout();
-    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([
+    expect(next.rows[0].items.map((item) => item.id)).toEqual([
       second.id,
       first.id,
     ]);
@@ -214,11 +214,11 @@ describe("useLayoutStore", () => {
     useLayoutStore.getState().removeItem(remove.id);
 
     const next = currentLayout();
-    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([keep.id]);
+    expect(next.rows[0].items.map((item) => item.id)).toEqual([keep.id]);
     expect(next.selectedItemId).toBe(keep.id);
   });
 
-  it("removes empty workspace when last tile is deleted", () => {
+  it("removes empty row when last tile is deleted", () => {
     const tile = makeItem("terminal-1", { type: "terminal" });
     const other = makeItem("terminal-2", { type: "terminal" });
 
@@ -232,52 +232,52 @@ describe("useLayoutStore", () => {
     useLayoutStore.getState().removeItem(tile.id);
 
     const next = currentLayout();
-    expect(next.workspaces).toHaveLength(1);
-    expect(next.workspaces[0].id).toBe("ws-2");
+    expect(next.rows).toHaveLength(1);
+    expect(next.rows[0].id).toBe("ws-2");
     expect(next.selectedItemId).toBe(other.id);
   });
 
-  it("does not churn workspace id when moving down at edge with a single tile", () => {
+  it("does not churn row id when moving down at edge with a single tile", () => {
     const tile = makeItem("tile");
 
     seedLayout(makeLayout([makeWorkspace("ws-1", [tile])], tile.id));
 
-    useLayoutStore.getState().moveItemToAdjacentWorkspace(tile.id, 1);
+    useLayoutStore.getState().moveItemToAdjacentRow(tile.id, 1);
 
     const next = currentLayout();
-    expect(next.workspaces).toHaveLength(1);
-    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([tile.id]);
+    expect(next.rows).toHaveLength(1);
+    expect(next.rows[0].items.map((item) => item.id)).toEqual([tile.id]);
     expect(next.selectedItemId).toBe(tile.id);
-    expect(next.workspaces[0].id).toBe("ws-1");
+    expect(next.rows[0].id).toBe("ws-1");
   });
 
-  it("does not churn workspace id when moving up at edge with a single tile", () => {
+  it("does not churn row id when moving up at edge with a single tile", () => {
     const tile = makeItem("tile");
 
     seedLayout(makeLayout([makeWorkspace("ws-1", [tile])], tile.id));
 
-    useLayoutStore.getState().moveItemToAdjacentWorkspace(tile.id, -1);
+    useLayoutStore.getState().moveItemToAdjacentRow(tile.id, -1);
 
     const next = currentLayout();
-    expect(next.workspaces).toHaveLength(1);
-    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([tile.id]);
+    expect(next.rows).toHaveLength(1);
+    expect(next.rows[0].items.map((item) => item.id)).toEqual([tile.id]);
     expect(next.selectedItemId).toBe(tile.id);
-    expect(next.workspaces[0].id).toBe("ws-1");
+    expect(next.rows[0].id).toBe("ws-1");
   });
 
-  it("creates a workspace at edge when source workspace has multiple tiles", () => {
+  it("creates a row at edge when source row has multiple tiles", () => {
     const a = makeItem("a");
     const b = makeItem("b");
 
     seedLayout(makeLayout([makeWorkspace("ws-1", [a, b])], b.id));
 
-    useLayoutStore.getState().moveItemToAdjacentWorkspace(b.id, 1);
+    useLayoutStore.getState().moveItemToAdjacentRow(b.id, 1);
 
     const next = currentLayout();
-    expect(next.workspaces).toHaveLength(2);
-    expect(next.workspaces[0].id).toBe("ws-1");
-    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([a.id]);
-    expect(next.workspaces[1].items.map((item) => item.id)).toEqual([b.id]);
+    expect(next.rows).toHaveLength(2);
+    expect(next.rows[0].id).toBe("ws-1");
+    expect(next.rows[0].items.map((item) => item.id)).toEqual([a.id]);
+    expect(next.rows[1].items.map((item) => item.id)).toEqual([b.id]);
     expect(next.selectedItemId).toBe(b.id);
   });
 
@@ -294,11 +294,11 @@ describe("useLayoutStore", () => {
       )
     );
 
-    useLayoutStore.getState().moveItemToAdjacentWorkspace(c.id, -1);
+    useLayoutStore.getState().moveItemToAdjacentRow(c.id, -1);
 
     const next = currentLayout();
-    expect(next.workspaces).toHaveLength(1);
-    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([
+    expect(next.rows).toHaveLength(1);
+    expect(next.rows[0].items.map((item) => item.id)).toEqual([
       a.id,
       c.id,
       b.id,
@@ -319,11 +319,11 @@ describe("useLayoutStore", () => {
       )
     );
 
-    useLayoutStore.getState().moveItemToAdjacentWorkspace(c.id, -1);
+    useLayoutStore.getState().moveItemToAdjacentRow(c.id, -1);
 
     const next = currentLayout();
-    expect(next.workspaces).toHaveLength(1);
-    expect(next.workspaces[0].items.map((item) => item.id)).toEqual([
+    expect(next.rows).toHaveLength(1);
+    expect(next.rows[0].items.map((item) => item.id)).toEqual([
       a.id,
       b.id,
       c.id,
