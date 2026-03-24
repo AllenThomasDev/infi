@@ -12,7 +12,6 @@
 .milkdown .ProseMirror:has(> p:only-child > br:only-child)::before {
   content: "Jot something down... saves to .context/notes.md";
   color: var(--muted-foreground);
-  font-style: italic;
   pointer-events: none;
   position: absolute;
 }

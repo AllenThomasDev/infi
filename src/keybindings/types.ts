@@ -11,6 +11,8 @@ export const KEYBINDING_COMMANDS = [
   "tiling.focusRight",
   "tiling.focusUp",
   "tiling.focusDown",
+  "tiling.focusNextItem",
+  "tiling.focusPrevItem",
   "tiling.moveLeft",
   "tiling.moveRight",
   "tiling.moveUp",

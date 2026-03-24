@@ -3,6 +3,7 @@ import { useTheme } from "@/components/theme-provider";
 import { EmptyCanvasState } from "@/components/workspace/empty-canvas-state";
 import { NiriRenderer } from "@/components/workspace/niri-renderer";
 import { WorkspaceContext } from "@/components/workspace/workspace-context";
+import { destroyTerminalInstance } from "@/components/terminal/terminal-view";
 import { ipc } from "@/ipc/manager";
 import type {
   CommandHandlerMap,
@@ -120,15 +121,19 @@ export function Canvas({
   const addRowBelow = useLayoutStore((state) => state.addRowBelow);
   const removeItem = useLayoutStore((state) => state.removeItem);
   const focusNeighbor = useLayoutStore((state) => state.focusNeighbor);
+  const focusNextItem = useLayoutStore((state) => state.focusNextItem);
+  const focusPrevItem = useLayoutStore((state) => state.focusPrevItem);
   const toggleOverview = useLayoutStore((state) => state.toggleOverview);
+  const zoomIn = useLayoutStore((state) => state.zoomIn);
+  const zoomOut = useLayoutStore((state) => state.zoomOut);
   const { toggleTheme } = useTheme();
 
   const canvasHandlers = useMemo<CommandHandlerMap>(
     () => ({
       "canvas.fitView": NOOP,
       "canvas.fullscreenNode": NOOP,
-      "canvas.zoomIn": NOOP,
-      "canvas.zoomOut": NOOP,
+      "canvas.zoomIn": zoomIn,
+      "canvas.zoomOut": zoomOut,
       "canvas.selectAll": NOOP,
       "canvas.deleteSelected": () => {
         const store = useLayoutStore.getState();
@@ -141,6 +146,7 @@ export function Canvas({
           ipc.client.terminal
             .kill({ id: focused.item.id })
             .catch(console.error);
+          destroyTerminalInstance(focused.item.id);
         }
 
         removeItem(focused.item.id);
@@ -156,6 +162,8 @@ export function Canvas({
       "tiling.moveRight": () => moveFocusedItem(1, 0),
       "tiling.moveUp": () => moveFocusedItem(0, -1),
       "tiling.moveDown": () => moveFocusedItem(0, 1),
+      "tiling.focusNextItem": focusNextItem,
+      "tiling.focusPrevItem": focusPrevItem,
       "tiling.toggleOverview": toggleOverview,
       "theme.toggle": toggleTheme,
     }),
@@ -163,9 +171,13 @@ export function Canvas({
       addItem,
       addRowBelow,
       focusNeighbor,
+      focusNextItem,
+      focusPrevItem,
       removeItem,
       toggleOverview,
       toggleTheme,
+      zoomIn,
+      zoomOut,
     ]
   );
 

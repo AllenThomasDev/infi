@@ -9,6 +9,9 @@ import { TILE_WIDTH } from "@/layout/layout-types";
 
 const MIN_ITEM_WIDTH = Math.round(TILE_WIDTH * 0.25);
 const MAX_ITEM_WIDTH = 2400;
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 2.0;
+const ZOOM_STEP = 0.1;
 
 type ResizeMap = Record<string, number | undefined>;
 
@@ -24,6 +27,8 @@ interface LayoutState {
   addItem: (item: NiriLayoutItem) => void;
   addRowBelow: (item: NiriLayoutItem) => void;
   focusNeighbor: (horizontal: number, vertical: number) => void;
+  focusNextItem: () => void;
+  focusPrevItem: () => void;
   layout: NiriCanvasLayout;
   layoutsByCanvas: Record<string, NiriCanvasLayout>;
   moveItem: (itemId: string, toRowId: string, index?: number) => void;
@@ -36,6 +41,8 @@ interface LayoutState {
   setColumnWidths: (widths: ResizeMap) => void;
   toggleNotes: () => void;
   toggleOverview: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
 }
 
 function createRow(): NiriRow {
@@ -50,6 +57,7 @@ export function createInitialLayout(): NiriCanvasLayout {
     lastColumnByRowId: {},
     selectedItemId: undefined,
     rows: [],
+    zoom: 1,
   };
 }
 
@@ -322,6 +330,39 @@ export const useLayoutStore = create<LayoutState>()(
       });
     },
 
+    focusNextItem: () => {
+      set((state) => {
+        const allItems = state.layout.rows.flatMap((row) => row.items);
+        if (allItems.length === 0) {
+          return;
+        }
+
+        const currentIndex = allItems.findIndex(
+          (item) => item.id === state.layout.selectedItemId
+        );
+        const nextIndex = (currentIndex + 1) % allItems.length;
+        setSelection(state.layout, allItems[nextIndex].id);
+        bumpFocusTick(state.layout);
+      });
+    },
+
+    focusPrevItem: () => {
+      set((state) => {
+        const allItems = state.layout.rows.flatMap((row) => row.items);
+        if (allItems.length === 0) {
+          return;
+        }
+
+        const currentIndex = allItems.findIndex(
+          (item) => item.id === state.layout.selectedItemId
+        );
+        const prevIndex =
+          currentIndex <= 0 ? allItems.length - 1 : currentIndex - 1;
+        setSelection(state.layout, allItems[prevIndex].id);
+        bumpFocusTick(state.layout);
+      });
+    },
+
     moveItem: (itemId, toRowId, index) => {
       set((state) => {
         const source = findItemLocation(state.layout, itemId);
@@ -458,6 +499,24 @@ export const useLayoutStore = create<LayoutState>()(
     toggleOverview: () => {
       set((state) => {
         state.layout.isOverviewOpen = !state.layout.isOverviewOpen;
+      });
+    },
+
+    zoomIn: () => {
+      set((state) => {
+        state.layout.zoom = Math.min(
+          MAX_ZOOM,
+          Math.round((state.layout.zoom + ZOOM_STEP) * 10) / 10
+        );
+      });
+    },
+
+    zoomOut: () => {
+      set((state) => {
+        state.layout.zoom = Math.max(
+          MIN_ZOOM,
+          Math.round((state.layout.zoom - ZOOM_STEP) * 10) / 10
+        );
       });
     },
   }))

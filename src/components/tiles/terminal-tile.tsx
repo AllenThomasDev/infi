@@ -7,6 +7,7 @@ import {
   BaseNodeHeaderTitle,
 } from "@/components/base-node";
 import TerminalView, {
+  destroyTerminalInstance,
   type TerminalViewHandle,
 } from "@/components/terminal/terminal-view";
 import {
@@ -58,10 +59,12 @@ export function TerminalTileContent({
 
   const closeTerminal = useCallback(() => {
     ipc.client.terminal.kill({ id: item.id }).catch(console.error);
+    destroyTerminalInstance(item.id);
     removeItem(item.id);
   }, [item.id, removeItem]);
 
   const handleTerminalExit = useCallback(() => {
+    destroyTerminalInstance(item.id);
     removeItem(item.id);
   }, [item.id, removeItem]);
 
