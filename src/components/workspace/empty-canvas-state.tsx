@@ -1,23 +1,44 @@
 import { GitBranchPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 interface EmptyCanvasStateProps {
-  onCreateCanvas?: () => void;
+  actionLabel?: string;
+  description: string;
+  onAction?: () => void;
+  title: string;
 }
 
-export function EmptyCanvasState({ onCreateCanvas }: EmptyCanvasStateProps) {
+export function EmptyCanvasState({
+  actionLabel,
+  description,
+  onAction,
+  title,
+}: EmptyCanvasStateProps) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
-      <GitBranchPlus className="size-12 opacity-40" />
-      <p className="text-sm">
-        Select a branch or create a new one to get started
-      </p>
-      {onCreateCanvas ? (
-        <Button onClick={onCreateCanvas} size="lg" variant="outline">
-          <GitBranchPlus className="mr-2 size-4" />
-          New Branch
-        </Button>
+    <Empty className="h-full border-0">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <GitBranchPlus />
+        </EmptyMedia>
+        <EmptyTitle>{title}</EmptyTitle>
+        <EmptyDescription>{description}</EmptyDescription>
+      </EmptyHeader>
+      {actionLabel && onAction ? (
+        <EmptyContent>
+          <Button onClick={onAction} size="lg" variant="outline">
+            <GitBranchPlus data-icon="inline-start" />
+            {actionLabel}
+          </Button>
+        </EmptyContent>
       ) : null}
-    </div>
+    </Empty>
   );
 }

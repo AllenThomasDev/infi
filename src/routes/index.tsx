@@ -5,6 +5,14 @@ import { BranchPicker } from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
 import { StatusBar } from "@/components/status-bar";
 import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import type { CanvasKeybindingState } from "@/components/workspace/canvas";
 import { WorkspaceContainer } from "@/components/workspace/workspace-container";
@@ -19,14 +27,23 @@ import { useWorkspaceStore } from "@/workspace/workspace-store";
 
 function WelcomeScreen({ onOpenProject }: { onOpenProject: () => void }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
-      <FolderGit2 className="size-12 opacity-40" />
-      <p className="text-sm">Open a project to get started</p>
-      <Button onClick={onOpenProject} size="lg" variant="outline">
-        <FolderGit2 className="mr-2 size-4" />
-        Open Project
-      </Button>
-    </div>
+    <Empty className="h-full border-0">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <FolderGit2 />
+        </EmptyMedia>
+        <EmptyTitle>No projects yet</EmptyTitle>
+        <EmptyDescription>
+          Open a project to start creating canvases and worktrees.
+        </EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <Button onClick={onOpenProject} size="lg" variant="outline">
+          <FolderGit2 data-icon="inline-start" />
+          Open Project
+        </Button>
+      </EmptyContent>
+    </Empty>
   );
 }
 

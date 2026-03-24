@@ -24,7 +24,12 @@ export function WorkspaceContainer({
   return (
     <>
       {activeCanvasId ? null : (
-        <EmptyCanvasState onCreateCanvas={onCreateCanvas} />
+        <EmptyCanvasState
+          actionLabel={onCreateCanvas ? "New Branch" : undefined}
+          description="Select a branch or create a new one to get started."
+          onAction={onCreateCanvas}
+          title="No worktrees yet"
+        />
       )}
       {projects.flatMap((project) =>
         project.canvases.map((canvas) => {

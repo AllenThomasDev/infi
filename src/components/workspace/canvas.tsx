@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useTheme } from "@/components/theme-provider";
+import { EmptyCanvasState } from "@/components/workspace/empty-canvas-state";
 import { NiriRenderer } from "@/components/workspace/niri-renderer";
 import { WorkspaceContext } from "@/components/workspace/workspace-context";
 import { ipc } from "@/ipc/manager";
@@ -202,6 +203,19 @@ export function Canvas({
     onKeybindingStateChange(keybindingState);
     return () => onKeybindingStateChange(null);
   }, [isActive, keybindingState, onKeybindingStateChange]);
+
+  if (layout.rows.length === 0) {
+    return (
+      <WorkspaceContext.Provider value={{ directory }}>
+        <EmptyCanvasState
+          actionLabel="Add Tile"
+          description="This canvas is empty. Add a tile to start working here."
+          onAction={() => addItem(createLayoutItem({ type: "picker" }))}
+          title="No tiles yet"
+        />
+      </WorkspaceContext.Provider>
+    );
+  }
 
   return (
     <WorkspaceContext.Provider value={{ directory }}>
