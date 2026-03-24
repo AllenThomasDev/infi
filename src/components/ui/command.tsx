@@ -38,11 +38,12 @@ function CommandDialog({
   className,
   showCloseButton = false,
   ...props
-}: React.ComponentProps<typeof Dialog> & {
+}: Omit<React.ComponentProps<typeof Dialog>, "children"> & {
   title?: string
   description?: string
   className?: string
   showCloseButton?: boolean
+  children: React.ReactNode
 }) {
   return (
     <Dialog {...props}>
@@ -55,7 +56,6 @@ function CommandDialog({
           "top-1/3 translate-y-0 overflow-hidden rounded-xl! p-0",
           className
         )}
-        overlayClassName="bg-black/40 supports-backdrop-filter:backdrop-blur-none"
         showCloseButton={showCloseButton}
       >
         {children}
@@ -111,19 +111,6 @@ function CommandEmpty({
     <CommandPrimitive.Empty
       data-slot="command-empty"
       className={cn("py-6 text-center text-xs/relaxed", className)}
-      {...props}
-    />
-  )
-}
-
-function CommandState({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="command-state"
-      className={cn("px-3 py-6 text-xs/relaxed text-muted-foreground", className)}
       {...props}
     />
   )
@@ -194,15 +181,28 @@ function CommandShortcut({
   )
 }
 
+function CommandState({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="command-state"
+      className={cn("py-6 text-center text-xs/relaxed", className)}
+      {...props}
+    />
+  )
+}
+
 export {
   Command,
   CommandDialog,
   CommandInput,
   CommandList,
   CommandEmpty,
-  CommandState,
   CommandGroup,
   CommandItem,
   CommandShortcut,
   CommandSeparator,
+  CommandState,
 }

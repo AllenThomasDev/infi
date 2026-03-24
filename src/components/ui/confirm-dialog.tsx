@@ -53,7 +53,7 @@ export function ConfirmDialog({
             <Checkbox
               checked={checked}
               className="mt-0.5"
-              onCheckedChange={(nextChecked) => {
+              onCheckedChange={(nextChecked: boolean) => {
                 setChecked(nextChecked === true);
               }}
             />

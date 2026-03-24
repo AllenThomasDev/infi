@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -8,7 +8,7 @@ import { useShortcutLabel } from "@/keybindings/keybindings-context";
 import type { KeybindingCommand } from "@/keybindings/types";
 
 interface ShortcutTooltipProps {
-  children: ReactNode;
+  children: ReactElement;
   command: KeybindingCommand;
   label: string;
   side?: "top" | "bottom" | "left" | "right";
@@ -24,7 +24,7 @@ export function ShortcutTooltip({
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipTrigger render={children} />
       <TooltipContent side={side}>
         {label}
         {shortcut && <kbd data-slot="kbd">{shortcut}</kbd>}
