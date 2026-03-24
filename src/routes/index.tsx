@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FolderGit2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { NotepadText, NotepadTextDashed, Plus, Terminal } from "lucide-react";
+import { Maximize, Minimize, NotepadText, NotepadTextDashed, Plus, Terminal } from "lucide-react";
 import { BranchPicker } from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
 import { NotesEditor } from "@/components/notes-editor";
@@ -58,9 +58,11 @@ function HomePage() {
   const activeCanvasId = useWorkspaceStore((s) => s.activeCanvasId);
   const hasProjects = useWorkspaceStore((s) => s.projects.length > 0);
   const projects = useWorkspaceStore((s) => s.projects);
+  const isFullscreenMode = useLayoutStore((s) => s.layout.isFullscreenMode);
   const notesOpen = useLayoutStore((s) => s.layout.isNotesOpen);
   const selectedItemId = useLayoutStore((s) => s.layout.selectedItemId);
   const rows = useLayoutStore((s) => s.layout.rows);
+  const toggleFullscreenMode = useLayoutStore((s) => s.toggleFullscreenMode);
   const toggleNotes = useLayoutStore((s) => s.toggleNotes);
   const selectItem = useLayoutStore((s) => s.selectItem);
   const addItem = useLayoutStore((s) => s.addItem);
@@ -179,6 +181,15 @@ function HomePage() {
             >
               <Plus />
             </Button>
+            <div className="ml-auto">
+              <Button
+                onClick={toggleFullscreenMode}
+                size="icon-xs"
+                variant={isFullscreenMode ? "secondary" : "ghost"}
+              >
+                {isFullscreenMode ? <Minimize /> : <Maximize />}
+              </Button>
+            </div>
           </div>
         ) : null}
         <div className="relative min-h-0 flex-1 overflow-hidden">
