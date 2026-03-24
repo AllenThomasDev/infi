@@ -95,13 +95,10 @@ function firstItemLocation(layout: NiriCanvasLayout): ItemLocation | null {
 }
 
 function pruneEmptyRows(layout: NiriCanvasLayout) {
-  layout.rows = layout.rows.filter(
-    (row) => row.items.length > 0
-  );
+  layout.rows = layout.rows.filter((row) => row.items.length > 0);
 }
 
 function setSelection(layout: NiriCanvasLayout, itemId?: string) {
-  layout.focusTick += 1;
   layout.selectedItemId = itemId;
 
   if (!itemId) {
@@ -116,6 +113,10 @@ function setSelection(layout: NiriCanvasLayout, itemId?: string) {
   layout.lastColumnByRowId[location.row.id] = location.itemIndex;
 }
 
+function bumpFocusTick(layout: NiriCanvasLayout) {
+  layout.focusTick += 1;
+}
+
 function ensureValidSelection(layout: NiriCanvasLayout) {
   pruneEmptyRows(layout);
 
@@ -127,8 +128,7 @@ function ensureValidSelection(layout: NiriCanvasLayout) {
   if (layout.selectedItemId) {
     const selected = findItemLocation(layout, layout.selectedItemId);
     if (selected) {
-      layout.lastColumnByRowId[selected.row.id] =
-        selected.itemIndex;
+      layout.lastColumnByRowId[selected.row.id] = selected.itemIndex;
       return;
     }
   }
@@ -175,18 +175,14 @@ function selectVerticalNeighbor(
     return false;
   }
 
-  const nextRow =
-    layout.rows[selected.rowIndex + (vertical > 0 ? 1 : -1)];
+  const nextRow = layout.rows[selected.rowIndex + (vertical > 0 ? 1 : -1)];
   if (!nextRow) {
     return false;
   }
 
   const preferredColumn =
     layout.lastColumnByRowId[nextRow.id] ?? selected.itemIndex;
-  const targetIndex = clampIndex(
-    preferredColumn,
-    nextRow.items.length - 1
-  );
+  const targetIndex = clampIndex(preferredColumn, nextRow.items.length - 1);
   const target = nextRow.items[targetIndex];
   if (!target) {
     return false;
@@ -258,8 +254,10 @@ export const useLayoutStore = create<LayoutState>()(
         const row = createRow();
         row.items.push(item);
         state.layout.rows.splice(insertAt, 0, row);
+        bumpFocusTick(state.layout);
         setSelection(state.layout, item.id);
       });
+      scrollToItem(item.id);
     },
 
     addItem: (item) => {
@@ -268,6 +266,7 @@ export const useLayoutStore = create<LayoutState>()(
           const row = createRow();
           row.items.push(item);
           state.layout.rows.push(row);
+          bumpFocusTick(state.layout);
           setSelection(state.layout, item.id);
           return;
         }
@@ -282,8 +281,10 @@ export const useLayoutStore = create<LayoutState>()(
           selected.row.items.length
         );
         selected.row.items.splice(insertAt, 0, item);
+        bumpFocusTick(state.layout);
         setSelection(state.layout, item.id);
       });
+      scrollToItem(item.id);
     },
 
     selectItem: (itemId) => {
@@ -298,18 +299,23 @@ export const useLayoutStore = create<LayoutState>()(
     },
 
     focusNeighbor: (horizontal, vertical) => {
+      let targetId: string | undefined;
       set((state) => {
         const selected = getSelectedLocation(state.layout);
         if (!selected) {
           return;
         }
 
-        if (selectHorizontalNeighbor(state.layout, selected, horizontal)) {
-          return;
-        }
+        const moved =
+          selectHorizontalNeighbor(state.layout, selected, horizontal) ||
+          selectVerticalNeighbor(state.layout, selected, vertical);
 
-        selectVerticalNeighbor(state.layout, selected, vertical);
+        if (moved) {
+          bumpFocusTick(state.layout);
+          targetId = state.layout.selectedItemId;
+        }
       });
+      if (targetId) scrollToItem(targetId);
     },
 
     moveItem: (itemId, toRowId, index) => {
@@ -319,9 +325,7 @@ export const useLayoutStore = create<LayoutState>()(
           return;
         }
 
-        const targetRow = state.layout.rows.find(
-          (row) => row.id === toRowId
-        );
+        const targetRow = state.layout.rows.find((row) => row.id === toRowId);
         if (!targetRow) {
           return;
         }
@@ -338,8 +342,10 @@ export const useLayoutStore = create<LayoutState>()(
 
         targetRow.items.splice(insertAt, 0, item);
         ensureValidSelection(state.layout);
+        bumpFocusTick(state.layout);
         setSelection(state.layout, item.id);
       });
+      scrollToItem(itemId);
     },
 
     moveItemToAdjacentRow: (itemId, direction) => {
@@ -349,8 +355,7 @@ export const useLayoutStore = create<LayoutState>()(
           return;
         }
 
-        let targetRow =
-          state.layout.rows[source.rowIndex + direction];
+        let targetRow = state.layout.rows[source.rowIndex + direction];
         if (!targetRow) {
           if (source.row.items.length === 1) {
             return;
@@ -374,8 +379,10 @@ export const useLayoutStore = create<LayoutState>()(
         );
         targetRow.items.splice(insertAt, 0, item);
         ensureValidSelection(state.layout);
+        bumpFocusTick(state.layout);
         setSelection(state.layout, item.id);
       });
+      scrollToItem(itemId);
     },
 
     removeItem: (itemId) => {
@@ -404,13 +411,17 @@ export const useLayoutStore = create<LayoutState>()(
 
         const nextSelection = nextInSameRow ?? fallbackItemId;
         if (nextSelection && findItemLocation(state.layout, nextSelection)) {
+          bumpFocusTick(state.layout);
           setSelection(state.layout, nextSelection);
           return;
         }
 
         const first = firstItemLocation(state.layout);
+        bumpFocusTick(state.layout);
         setSelection(state.layout, first?.item.id);
       });
+      const nextId = useLayoutStore.getState().layout.selectedItemId;
+      if (nextId) scrollToItem(nextId);
     },
 
     replaceItem: (itemId, ref) => {
@@ -448,4 +459,21 @@ export const useLayoutStore = create<LayoutState>()(
 
 export function getLayoutStore() {
   return useLayoutStore.getState();
+}
+
+let scrollToItemCallback:
+  | ((itemId: string, behavior: ScrollBehavior) => void)
+  | null = null;
+
+export function registerScrollToItem(
+  cb: (itemId: string, behavior: ScrollBehavior) => void
+) {
+  scrollToItemCallback = cb;
+  return () => {
+    scrollToItemCallback = null;
+  };
+}
+
+function scrollToItem(itemId: string, behavior: ScrollBehavior = "smooth") {
+  scrollToItemCallback?.(itemId, behavior);
 }

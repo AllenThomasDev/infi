@@ -1,7 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { NiriTile } from "@/components/workspace/niri-tile";
 import type { NiriCanvasLayout } from "@/layout/layout-types";
 import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/layout-types";
+import {
+  registerScrollToItem,
+  useLayoutStore,
+} from "@/stores/layout-store";
 import { cn } from "@/utils/tailwind";
 
 interface NiriRendererProps {
@@ -10,39 +14,98 @@ interface NiriRendererProps {
 
 export function NiriRenderer({ layout }: NiriRendererProps) {
   const selectedItemId = layout.selectedItemId;
-  const focusTick = layout.focusTick;
   const { isOverviewOpen, rows } = layout;
+  const selectItem = useLayoutStore((state) => state.selectItem);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const scrollSyncTimeoutRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (!selectedItemId || isOverviewOpen) {
+  const syncSelectionToViewport = useCallback(() => {
+    const root = rootRef.current;
+    if (!root || isOverviewOpen) {
       return;
     }
 
-    const scheduledTick = focusTick;
+    const rootRect = root.getBoundingClientRect();
+    const viewportCenterX = rootRect.left + rootRect.width / 2;
+    const viewportCenterY = rootRect.top + rootRect.height / 2;
 
-    requestAnimationFrame(() => {
+    let nextItemId: string | undefined;
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    for (const row of rows) {
+      for (const item of row.items) {
+        const node = itemRefs.current[item.id];
+        if (!node) {
+          continue;
+        }
+
+        const rect = node.getBoundingClientRect();
+        const itemCenterX = rect.left + rect.width / 2;
+        const itemCenterY = rect.top + rect.height / 2;
+        const distance =
+          Math.abs(itemCenterX - viewportCenterX) +
+          Math.abs(itemCenterY - viewportCenterY);
+
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          nextItemId = item.id;
+        }
+      }
+    }
+
+    if (nextItemId && nextItemId !== selectedItemId) {
+      selectItem(nextItemId);
+    }
+  }, [isOverviewOpen, rows, selectItem, selectedItemId]);
+
+  const handleScroll = useCallback(() => {
+    if (scrollSyncTimeoutRef.current !== null) {
+      cancelAnimationFrame(scrollSyncTimeoutRef.current);
+    }
+
+    scrollSyncTimeoutRef.current = requestAnimationFrame(() => {
+      scrollSyncTimeoutRef.current = null;
+      syncSelectionToViewport();
+    });
+  }, [syncSelectionToViewport]);
+
+  useEffect(() => {
+    const unregister = registerScrollToItem((itemId, behavior) => {
       requestAnimationFrame(() => {
-        itemRefs.current[selectedItemId]?.scrollIntoView({
-          behavior: scheduledTick > 1 ? "smooth" : "auto",
-          block: "center",
-          inline: "center",
+        requestAnimationFrame(() => {
+          itemRefs.current[itemId]?.scrollIntoView({
+            behavior,
+            block: "center",
+            inline: "center",
+          });
         });
       });
     });
-  }, [focusTick, selectedItemId, isOverviewOpen]);
+
+    return () => {
+      unregister();
+      if (scrollSyncTimeoutRef.current !== null) {
+        cancelAnimationFrame(scrollSyncTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (rows.length === 0) {
     return <div className="flex h-full items-center justify-center" />;
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-gradient-to-br from-background via-background to-muted/20">
+    <div
+      className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-gradient-to-br from-background via-background to-muted/20"
+      ref={rootRef}
+    >
       <div
         className={cn(
-          "flex min-h-0 w-full flex-1 snap-y snap-mandatory flex-col overflow-y-auto scroll-smooth px-4",
+          "no-scrollbar flex min-h-0 w-full flex-1 snap-y snap-mandatory flex-col overflow-y-auto scroll-smooth px-4",
           isOverviewOpen ? "gap-5" : "gap-6"
         )}
+        onScroll={handleScroll}
       >
         <div
           className="shrink-0"
@@ -51,7 +114,10 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
         {rows.map((row, rowIndex) => {
           return (
             <section className="shrink-0 snap-center" key={row.id}>
-              <div className="w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden scroll-smooth">
+              <div
+                className="no-scrollbar w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden scroll-smooth"
+                onScroll={handleScroll}
+              >
                 <div
                   className={cn(
                     "flex min-h-0 gap-3 transition-transform duration-200 ease-out",
