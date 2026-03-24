@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import type { CSSProperties } from "react";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   BaseNode,
   BaseNodeHeader,
@@ -47,6 +47,12 @@ export function TerminalTileContent({
   const focusTerminal = useCallback(() => terminalViewRef.current?.focus(), []);
   useFocusWhenSelected(item.id, focusTerminal);
 
+  useEffect(() => {
+    if (!selected) {
+      terminalViewRef.current?.blur();
+    }
+  }, [selected]);
+
   const closeTerminal = useCallback(() => {
     ipc.client.terminal.kill({ id: item.id }).catch(console.error);
     removeItem(item.id);
@@ -55,7 +61,7 @@ export function TerminalTileContent({
   return (
     <BaseNode
       className={className}
-      onMouseDown={() => selectItem(item.id)}
+      onMouseDown={() => selectItem(item.id, { scroll: true })}
       selected={selected}
       style={style}
     >

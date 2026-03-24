@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useTheme } from "@/components/theme-provider";
+import { activateBrowserTile } from "@/components/tiles/browser-tile-activation";
 import { NiriRenderer } from "@/components/workspace/niri-renderer";
 import { WorkspaceContext } from "@/components/workspace/workspace-context";
 import { ipc } from "@/ipc/manager";
@@ -161,6 +162,15 @@ export function Canvas({
       "tiling.moveUp": () => moveFocusedItem(0, -1),
       "tiling.moveDown": () => moveFocusedItem(0, 1),
       "tiling.toggleOverview": toggleOverview,
+      "browser.activate": () => {
+        const store = useLayoutStore.getState();
+        const focused = getFocusedLocation(store.layout);
+        if (focused?.item.ref.type !== "browser") {
+          return;
+        }
+
+        activateBrowserTile(focused.item.id);
+      },
       "theme.toggle": toggleTheme,
     }),
     [

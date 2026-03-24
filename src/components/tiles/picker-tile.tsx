@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { Globe, Plus, Terminal } from "lucide-react";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { BaseNode } from "@/components/base-node";
 import {
   formatTileCoordinates,
@@ -89,6 +89,20 @@ export function PickerTileContent({
   }, []);
   useFocusWhenSelected(item.id, focusInput);
 
+  useEffect(() => {
+    if (selected) {
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    if (
+      activeElement instanceof HTMLElement &&
+      containerRef.current?.contains(activeElement)
+    ) {
+      activeElement.blur();
+    }
+  }, [selected]);
+
   return (
     <div
       className={cn("h-full w-full", className)}
@@ -97,7 +111,7 @@ export function PickerTileContent({
     >
       <BaseNode
         className="h-full w-full border-primary/35 border-dashed bg-primary/5 shadow-none backdrop-blur-sm"
-        onMouseDown={() => selectItem(item.id)}
+        onMouseDown={() => selectItem(item.id, { scroll: true })}
         selected={selected}
       >
         <div className="flex h-full flex-col gap-4 p-4">

@@ -27,6 +27,7 @@ function getTerminalTheme(): Record<string, string> {
 }
 
 export interface TerminalViewHandle {
+  blur: () => void;
   focus: () => void;
 }
 
@@ -45,6 +46,7 @@ const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
     const spawnDirectoryRef = useRef(directory);
 
     useImperativeHandle(ref, () => ({
+      blur: () => terminalRef.current?.blur(),
       focus: () => terminalRef.current?.focus(),
     }));
 

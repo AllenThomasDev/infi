@@ -31,7 +31,7 @@ interface LayoutState {
   removeCanvasLayout: (canvasId: string) => void;
   removeItem: (itemId: string) => void;
   replaceItem: (itemId: string, ref: NiriLayoutItem["ref"]) => void;
-  selectItem: (itemId: string) => void;
+  selectItem: (itemId: string, options?: { scroll?: boolean }) => void;
   setActiveCanvas: (canvasId: string | null) => void;
   setColumnWidths: (widths: ResizeMap) => void;
   toggleOverview: () => void;
@@ -287,7 +287,8 @@ export const useLayoutStore = create<LayoutState>()(
       scrollToItem(item.id);
     },
 
-    selectItem: (itemId) => {
+    selectItem: (itemId, options) => {
+      let selected = false;
       set((state) => {
         const location = findItemLocation(state.layout, itemId);
         if (!location) {
@@ -295,7 +296,11 @@ export const useLayoutStore = create<LayoutState>()(
         }
 
         setSelection(state.layout, location.item.id);
+        selected = true;
       });
+      if (selected && options?.scroll) {
+        scrollToItem(itemId);
+      }
     },
 
     focusNeighbor: (horizontal, vertical) => {

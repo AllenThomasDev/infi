@@ -1,5 +1,11 @@
-import { ArrowLeftIcon, ArrowRightIcon, RefreshCcwIcon, X } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  CircleAlertIcon,
+  RefreshCcwIcon,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BaseNode,
   BaseNodeHeader,
@@ -11,11 +17,12 @@ import {
   BrowserToolbar,
   BrowserToolbarButton,
 } from "@/components/browser/browser-chrome";
+import { registerBrowserTileActivator } from "@/components/tiles/browser-tile-activation";
 import {
   formatTileCoordinates,
   type TileCoordinates,
 } from "@/components/tiles/tile-coordinates";
-import { useFocusWhenSelected } from "@/components/tiles/use-tile-focus-effect";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { NiriLayoutItem } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
@@ -121,17 +128,34 @@ export function BrowserTileContent({
   const selectItem = useLayoutStore((state) => state.selectItem);
   const title = tileLabel(item, coordinates);
   const webviewRef = useRef<Electron.WebviewTag>(null);
+  const [webviewElement, setWebviewElement] =
+    useState<Electron.WebviewTag | null>(null);
   const [currentUrl, setCurrentUrl] = useState(DEFAULT_BROWSER_URL);
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
   const [loadError, setLoadError] = useState<LoadErrorState | null>(null);
-  const [webviewFocused, setWebviewFocused] = useState(false);
+  const [isWebviewActive, setIsWebviewActive] = useState(false);
 
-  const focusWebview = useCallback(() => {
-    webviewRef.current?.focus();
-    setWebviewFocused(true);
+  const activateWebview = useCallback(() => {
+    setIsWebviewActive(true);
+
+    const activeElement = document.activeElement;
+    if (
+      activeElement instanceof HTMLElement &&
+      activeElement !== document.body
+    ) {
+      activeElement.blur();
+    }
+
+    requestAnimationFrame(() => {
+      webviewRef.current?.focus();
+    });
   }, []);
-  useFocusWhenSelected(item.id, focusWebview);
+
+  const deactivateWebview = useCallback(() => {
+    setIsWebviewActive(false);
+    webviewRef.current?.blur();
+  }, []);
 
   const handleUrlChange = useCallback((url: string) => {
     const normalized = normalizeUrl(url);
@@ -150,14 +174,30 @@ export function BrowserTileContent({
   }, [currentUrl]);
 
   const handleWebviewRef = useCallback((el: Electron.WebviewTag | null) => {
-    (webviewRef as React.MutableRefObject<Electron.WebviewTag | null>).current =
-      el;
+    webviewRef.current = el;
+    setWebviewElement(el);
+  }, []);
 
-    if (!el) {
+  useEffect(() => {
+    if (!selected) {
+      deactivateWebview();
+    }
+  }, [deactivateWebview, selected]);
+
+  useEffect(() => {
+    return registerBrowserTileActivator(item.id, () => {
+      if (useLayoutStore.getState().layout.selectedItemId === item.id) {
+        activateWebview();
+      }
+    });
+  }, [activateWebview, item.id]);
+
+  useEffect(() => {
+    if (!webviewElement) {
       return;
     }
 
-    const webview = el;
+    const webview = webviewElement;
 
     function handleNavigate() {
       setLoadError(null);
@@ -191,40 +231,65 @@ export function BrowserTileContent({
       setCanGoForward(webview.canGoForward());
     }
 
-    webview.addEventListener("focus", () => setWebviewFocused(true));
-    webview.addEventListener("blur", () => setWebviewFocused(false));
+    function handleFocus() {
+      setIsWebviewActive(true);
+    }
+
+    function handleBlur() {
+      setIsWebviewActive(false);
+    }
 
     let registeredId: number | null = null;
 
-    webview.addEventListener("dom-ready", () => {
+    function handleDomReady() {
       const wcId = webview.getWebContentsId();
       if (registeredId !== null) {
         window.webviewBridge.unregisterWebview(registeredId);
       }
       registeredId = wcId;
       window.webviewBridge.registerWebview(wcId);
-    });
+    }
 
-    window.webviewBridge.onEscape((wcId) => {
+    const removeEscapeListener = window.webviewBridge.onEscape((wcId) => {
       if (wcId === registeredId) {
-        webview.blur();
+        deactivateWebview();
       }
     });
 
+    webview.addEventListener("focus", handleFocus);
+    webview.addEventListener("blur", handleBlur);
+    webview.addEventListener("dom-ready", handleDomReady);
     webview.addEventListener("did-start-loading", handleLoadStart);
     webview.addEventListener("did-navigate", handleNavigate);
     webview.addEventListener("did-navigate-in-page", handleNavigate);
     webview.addEventListener("did-fail-load", handleLoadFail as EventListener);
-  }, []);
+
+    return () => {
+      removeEscapeListener();
+      if (registeredId !== null) {
+        window.webviewBridge.unregisterWebview(registeredId);
+      }
+      webview.removeEventListener("focus", handleFocus);
+      webview.removeEventListener("blur", handleBlur);
+      webview.removeEventListener("dom-ready", handleDomReady);
+      webview.removeEventListener("did-start-loading", handleLoadStart);
+      webview.removeEventListener("did-navigate", handleNavigate);
+      webview.removeEventListener("did-navigate-in-page", handleNavigate);
+      webview.removeEventListener(
+        "did-fail-load",
+        handleLoadFail as EventListener
+      );
+    };
+  }, [deactivateWebview, webviewElement]);
 
   return (
     <BaseNode
       className={cn(
-        "data-[webview-focused=true]:border-primary data-[webview-focused=true]:ring-1 data-[webview-focused=true]:ring-primary/50",
+        "data-[webview-active=true]:border-primary data-[webview-active=true]:ring-1 data-[webview-active=true]:ring-primary/50",
         className
       )}
-      data-webview-focused={webviewFocused}
-      onMouseDown={() => selectItem(item.id)}
+      data-webview-active={isWebviewActive}
+      onMouseDown={() => selectItem(item.id, { scroll: true })}
       selected={selected}
       style={style}
     >
@@ -274,42 +339,29 @@ export function BrowserTileContent({
             ref={handleWebviewRef}
             src={DEFAULT_BROWSER_URL}
           />
-          {webviewFocused ? null : (
+          {isWebviewActive ? null : (
             <button
               aria-label="Activate browser"
-              className="absolute inset-0 z-10 flex cursor-pointer items-center justify-center bg-background/68 p-4 text-left backdrop-blur-[1px]"
-              onClick={focusWebview}
+              className="absolute inset-0 z-10 cursor-pointer bg-background/45 backdrop-blur-[2px] transition-[background-color,backdrop-filter]"
+              onClick={activateWebview}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  focusWebview();
+                  activateWebview();
                 }
               }}
               type="button"
             />
           )}
-          {webviewFocused ? null : (
+          {isWebviewActive ? null : (
             <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-4">
-              <div className="max-w-sm rounded-xl border bg-card/96 p-4 text-center shadow-lg backdrop-blur-sm">
-                <p className="font-medium text-sm">
-                  Browser controls are inactive
-                </p>
-                <p className="mt-1 text-muted-foreground text-xs">
-                  Click anywhere or use the button below to interact with the
-                  page.
-                </p>
-                <Button
-                  className="pointer-events-auto mt-3"
-                  onClick={focusWebview}
-                  size="sm"
-                  type="button"
-                >
-                  Activate Browser
-                </Button>
-                <p className="mt-2 text-[0.625rem] text-muted-foreground uppercase tracking-wide">
-                  Press Esc to return to tile controls
-                </p>
-              </div>
+              <Alert className="max-w-xs">
+                <CircleAlertIcon />
+                <AlertTitle>Browser inactive</AlertTitle>
+                <AlertDescription>
+                  Press Enter to browse. Press Esc to return to tile controls.
+                </AlertDescription>
+              </Alert>
             </div>
           )}
           {loadError ? (
