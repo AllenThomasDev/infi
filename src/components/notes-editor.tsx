@@ -37,7 +37,9 @@ export function NotesEditor({
         setEditorKey((k) => k + 1);
         onContentChangeRef.current?.(!!text.trim());
       })
-      .catch(console.error);
+      .catch(() => {
+        setInitialContent("");
+      });
   }, [worktreePath]);
 
   const handleChange = useCallback(
@@ -69,7 +71,7 @@ export function NotesEditor({
 
   return (
     <div
-      className="absolute inset-0 overflow-auto bg-background"
+      className="h-full w-full overflow-auto bg-background"
       onKeyDown={(e) => {
         if (e.key === "Escape") {
           e.preventDefault();

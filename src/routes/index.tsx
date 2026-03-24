@@ -24,6 +24,7 @@ import { useConfirm } from "@/hooks/use-confirm";
 import type { CommandHandlerMap } from "@/keybindings/types";
 import { useKeybindings } from "@/keybindings/use-keybindings";
 import { useLayoutStore } from "@/stores/layout-store";
+import { useTerminalTitleStore } from "@/stores/terminal-title-store";
 import { useBranchPickerState } from "@/workspace/use-branch-picker-state";
 import { useWorkspaceActions } from "@/workspace/use-workspace-actions";
 import { useWorkspaceCommandHandlers } from "@/workspace/use-workspace-command-handlers";
@@ -63,6 +64,7 @@ function HomePage() {
   const toggleNotes = useLayoutStore((s) => s.toggleNotes);
   const selectItem = useLayoutStore((s) => s.selectItem);
   const addItem = useLayoutStore((s) => s.addItem);
+  const terminalTitles = useTerminalTitleStore((s) => s.titles);
 
   const activeCanvas = activeCanvasId
     ? projects.flatMap((p) => p.canvases).find((c) => c.id === activeCanvasId)
@@ -146,8 +148,8 @@ function HomePage() {
             >
               {hasNotes ? <NotepadText /> : <NotepadTextDashed />}
             </Button>
-            {rows.flatMap((row) =>
-              row.items.map((item) => (
+            {rows.flatMap((row, rowIndex) =>
+              row.items.map((item, colIndex) => (
                 <Button
                   className="gap-1.5 text-xs"
                   key={item.id}
@@ -159,7 +161,8 @@ function HomePage() {
                   variant={!notesOpen && selectedItemId === item.id ? "secondary" : "ghost"}
                 >
                   <Terminal className="size-3.5" />
-                  {item.ref.type === "terminal" ? "Terminal" : "Picker"}
+                  <span className="max-w-32 truncate">{terminalTitles[item.id]?.trim() || "Terminal"}</span>
+                  <span className="text-muted-foreground">{rowIndex + 1}.{colIndex + 1}</span>
                 </Button>
               ))
             )}
@@ -183,6 +186,14 @@ function HomePage() {
             <WelcomeScreen onOpenProject={openProjectAndPromptForBranch} />
           ) : (
             <>
+              <div className={notesOpen ? "hidden" : "h-full w-full"}>
+                <WorkspaceContainer
+                  branchPickerOpen={branchPickerOpen}
+                  commandPaletteOpen={commandPaletteOpen}
+                  onCreateCanvas={openBranchPicker}
+                  onKeybindingStateChange={setCanvasKeybindingState}
+                />
+              </div>
               {notesOpen && activeCanvas && (
                 <NotesEditor
                   key={activeCanvas.id}
@@ -191,17 +202,6 @@ function HomePage() {
                   worktreePath={activeCanvas.worktreePath}
                 />
               )}
-              <div
-                className="h-full w-full"
-                hidden={notesOpen}
-              >
-                <WorkspaceContainer
-                  branchPickerOpen={branchPickerOpen}
-                  commandPaletteOpen={commandPaletteOpen}
-                  onCreateCanvas={openBranchPicker}
-                  onKeybindingStateChange={setCanvasKeybindingState}
-                />
-              </div>
             </>
           )}
           <CommandPalette

@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { ipc } from "@/ipc/manager";
 import type { NiriLayoutItem } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
+import { useTerminalTitleStore } from "@/stores/terminal-title-store";
 
 interface TerminalTileContentProps {
   className?: string;
@@ -26,10 +27,6 @@ interface TerminalTileContentProps {
   item: NiriLayoutItem;
   selected: boolean;
   style?: CSSProperties;
-}
-
-function tileLabel() {
-  return "Terminal";
 }
 
 export function TerminalTileContent({
@@ -41,12 +38,15 @@ export function TerminalTileContent({
 }: TerminalTileContentProps) {
   const removeItem = useLayoutStore((state) => state.removeItem);
   const selectItem = useLayoutStore((state) => state.selectItem);
+  const setTitle = useTerminalTitleStore((state) => state.setTitle);
+  const removeTitle = useTerminalTitleStore((state) => state.removeTitle);
+  const terminalTitle = useTerminalTitleStore(
+    (state) => state.titles[item.id]
+  );
   const terminalViewRef = useRef<TerminalViewHandle>(null);
-  const defaultTitle = tileLabel();
   const coordinateLabel = formatTileCoordinates(coordinates);
-  const [terminalTitle, setTerminalTitle] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const title = terminalTitle?.trim() ? terminalTitle : defaultTitle;
+  const title = terminalTitle?.trim() || "Terminal";
 
   const focusTerminal = useCallback(() => terminalViewRef.current?.focus(), []);
   useFocusWhenSelected(item.id, focusTerminal);
@@ -57,16 +57,33 @@ export function TerminalTileContent({
     }
   }, [selected]);
 
+  const titleTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const titleCountRef = useRef(0);
+  const handleTitleChange = useCallback(
+    (newTitle: string) => {
+      clearTimeout(titleTimerRef.current);
+      titleCountRef.current += 1;
+      if (titleCountRef.current <= 1) {
+        return;
+      }
+      titleTimerRef.current = setTimeout(() => setTitle(item.id, newTitle), 150);
+    },
+    [item.id, setTitle]
+  );
+  useEffect(() => () => clearTimeout(titleTimerRef.current), []);
+
   const closeTerminal = useCallback(() => {
     ipc.client.terminal.kill({ id: item.id }).catch(console.error);
     destroyTerminalInstance(item.id);
+    removeTitle(item.id);
     removeItem(item.id);
-  }, [item.id, removeItem]);
+  }, [item.id, removeItem, removeTitle]);
 
   const handleTerminalExit = useCallback(() => {
     destroyTerminalInstance(item.id);
+    removeTitle(item.id);
     removeItem(item.id);
-  }, [item.id, removeItem]);
+  }, [item.id, removeItem, removeTitle]);
 
   return (
     <BaseNode
@@ -100,7 +117,7 @@ export function TerminalTileContent({
         <TerminalView
           onExit={handleTerminalExit}
           onRunningChange={setIsRunning}
-          onTitleChange={setTerminalTitle}
+          onTitleChange={handleTitleChange}
           ref={terminalViewRef}
           terminalId={item.id}
         />

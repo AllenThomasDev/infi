@@ -71,7 +71,8 @@ function ProjectItem({
             <div className="absolute top-1/2 left-0 h-4 w-1 -translate-y-1/2 rounded-r-full bg-sidebar-primary" />
           ) : null}
           <CollapsibleTrigger
-            render={<span role="button" />}
+            nativeButton={false}
+            render={<span />}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
           >
             <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
