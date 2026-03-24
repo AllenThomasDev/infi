@@ -95,19 +95,6 @@ function moveFocusedItem(horizontal: number, vertical: number) {
   store.moveItem(focused.item.id, focused.row.id, targetIndex);
 }
 
-function moveFocusedColumnToWorkspace(vertical: number) {
-  if (vertical === 0) {
-    return;
-  }
-
-  const store = useLayoutStore.getState();
-  const focused = getFocusedLocation(store.layout);
-  if (!focused) {
-    return;
-  }
-  store.moveItemToAdjacentRow(focused.item.id, vertical > 0 ? 1 : -1);
-}
-
 export interface CanvasKeybindingState {
   context: () => Partial<ShortcutMatchContext>;
   handlers: CommandHandlerMap;
@@ -163,8 +150,7 @@ export function Canvas({
         removeItem(focused.item.id);
       },
       "tiling.addRight": () => addItem(createLayoutItem({ type: "picker" })),
-      "tiling.addBelow": () => addItem(createLayoutItem({ type: "picker" })),
-      "tiling.addWorkspaceBelow": () =>
+      "tiling.addBelow": () =>
         addRowBelow(createLayoutItem({ type: "picker" })),
       "tiling.focusLeft": () => focusNeighbor(-1, 0),
       "tiling.focusRight": () => focusNeighbor(1, 0),
@@ -174,8 +160,6 @@ export function Canvas({
       "tiling.moveRight": () => moveFocusedItem(1, 0),
       "tiling.moveUp": () => moveFocusedItem(0, -1),
       "tiling.moveDown": () => moveFocusedItem(0, 1),
-      "tiling.moveColumnToWorkspaceUp": () => moveFocusedColumnToWorkspace(-1),
-      "tiling.moveColumnToWorkspaceDown": () => moveFocusedColumnToWorkspace(1),
       "tiling.toggleOverview": toggleOverview,
       "theme.toggle": toggleTheme,
     }),
