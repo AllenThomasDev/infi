@@ -12,7 +12,7 @@ interface NiriRendererProps {
 export function NiriRenderer({ layout }: NiriRendererProps) {
   const selectedItemId = layout.selectedItemId;
   const focusTick = layout.focusTick;
-  const { isOverviewOpen, rows, zoom } = layout;
+  const { isFullscreenMode, isOverviewOpen, rows, zoom } = layout;
   const selectItem = useLayoutStore((state) => state.selectItem);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -128,6 +128,39 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
 
   if (rows.length === 0) {
     return <div className="flex h-full items-center justify-center" />;
+  }
+
+  if (isFullscreenMode) {
+    let selectedItem: NiriRendererProps["layout"]["rows"][number]["items"][number] | undefined;
+    let selectedRow = 0;
+    let selectedCol = 0;
+
+    for (const [ri, row] of rows.entries()) {
+      for (const [ci, item] of row.items.entries()) {
+        if (item.id === selectedItemId) {
+          selectedItem = item;
+          selectedRow = ri;
+          selectedCol = ci;
+        }
+      }
+    }
+
+    if (!selectedItem) {
+      selectedItem = rows[0].items[0];
+      selectedRow = 0;
+      selectedCol = 0;
+    }
+
+    return (
+      <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-gradient-to-br from-background via-background to-muted/20 p-2">
+        <NiriTile
+          className="h-full w-full"
+          coordinates={{ column: selectedCol + 1, row: selectedRow + 1 }}
+          item={selectedItem}
+          selected
+        />
+      </div>
+    );
   }
 
   return (

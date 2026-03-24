@@ -16,6 +16,7 @@ export interface NiriRow {
 
 export interface NiriCanvasLayout {
   focusTick: number;
+  isFullscreenMode: boolean;
   isNotesOpen: boolean;
   isOverviewOpen: boolean;
   lastColumnByRowId: Record<string, number>;

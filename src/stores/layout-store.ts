@@ -39,6 +39,7 @@ interface LayoutState {
   selectItem: (itemId: string, options?: { scroll?: boolean }) => void;
   setActiveCanvas: (canvasId: string | null) => void;
   setColumnWidths: (widths: ResizeMap) => void;
+  toggleFullscreenMode: () => void;
   toggleNotes: () => void;
   toggleOverview: () => void;
   zoomIn: () => void;
@@ -52,6 +53,7 @@ function createRow(): NiriRow {
 export function createInitialLayout(): NiriCanvasLayout {
   return {
     focusTick: 0,
+    isFullscreenMode: false,
     isNotesOpen: false,
     isOverviewOpen: false,
     lastColumnByRowId: {},
@@ -490,6 +492,16 @@ export const useLayoutStore = create<LayoutState>()(
       });
     },
 
+    toggleFullscreenMode: () => {
+      set((state) => {
+        const next = !state.layout.isFullscreenMode;
+        state.layout.isFullscreenMode = next;
+        if (next) {
+          state.layout.isOverviewOpen = false;
+        }
+      });
+    },
+
     toggleNotes: () => {
       set((state) => {
         state.layout.isNotesOpen = !state.layout.isNotesOpen;
@@ -498,7 +510,11 @@ export const useLayoutStore = create<LayoutState>()(
 
     toggleOverview: () => {
       set((state) => {
-        state.layout.isOverviewOpen = !state.layout.isOverviewOpen;
+        const next = !state.layout.isOverviewOpen;
+        state.layout.isOverviewOpen = next;
+        if (next) {
+          state.layout.isFullscreenMode = false;
+        }
       });
     },
 

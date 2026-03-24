@@ -123,6 +123,7 @@ export function Canvas({
   const focusNeighbor = useLayoutStore((state) => state.focusNeighbor);
   const focusNextItem = useLayoutStore((state) => state.focusNextItem);
   const focusPrevItem = useLayoutStore((state) => state.focusPrevItem);
+  const toggleFullscreenMode = useLayoutStore((state) => state.toggleFullscreenMode);
   const toggleOverview = useLayoutStore((state) => state.toggleOverview);
   const zoomIn = useLayoutStore((state) => state.zoomIn);
   const zoomOut = useLayoutStore((state) => state.zoomOut);
@@ -131,7 +132,7 @@ export function Canvas({
   const canvasHandlers = useMemo<CommandHandlerMap>(
     () => ({
       "canvas.fitView": NOOP,
-      "canvas.fullscreenNode": NOOP,
+      "canvas.fullscreenNode": toggleFullscreenMode,
       "canvas.zoomIn": zoomIn,
       "canvas.zoomOut": zoomOut,
       "canvas.selectAll": NOOP,
@@ -174,6 +175,7 @@ export function Canvas({
       focusNextItem,
       focusPrevItem,
       removeItem,
+      toggleFullscreenMode,
       toggleOverview,
       toggleTheme,
       zoomIn,
