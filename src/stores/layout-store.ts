@@ -34,6 +34,7 @@ interface LayoutState {
   selectItem: (itemId: string, options?: { scroll?: boolean }) => void;
   setActiveCanvas: (canvasId: string | null) => void;
   setColumnWidths: (widths: ResizeMap) => void;
+  toggleNotes: () => void;
   toggleOverview: () => void;
 }
 
@@ -44,6 +45,7 @@ function createRow(): NiriRow {
 export function createInitialLayout(): NiriCanvasLayout {
   return {
     focusTick: 0,
+    isNotesOpen: false,
     isOverviewOpen: false,
     lastColumnByRowId: {},
     selectedItemId: undefined,
@@ -444,6 +446,12 @@ export const useLayoutStore = create<LayoutState>()(
             }
           }
         }
+      });
+    },
+
+    toggleNotes: () => {
+      set((state) => {
+        state.layout.isNotesOpen = !state.layout.isNotesOpen;
       });
     },
 

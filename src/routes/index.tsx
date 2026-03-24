@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FolderGit2 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { NotepadText, NotepadTextDashed } from "lucide-react";
 import { BranchPicker } from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
-import { NotesEditor, useHasNotes } from "@/components/notes-editor";
+import { NotesEditor } from "@/components/notes-editor";
 import { ShortcutKbd } from "@/components/shortcut-tooltip";
 import { StatusBar } from "@/components/status-bar";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { WorkspaceSidebar } from "@/components/workspace-sidebar";
 import { useConfirm } from "@/hooks/use-confirm";
 import type { CommandHandlerMap } from "@/keybindings/types";
 import { useKeybindings } from "@/keybindings/use-keybindings";
+import { useLayoutStore } from "@/stores/layout-store";
 import { useBranchPickerState } from "@/workspace/use-branch-picker-state";
 import { useWorkspaceActions } from "@/workspace/use-workspace-actions";
 import { useWorkspaceCommandHandlers } from "@/workspace/use-workspace-command-handlers";
@@ -55,25 +57,21 @@ function HomePage() {
   const activeCanvasId = useWorkspaceStore((s) => s.activeCanvasId);
   const hasProjects = useWorkspaceStore((s) => s.projects.length > 0);
   const projects = useWorkspaceStore((s) => s.projects);
+  const notesOpen = useLayoutStore((s) => s.layout.isNotesOpen);
+  const toggleNotes = useLayoutStore((s) => s.toggleNotes);
 
   const activeCanvas = activeCanvasId
     ? projects.flatMap((p) => p.canvases).find((c) => c.id === activeCanvasId)
     : null;
-
-  const initialHasNotes = useHasNotes(activeCanvas?.worktreePath);
-  const [hasNotesOverride, setHasNotesOverride] = useState<boolean | null>(null);
-  const hasNotes = hasNotesOverride ?? initialHasNotes ?? false;
 
   const { confirm, confirmDialog, confirmWithCheckbox } = useConfirm();
   const { closeCanvas, openBranch } = useWorkspaceActions({
     confirmWithCheckbox,
   });
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [notesOpen, setNotesOpen] = useState(false);
+  const [hasNotes, setHasNotes] = useState(false);
   const [canvasKeybindingState, setCanvasKeybindingState] =
     useState<CanvasKeybindingState | null>(null);
-
-  const toggleNotes = useCallback(() => setNotesOpen((prev) => !prev), []);
 
   const {
     branchPickerOpen,
@@ -134,33 +132,33 @@ function HomePage() {
         onOpenProject={openProjectAndPromptForBranch}
       />
       <div className="flex h-full w-full min-w-0 flex-col overflow-hidden">
-        <StatusBar
-          hasNotes={hasNotes}
-          notesOpen={notesOpen}
-          onToggleNotes={toggleNotes}
-          showNotesButton={!!activeCanvas}
-        />
+        <StatusBar>
+          {activeCanvas ? (
+            <Button
+              onClick={toggleNotes}
+              size="icon-sm"
+              style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+              title="Notes"
+              variant={notesOpen ? "secondary" : "ghost"}
+            >
+              {hasNotes ? (
+                <NotepadText className="size-4" />
+              ) : (
+                <NotepadTextDashed className="size-4" />
+              )}
+            </Button>
+          ) : null}
+        </StatusBar>
         <div className="relative min-h-0 flex-1 overflow-hidden">
           {!hasProjects ? (
             <WelcomeScreen onOpenProject={openProjectAndPromptForBranch} />
           ) : notesOpen && activeCanvas ? (
-            // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-            <div
-              className="absolute inset-0 overflow-auto bg-background"
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  setNotesOpen(false);
-                }
-              }}
-            >
-              <NotesEditor
-                className="milkdown px-4 py-4"
-                key={activeCanvas.id}
-                onContentChange={setHasNotesOverride}
-                worktreePath={activeCanvas.worktreePath}
-              />
-            </div>
+            <NotesEditor
+              key={activeCanvas.id}
+              onClose={toggleNotes}
+              onContentChange={setHasNotes}
+              worktreePath={activeCanvas.worktreePath}
+            />
           ) : (
             <WorkspaceContainer
               branchPickerOpen={branchPickerOpen}

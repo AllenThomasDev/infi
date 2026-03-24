@@ -11,37 +11,14 @@ function getNotesPath(worktreePath: string) {
   return `${worktreePath}/${NOTES_PATH}`;
 }
 
-/**
- * Returns whether the notes file for the given worktree has content.
- * The value is `null` while loading.
- */
-export function useHasNotes(worktreePath: string | undefined): boolean | null {
-  const [hasNotes, setHasNotes] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    if (!worktreePath) {
-      setHasNotes(null);
-      return;
-    }
-
-    setHasNotes(null);
-    ipc.client.files
-      .readFile({ path: getNotesPath(worktreePath) })
-      .then(({ content }) => setHasNotes(!!content?.trim()))
-      .catch(() => setHasNotes(false));
-  }, [worktreePath]);
-
-  return hasNotes;
-}
-
 interface NotesEditorProps {
-  className?: string;
+  onClose: () => void;
   onContentChange?: (hasContent: boolean) => void;
   worktreePath: string;
 }
 
 export function NotesEditor({
-  className,
+  onClose,
   onContentChange,
   worktreePath,
 }: NotesEditorProps) {
@@ -55,8 +32,10 @@ export function NotesEditor({
     ipc.client.files
       .readFile({ path: getNotesPath(worktreePath) })
       .then(({ content }) => {
-        setInitialContent(content ?? "");
+        const text = content ?? "";
+        setInitialContent(text);
         setEditorKey((k) => k + 1);
+        onContentChangeRef.current?.(!!text.trim());
       })
       .catch(console.error);
   }, [worktreePath]);
@@ -68,8 +47,6 @@ export function NotesEditor({
       }
 
       onContentChangeRef.current?.(!!markdown.trim());
-
-      if (!markdown.trim()) return;
 
       debounceRef.current = setTimeout(() => {
         ipc.client.files
@@ -91,12 +68,24 @@ export function NotesEditor({
   if (initialContent === null) return null;
 
   return (
-    <div className={className}>
-      <MilkdownEditor
-        initialContent={initialContent}
-        key={editorKey}
-        onChange={handleChange}
-      />
+    <div
+      className="absolute inset-0 overflow-auto bg-background"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          onClose();
+        }
+      }}
+      role="region"
+      tabIndex={-1}
+    >
+      <div className="milkdown px-4 py-4">
+        <MilkdownEditor
+          initialContent={initialContent}
+          key={editorKey}
+          onChange={handleChange}
+        />
+      </div>
     </div>
   );
 }

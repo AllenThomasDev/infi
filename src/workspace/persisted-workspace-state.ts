@@ -58,6 +58,7 @@ const layoutRowSchema = z.object({
 
 const layoutSchema = z.object({
   focusTick: z.number().int().nonnegative(),
+  isNotesOpen: z.boolean().optional().default(false),
   isOverviewOpen: z.boolean(),
   lastColumnByRowId: z.record(z.string(), z.number().int().nonnegative()),
   rows: z.array(layoutRowSchema),
@@ -154,6 +155,7 @@ function cloneItemRef(ref: NiriItemRef): NiriItemRef {
 function cloneLayout(layout: NiriCanvasLayout): NiriCanvasLayout {
   return {
     focusTick: layout.focusTick,
+    isNotesOpen: layout.isNotesOpen,
     isOverviewOpen: layout.isOverviewOpen,
     lastColumnByRowId: { ...layout.lastColumnByRowId },
     rows: layout.rows.map((row) => ({
@@ -189,6 +191,7 @@ function sanitizeLayout(layout: NiriCanvasLayout): NiriCanvasLayout {
       Number.isInteger(layout.focusTick) && layout.focusTick >= 0
         ? layout.focusTick
         : 0,
+    isNotesOpen: layout.isNotesOpen,
     isOverviewOpen: layout.isOverviewOpen,
     lastColumnByRowId,
     rows,

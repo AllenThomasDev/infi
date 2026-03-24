@@ -16,6 +16,7 @@ export interface NiriRow {
 
 export interface NiriCanvasLayout {
   focusTick: number;
+  isNotesOpen: boolean;
   isOverviewOpen: boolean;
   lastColumnByRowId: Record<string, number>;
   rows: NiriRow[];
