@@ -315,7 +315,9 @@ export const useLayoutStore = create<LayoutState>()(
           targetId = state.layout.selectedItemId;
         }
       });
-      if (targetId) scrollToItem(targetId);
+      if (targetId) {
+        scrollToItem(targetId);
+      }
     },
 
     moveItem: (itemId, toRowId, index) => {
@@ -421,7 +423,9 @@ export const useLayoutStore = create<LayoutState>()(
         setSelection(state.layout, first?.item.id);
       });
       const nextId = useLayoutStore.getState().layout.selectedItemId;
-      if (nextId) scrollToItem(nextId);
+      if (nextId) {
+        scrollToItem(nextId);
+      }
     },
 
     replaceItem: (itemId, ref) => {
@@ -470,7 +474,9 @@ export function registerScrollToItem(
 ) {
   scrollToItemCallback = cb;
   return () => {
-    scrollToItemCallback = null;
+    if (scrollToItemCallback === cb) {
+      scrollToItemCallback = null;
+    }
   };
 }
 

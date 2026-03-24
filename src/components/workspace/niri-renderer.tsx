@@ -2,10 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { NiriTile } from "@/components/workspace/niri-tile";
 import type { NiriCanvasLayout } from "@/layout/layout-types";
 import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/layout-types";
-import {
-  registerScrollToItem,
-  useLayoutStore,
-} from "@/stores/layout-store";
+import { registerScrollToItem, useLayoutStore } from "@/stores/layout-store";
 import { cn } from "@/utils/tailwind";
 
 interface NiriRendererProps {
@@ -19,6 +16,29 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const scrollSyncTimeoutRef = useRef<number | null>(null);
+  const imperativeScrollActiveRef = useRef(false);
+  const imperativeScrollIdleTimeoutRef = useRef<number | null>(null);
+
+  const releaseImperativeScroll = useCallback(() => {
+    if (imperativeScrollIdleTimeoutRef.current !== null) {
+      window.clearTimeout(imperativeScrollIdleTimeoutRef.current);
+      imperativeScrollIdleTimeoutRef.current = null;
+    }
+    imperativeScrollActiveRef.current = false;
+  }, []);
+
+  const markImperativeScrollActive = useCallback(() => {
+    imperativeScrollActiveRef.current = true;
+
+    if (imperativeScrollIdleTimeoutRef.current !== null) {
+      window.clearTimeout(imperativeScrollIdleTimeoutRef.current);
+    }
+
+    imperativeScrollIdleTimeoutRef.current = window.setTimeout(() => {
+      imperativeScrollIdleTimeoutRef.current = null;
+      imperativeScrollActiveRef.current = false;
+    }, 120);
+  }, []);
 
   const syncSelectionToViewport = useCallback(() => {
     const root = rootRef.current;
@@ -64,14 +84,20 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
       cancelAnimationFrame(scrollSyncTimeoutRef.current);
     }
 
+    if (imperativeScrollActiveRef.current) {
+      markImperativeScrollActive();
+      return;
+    }
+
     scrollSyncTimeoutRef.current = requestAnimationFrame(() => {
       scrollSyncTimeoutRef.current = null;
       syncSelectionToViewport();
     });
-  }, [syncSelectionToViewport]);
+  }, [markImperativeScrollActive, syncSelectionToViewport]);
 
   useEffect(() => {
     const unregister = registerScrollToItem((itemId, behavior) => {
+      markImperativeScrollActive();
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           itemRefs.current[itemId]?.scrollIntoView({
@@ -79,6 +105,7 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
             block: "center",
             inline: "center",
           });
+          markImperativeScrollActive();
         });
       });
     });
@@ -88,8 +115,9 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
       if (scrollSyncTimeoutRef.current !== null) {
         cancelAnimationFrame(scrollSyncTimeoutRef.current);
       }
+      releaseImperativeScroll();
     };
-  }, []);
+  }, [markImperativeScrollActive, releaseImperativeScroll]);
 
   if (rows.length === 0) {
     return <div className="flex h-full items-center justify-center" />;
