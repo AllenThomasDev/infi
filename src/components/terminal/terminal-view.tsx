@@ -32,11 +32,17 @@ export interface TerminalViewHandle {
 }
 
 interface TerminalViewProps {
+  onExit?: () => void;
+  onRunningChange?: (isRunning: boolean) => void;
+  onTitleChange?: (title: string) => void;
   terminalId: string;
 }
 
 const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
-  function TerminalView({ terminalId }, ref) {
+  function TerminalView(
+    { onExit, onRunningChange, onTitleChange, terminalId },
+    ref
+  ) {
     const { directory } = useWorkspaceContext();
     const containerRef = useRef<HTMLDivElement>(null);
     const terminalRef = useRef<Terminal | null>(null);
@@ -85,6 +91,18 @@ const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
           .catch(console.error);
       });
 
+      const titleDisposable = terminal.onTitleChange((title) => {
+        onTitleChange?.(title);
+      });
+
+      const removeActivityListener = window.terminalBridge.onActivity(
+        (id, isRunning) => {
+          if (id === terminalId) {
+            onRunningChange?.(isRunning);
+          }
+        }
+      );
+
       const removeDataListener = window.terminalBridge.onData((id, data) => {
         if (id === terminalId) {
           terminal.write(data);
@@ -94,7 +112,9 @@ const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
       const removeExitListener = window.terminalBridge.onExit(
         (id, exitCode, _signal) => {
           if (id === terminalId) {
+            onRunningChange?.(false);
             terminal.writeln(`\r\n[Process exited with code ${exitCode}]`);
+            onExit?.();
           }
         }
       );
@@ -114,7 +134,9 @@ const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
           rows: terminal.rows,
           cwd: spawnDirectoryRef.current,
         })
-        .then(({ backlog }) => {
+        .then(({ backlog, hasRunningSubprocess }) => {
+          onRunningChange?.(hasRunningSubprocess);
+
           if (backlog) {
             terminal.write(backlog);
           }
@@ -130,13 +152,15 @@ const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
       return () => {
         themeObserver.disconnect();
         inputDisposable.dispose();
+        titleDisposable.dispose();
+        removeActivityListener();
         removeDataListener();
         removeExitListener();
         terminal.dispose();
         terminalRef.current = null;
         fitAddonRef.current = null;
       };
-    }, [terminalId]);
+    }, [onExit, onRunningChange, onTitleChange, terminalId]);
 
     // Refit on resize
     useEffect(() => {

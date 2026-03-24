@@ -4,5 +4,5 @@ export interface TileCoordinates {
 }
 
 export function formatTileCoordinates(coordinates: TileCoordinates) {
-  return `[${coordinates.row}, ${coordinates.column}]`;
+  return `${coordinates.row}.${coordinates.column}`;
 }

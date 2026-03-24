@@ -3,27 +3,38 @@ import type { ComponentProps } from "react";
 import { cn } from "@/utils/tailwind";
 
 interface BaseNodeProps extends ComponentProps<"div"> {
+  cardClassName?: string;
+  label?: string;
   selected?: boolean;
 }
 
 export function BaseNode({
+  cardClassName,
   className,
+  label,
   selected = false,
   ...props
 }: BaseNodeProps) {
   return (
-    <div
-      className={cn(
-        "relative flex flex-col rounded-[4px] border border-border bg-card text-card-foreground shadow-sm transition-[background-color,border-color,box-shadow]",
-        "hover:border-accent-foreground/25 hover:bg-card hover:shadow-md",
-        "data-[selected=true]:border-primary/40 data-[selected=true]:bg-card data-[selected=true]:shadow-lg",
-        "data-[selected=true]:hover:border-primary/50 data-[selected=true]:hover:bg-card",
-        className
+    <div className={cn("flex flex-col", className)}>
+      {label && (
+        <div className="user-select-none pb-1 pl-3 text-[10px] text-muted-foreground">
+          {label}
+        </div>
       )}
-      data-selected={selected}
-      data-slot="base-node"
-      {...props}
-    />
+      <div
+        className={cn(
+          "relative flex min-h-0 flex-1 flex-col rounded-[4px] border border-border bg-card text-card-foreground shadow-sm transition-[background-color,border-color,box-shadow]",
+          "hover:border-accent-foreground/25 hover:bg-card hover:shadow-md",
+          "data-[selected=true]:border-primary/40 data-[selected=true]:bg-card data-[selected=true]:shadow-lg",
+          "data-[selected=true]:hover:border-primary/50 data-[selected=true]:hover:bg-card",
+          cardClassName
+        )}
+        data-selected={selected}
+        data-slot="base-node"
+        {...props}
+      />
+    </div>
   );
 }
 

@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BaseNode,
   BaseNodeHeader,
@@ -27,9 +27,8 @@ interface TerminalTileContentProps {
   style?: CSSProperties;
 }
 
-function tileLabel(item: NiriLayoutItem, coordinates: TileCoordinates) {
-  const suffix = item.id.split("-").at(-1)?.slice(0, 4) ?? item.id.slice(0, 4);
-  return `Terminal ${suffix} ${formatTileCoordinates(coordinates)}`;
+function tileLabel() {
+  return "Terminal";
 }
 
 export function TerminalTileContent({
@@ -42,7 +41,11 @@ export function TerminalTileContent({
   const removeItem = useLayoutStore((state) => state.removeItem);
   const selectItem = useLayoutStore((state) => state.selectItem);
   const terminalViewRef = useRef<TerminalViewHandle>(null);
-  const title = tileLabel(item, coordinates);
+  const defaultTitle = tileLabel();
+  const coordinateLabel = formatTileCoordinates(coordinates);
+  const [terminalTitle, setTerminalTitle] = useState<string | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const title = terminalTitle?.trim() ? terminalTitle : defaultTitle;
 
   const focusTerminal = useCallback(() => terminalViewRef.current?.focus(), []);
   useFocusWhenSelected(item.id, focusTerminal);
@@ -58,27 +61,47 @@ export function TerminalTileContent({
     removeItem(item.id);
   }, [item.id, removeItem]);
 
+  const handleTerminalExit = useCallback(() => {
+    removeItem(item.id);
+  }, [item.id, removeItem]);
+
   return (
     <BaseNode
       className={className}
+      label={coordinateLabel}
       onMouseDown={() => selectItem(item.id, { scroll: true })}
       selected={selected}
       style={style}
     >
-      <BaseNodeHeader className="border-b">
-        <BaseNodeHeaderTitle className="text-xs">{title}</BaseNodeHeaderTitle>
-        <Button
-          aria-label={`Close ${title}`}
-          onClick={closeTerminal}
-          size="icon-sm"
-          variant="ghost"
-        >
-          <X />
-        </Button>
-      </BaseNodeHeader>
-      <div className="min-h-0 flex-1 cursor-text p-1">
-        <TerminalView ref={terminalViewRef} terminalId={item.id} />
-      </div>
+        <BaseNodeHeader className="border-b">
+          <BaseNodeHeaderTitle className="truncate text-xs">
+            {title}
+          </BaseNodeHeaderTitle>
+          <span
+            className={`user-select-none text-[10px] ${
+              isRunning ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
+            {isRunning ? "Running" : "Idle"}
+          </span>
+          <Button
+            aria-label={`Close ${title}`}
+            onClick={closeTerminal}
+            size="icon-sm"
+            variant="ghost"
+          >
+            <X />
+          </Button>
+        </BaseNodeHeader>
+        <div className="min-h-0 flex-1 cursor-text p-1">
+          <TerminalView
+            onExit={handleTerminalExit}
+            onRunningChange={setIsRunning}
+            onTitleChange={setTerminalTitle}
+            ref={terminalViewRef}
+            terminalId={item.id}
+          />
+        </div>
     </BaseNode>
   );
 }

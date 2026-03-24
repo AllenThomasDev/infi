@@ -54,6 +54,7 @@ export function PickerTileContent({
   const selectItem = useLayoutStore((state) => state.selectItem);
   const containerRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(false);
+  const coordinateLabel = formatTileCoordinates(coordinates);
 
   const cancel = useCallback(() => {
     if (doneRef.current) {
@@ -99,20 +100,19 @@ export function PickerTileContent({
   }, [selected]);
 
   return (
-    <div
+    <BaseNode
+      cardClassName="border-primary/35 border-dashed bg-primary/5 shadow-none backdrop-blur-sm"
       className={cn("h-full w-full", className)}
+      label={coordinateLabel}
+      onMouseDown={() => selectItem(item.id, { scroll: true })}
       ref={containerRef}
+      selected={selected}
       style={style}
     >
-      <BaseNode
-        className="h-full w-full border-primary/35 border-dashed bg-primary/5 shadow-none backdrop-blur-sm"
-        onMouseDown={() => selectItem(item.id, { scroll: true })}
-        selected={selected}
-      >
         <div className="flex h-full flex-col gap-4 p-4">
           <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-[0.24em]">
             <Plus className="h-3.5 w-3.5" />
-            New Pane {formatTileCoordinates(coordinates)}
+            New Pane
           </div>
           <div className="flex min-h-0 flex-1 items-center justify-center">
             <div className="w-full max-w-md rounded-xl border border-primary/30 border-dashed bg-background/80 p-3 shadow-sm">
@@ -147,7 +147,6 @@ export function PickerTileContent({
             </Button>
           </div>
         </div>
-      </BaseNode>
-    </div>
+    </BaseNode>
   );
 }

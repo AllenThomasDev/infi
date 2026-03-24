@@ -31,4 +31,13 @@ contextBridge.exposeInMainWorld("terminalBridge", {
     ipcRenderer.on("terminal:exit", listener);
     return () => ipcRenderer.removeListener("terminal:exit", listener);
   },
+  onActivity: (callback: (id: string, isRunning: boolean) => void) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      id: string,
+      isRunning: boolean
+    ) => callback(id, isRunning);
+    ipcRenderer.on("terminal:activity", listener);
+    return () => ipcRenderer.removeListener("terminal:activity", listener);
+  },
 });
