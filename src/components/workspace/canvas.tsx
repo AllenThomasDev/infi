@@ -13,7 +13,7 @@ import type {
   NiriItemRef,
   NiriLayoutItem,
 } from "@/layout/layout-types";
-import { createInitialLayout, useLayoutStore } from "@/stores/layout-store";
+import { useLayoutStore } from "@/stores/layout-store";
 
 function isInputFocused() {
   return (
@@ -69,7 +69,6 @@ function createLayoutItem(ref: NiriItemRef): NiriLayoutItem {
   };
 }
 
-const EMPTY_LAYOUT = createInitialLayout();
 const NOOP = () => undefined;
 
 function moveFocusedItem(horizontal: number, vertical: number) {
@@ -106,7 +105,6 @@ interface CanvasProps {
   canvasId: string;
   commandPaletteOpen: boolean;
   directory?: string;
-  isActive?: boolean;
   onKeybindingStateChange: (state: CanvasKeybindingState | null) => void;
 }
 
@@ -115,12 +113,9 @@ export function Canvas({
   canvasId,
   commandPaletteOpen,
   directory,
-  isActive = true,
   onKeybindingStateChange,
 }: CanvasProps) {
-  const layout = useLayoutStore((state) =>
-    isActive ? state.layout : (state.layoutsByCanvas[canvasId] ?? EMPTY_LAYOUT)
-  );
+  const layout = useLayoutStore((state) => state.layout);
   const addItem = useLayoutStore((state) => state.addItem);
   const addRowBelow = useLayoutStore((state) => state.addRowBelow);
   const removeItem = useLayoutStore((state) => state.removeItem);
@@ -196,13 +191,9 @@ export function Canvas({
   );
 
   useEffect(() => {
-    if (!isActive) {
-      return;
-    }
-
     onKeybindingStateChange(keybindingState);
     return () => onKeybindingStateChange(null);
-  }, [isActive, keybindingState, onKeybindingStateChange]);
+  }, [keybindingState, onKeybindingStateChange]);
 
   if (layout.rows.length === 0) {
     return (

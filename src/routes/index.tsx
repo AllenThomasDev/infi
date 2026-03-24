@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FolderGit2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { BranchPicker } from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
+import { NotesEditor, useHasNotes } from "@/components/notes-editor";
 import { ShortcutKbd } from "@/components/shortcut-tooltip";
 import { StatusBar } from "@/components/status-bar";
 import { Button } from "@/components/ui/button";
@@ -51,16 +52,28 @@ function WelcomeScreen({ onOpenProject }: { onOpenProject: () => void }) {
 
 function HomePage() {
   const closeProjectAction = useWorkspaceStore((s) => s.closeProject);
+  const activeCanvasId = useWorkspaceStore((s) => s.activeCanvasId);
   const hasProjects = useWorkspaceStore((s) => s.projects.length > 0);
   const projects = useWorkspaceStore((s) => s.projects);
+
+  const activeCanvas = activeCanvasId
+    ? projects.flatMap((p) => p.canvases).find((c) => c.id === activeCanvasId)
+    : null;
+
+  const initialHasNotes = useHasNotes(activeCanvas?.worktreePath);
+  const [hasNotesOverride, setHasNotesOverride] = useState<boolean | null>(null);
+  const hasNotes = hasNotesOverride ?? initialHasNotes ?? false;
 
   const { confirm, confirmDialog, confirmWithCheckbox } = useConfirm();
   const { closeCanvas, openBranch } = useWorkspaceActions({
     confirmWithCheckbox,
   });
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [canvasKeybindingState, setCanvasKeybindingState] =
     useState<CanvasKeybindingState | null>(null);
+
+  const toggleNotes = useCallback(() => setNotesOpen((prev) => !prev), []);
 
   const {
     branchPickerOpen,
@@ -121,17 +134,40 @@ function HomePage() {
         onOpenProject={openProjectAndPromptForBranch}
       />
       <div className="flex h-full w-full min-w-0 flex-col overflow-hidden">
-        <StatusBar />
+        <StatusBar
+          hasNotes={hasNotes}
+          notesOpen={notesOpen}
+          onToggleNotes={toggleNotes}
+          showNotesButton={!!activeCanvas}
+        />
         <div className="relative min-h-0 flex-1 overflow-hidden">
-          {hasProjects ? (
+          {!hasProjects ? (
+            <WelcomeScreen onOpenProject={openProjectAndPromptForBranch} />
+          ) : notesOpen && activeCanvas ? (
+            // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+            <div
+              className="absolute inset-0 overflow-auto bg-background"
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setNotesOpen(false);
+                }
+              }}
+            >
+              <NotesEditor
+                className="milkdown px-4 py-4"
+                key={activeCanvas.id}
+                onContentChange={setHasNotesOverride}
+                worktreePath={activeCanvas.worktreePath}
+              />
+            </div>
+          ) : (
             <WorkspaceContainer
               branchPickerOpen={branchPickerOpen}
               commandPaletteOpen={commandPaletteOpen}
               onCreateCanvas={openBranchPicker}
               onKeybindingStateChange={setCanvasKeybindingState}
             />
-          ) : (
-            <WelcomeScreen onOpenProject={openProjectAndPromptForBranch} />
           )}
           <CommandPalette
             handlers={commandHandlers}

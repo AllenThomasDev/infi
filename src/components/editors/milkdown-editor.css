@@ -5,6 +5,16 @@
   font-size: 0.875rem;
   line-height: 1.625;
   color: var(--sidebar-foreground);
+  cursor: text;
+}
+
+.milkdown .ProseMirror > .is-editor-empty:first-child::before,
+.milkdown .ProseMirror:has(> p:only-child > br:only-child)::before {
+  content: "Jot something down... saves to .context/notes.md";
+  color: var(--muted-foreground);
+  font-style: italic;
+  pointer-events: none;
+  position: absolute;
 }
 
 .milkdown .ProseMirror h1 {
