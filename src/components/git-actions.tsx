@@ -71,15 +71,17 @@ export function GitActions({ cwd }: GitActionsProps) {
       return;
     }
     if (quickAction.kind === "run_action" && quickAction.action) {
-      if (quickAction.action === "commit") {
-        setIsCommitDialogOpen(true);
+      if (!gitStatus?.hasWorkingTreeChanges) {
+        // Push-only: no changes to commit, run directly
+        void runStackedActionMutation.mutateAsync({
+          action: quickAction.action,
+        });
         return;
       }
-      // For commit_push / commit_push_pr, open dialog to get commit message.
       setIsCommitDialogOpen(true);
       return;
     }
-  }, [quickAction, pullMutation]);
+  }, [quickAction, pullMutation, gitStatus?.hasWorkingTreeChanges, runStackedActionMutation]);
 
   const handleDialogSubmit = useCallback(async () => {
     const msg = commitMessage.trim();
@@ -289,7 +291,9 @@ export function GitActions({ cwd }: GitActionsProps) {
             >
               {quickAction.action === "commit_push"
                 ? "Commit & push"
-                : "Commit"}
+                : quickAction.action === "commit_push_pr"
+                  ? "Commit, push & PR"
+                  : "Commit"}
             </Button>
           </DialogFooter>
         </DialogContent>
