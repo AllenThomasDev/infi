@@ -11,6 +11,7 @@ import {
   resolveQuickAction,
   summarizeGitResult,
 } from "@/lib/git-actions-logic";
+import { ipc } from "@/ipc/manager";
 import {
   gitBranchesQueryOptions,
   gitMutationKeys,
@@ -256,7 +257,7 @@ export function GitActions({ cwd }: GitActionsProps) {
                   children: "View PR",
                   onClick: () => {
                     closeToast();
-                    window.open(prUrl, "_blank");
+                    void ipc.client.shell.openExternal({ url: prUrl });
                   },
                 }
               : undefined;
@@ -459,7 +460,7 @@ export function GitActions({ cwd }: GitActionsProps) {
           }
         }}
       >
-        <DialogContent showCloseButton={false}>
+        <DialogContent className="sm:max-w-lg" showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>Commit changes</DialogTitle>
             <DialogDescription>
