@@ -10,6 +10,7 @@ import {
 import ModeToggle from "@/components/mode-toggle";
 import { ShortcutTooltip } from "@/components/shortcut-tooltip";
 import { Button } from "@/components/ui/button";
+import { toastManager } from "@/components/ui/toast";
 import {
   Collapsible,
   CollapsibleContent,
@@ -92,7 +93,13 @@ function ProjectItem({
         <SidebarMenuAction
           onClick={(e) => {
             e.stopPropagation();
-            Promise.resolve(onCloseProject()).catch(console.error);
+            Promise.resolve(onCloseProject()).catch((err) => {
+              toastManager.add({
+                type: "error",
+                title: "Failed to close project",
+                description: err instanceof Error ? err.message : "An error occurred.",
+              });
+            });
           }}
           showOnHover
           title="Unregister Project"
@@ -108,9 +115,13 @@ function ProjectItem({
                 isActive={isActive && canvas.id === activeCanvasId}
                 key={canvas.id}
                 onClose={() => {
-                  Promise.resolve(onCloseCanvas(canvas.id)).catch(
-                    console.error
-                  );
+                  Promise.resolve(onCloseCanvas(canvas.id)).catch((err) => {
+                    toastManager.add({
+                      type: "error",
+                      title: "Failed to close canvas",
+                      description: err instanceof Error ? err.message : "An error occurred.",
+                    });
+                  });
                 }}
                 onSwitch={() => onSwitchCanvas(canvas.id)}
               />
@@ -191,7 +202,13 @@ export function WorkspaceSidebar({
           <ShortcutTooltip command="workspace.openProject" label="Open Project" side="right">
             <SidebarGroupAction
               onClick={() => {
-                Promise.resolve(onOpenProject()).catch(console.error);
+                Promise.resolve(onOpenProject()).catch((err) => {
+                  toastManager.add({
+                    type: "error",
+                    title: "Failed to open project",
+                    description: err instanceof Error ? err.message : "An error occurred.",
+                  });
+                });
               }}
               type="button"
             >

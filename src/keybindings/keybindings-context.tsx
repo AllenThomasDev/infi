@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { toastManager } from "@/components/ui/toast";
 import { ipc } from "@/ipc/manager";
 import { formatShortcutLabel } from "./match";
 import type {
@@ -16,7 +17,13 @@ export function KeybindingsProvider({ children }: { children: ReactNode }) {
     ipc.client.keybindings
       .getKeybindings()
       .then((bindings) => setKeybindings(bindings as ResolvedKeybindingsConfig))
-      .catch(console.error);
+      .catch((err) => {
+        toastManager.add({
+          type: "warning",
+          title: "Failed to load keybindings",
+          description: err instanceof Error ? err.message : "Using default keybindings.",
+        });
+      });
   }, []);
 
   return (
