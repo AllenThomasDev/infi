@@ -2,7 +2,6 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { app } from "electron";
 
-export const MASTER_SESSION = "infi";
 const SOCKET_NAME = "infi";
 
 export function getTmuxBin(): string {
@@ -20,7 +19,7 @@ export function getTmuxConf(): string {
   return path.join(root, "resources", "tmux.conf");
 }
 
-function baseArgs(): string[] {
+export function baseArgs(): string[] {
   return ["-L", SOCKET_NAME, "-u", "-f", getTmuxConf()];
 }
 
@@ -48,30 +47,12 @@ export function isTmuxAvailable(): boolean {
   return tmuxAvailable;
 }
 
-export function hasSession(): boolean {
+/** Check whether a tmux session with the given terminal ID exists. */
+export function hasSession(id: string): boolean {
   try {
-    tmuxExec("has-session", "-t", MASTER_SESSION);
+    tmuxExec("has-session", "-t", id);
     return true;
   } catch {
     return false;
   }
-}
-
-export function hasWindow(id: string): boolean {
-  try {
-    const raw = tmuxExec(
-      "list-windows",
-      "-t",
-      MASTER_SESSION,
-      "-F",
-      "#{window_name}"
-    );
-    return raw.split("\n").includes(id);
-  } catch {
-    return false;
-  }
-}
-
-export function viewSessionName(id: string): string {
-  return `${MASTER_SESSION}-view-${id}`;
 }
