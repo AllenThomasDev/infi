@@ -2,13 +2,10 @@ import path from "node:path";
 import type { BrowserWindow } from "electron";
 import { type IPty, spawn } from "node-pty";
 import {
+  baseArgs,
   getTmuxBin,
-  getTmuxConf,
   hasSession as hasTmuxSession,
-  hasWindow as hasTmuxWindow,
-  MASTER_SESSION,
   tmuxExec,
-  viewSessionName,
 } from "./tmux";
 
 export interface PtySession {
@@ -33,16 +30,12 @@ function sendToRenderer(channel: string, ...args: unknown[]) {
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let shuttingDown = false;
 
-function tmuxBaseArgs(): string[] {
-  return ["-L", "infi", "-u", "-f", getTmuxConf()];
-}
-
 async function checkSubprocess(session: PtySession): Promise<boolean> {
   try {
     const cmd = tmuxExec(
       "list-panes",
       "-t",
-      `${MASTER_SESSION}:${session.id}`,
+      session.id,
       "-F",
       "#{pane_current_command}"
     ).trim();
@@ -97,35 +90,13 @@ function spawnTmuxTerminal(
   cwd?: string
 ): IPty {
   const resolvedCwd = cwd ?? process.env.HOME ?? process.cwd();
-  const viewName = viewSessionName(id);
 
-  if (hasTmuxWindow(id)) {
-    // Reconnect: window survives from previous app run.
-    // Kill stale linked session if it exists from a previous attach.
-    try {
-      tmuxExec("kill-session", "-t", viewName);
-    } catch {
-      // No stale session — fine.
-    }
-  } else if (hasTmuxSession()) {
-    // Master session exists, add a new window.
-    tmuxExec(
-      "new-window",
-      "-t",
-      MASTER_SESSION,
-      "-n",
-      id,
-      "-c",
-      resolvedCwd
-    );
-  } else {
-    // First terminal — create master session with initial window.
+  if (!hasTmuxSession(id)) {
+    // Create a new session for this terminal.
     tmuxExec(
       "new-session",
       "-d",
       "-s",
-      MASTER_SESSION,
-      "-n",
       id,
       "-c",
       resolvedCwd,
@@ -135,12 +106,8 @@ function spawnTmuxTerminal(
       String(rows)
     );
   }
-
-  // Create a linked session so this PTY has its own independent window view.
-  tmuxExec("new-session", "-d", "-t", MASTER_SESSION, "-s", viewName);
-  tmuxExec("select-window", "-t", `${viewName}:${id}`);
-
-  return spawn(getTmuxBin(), [...tmuxBaseArgs(), "attach-session", "-t", viewName], {
+  // Reconnect (or first attach) — just attach to the session.
+  return spawn(getTmuxBin(), [...baseArgs(), "attach-session", "-t", id], {
     name: "xterm-256color",
     cols,
     rows,
@@ -187,14 +154,14 @@ export function spawnTerminal(
     updatePollingState();
 
     // During shutdown the PTY exits because we killed it to detach.
-    // The tmux window is still alive — don't notify the renderer.
+    // The tmux session is still alive — don't notify the renderer.
     if (shuttingDown) {
       return;
     }
 
-    // If tmux window is still alive, this was an unexpected detach (not user exit).
+    // If tmux session is still alive, this was an unexpected detach (not user exit).
     // Don't emit exit so the tile stays and can reconnect.
-    if (hasTmuxWindow(id)) {
+    if (hasTmuxSession(id)) {
       return;
     }
 
@@ -226,12 +193,7 @@ export function killTerminal(id: string) {
   }
 
   try {
-    tmuxExec("kill-session", "-t", viewSessionName(id));
-  } catch {
-    // Already dead.
-  }
-  try {
-    tmuxExec("kill-window", "-t", `${MASTER_SESSION}:${id}`);
+    tmuxExec("kill-session", "-t", id);
   } catch {
     // Already dead.
   }
