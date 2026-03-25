@@ -1,10 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { FolderGit2 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { Diff, GitBranch, Maximize, Minimize, NotepadText, NotepadTextDashed, Plus, Terminal, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  Diff,
   FolderGit2,
   GitBranch,
   Maximize,
@@ -186,6 +183,13 @@ function HomePage() {
               <div className="nodrag ml-auto flex items-center gap-1">
                 <GitActions cwd={gitCwd} />
                 <Button
+                  onClick={toggleDiffView}
+                  size="icon-xs"
+                  variant={diffViewOpen ? "secondary" : "ghost"}
+                >
+                  <Diff />
+                </Button>
+                <Button
                   onClick={toggleFullscreenMode}
                   size="icon-xs"
                   variant={isFullscreenMode ? "secondary" : "ghost"}
@@ -194,22 +198,6 @@ function HomePage() {
                 </Button>
               </div>
             </>
-              <GitActions cwd={gitCwd} />
-              <Button
-                onClick={toggleDiffView}
-                size="icon-xs"
-                variant={diffViewOpen ? "secondary" : "ghost"}
-              >
-                <Diff />
-              </Button>
-              <Button
-                onClick={toggleFullscreenMode}
-                size="icon-xs"
-                variant={isFullscreenMode ? "secondary" : "ghost"}
-              >
-                {isFullscreenMode ? <Minimize /> : <Maximize />}
-              </Button>
-            </div>
           )}
         </StatusBar>
         {activeCanvas ? (
@@ -226,8 +214,6 @@ function HomePage() {
                 <div
                   className={cn(
                     "group/tab relative flex h-full items-center",
-                    !notesOpen &&
-                      selectedItemId === item.id &&
                     !notesOpen && !diffViewOpen && selectedItemId === item.id &&
                       "after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary"
                   )}
@@ -236,14 +222,6 @@ function HomePage() {
                   <Button
                     className={cn(
                       "gap-1.5 text-xs",
-                      !notesOpen &&
-                        selectedItemId === item.id &&
-                        "hover:bg-transparent"
-                    )}
-                    onClick={() => {
-                      if (notesOpen) {
-                        toggleNotes();
-                      }
                       !notesOpen && !diffViewOpen && selectedItemId === item.id &&
                         "hover:bg-transparent"
                     )}
@@ -279,9 +257,6 @@ function HomePage() {
             )}
             <Button
               onClick={() => {
-                if (notesOpen) {
-                  toggleNotes();
-                }
                 if (notesOpen) toggleNotes();
                 if (diffViewOpen) toggleDiffView();
                 addItem({

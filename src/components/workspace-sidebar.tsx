@@ -21,7 +21,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
@@ -221,20 +220,6 @@ export function WorkspaceSidebar({
     >
       <SidebarContent>
         <SidebarGroup className={isMac ? "pt-14" : undefined}>
-          <SidebarGroupLabel>Projects</SidebarGroupLabel>
-          <ShortcutTooltip
-            command="workspace.openProject"
-            label="Open Project"
-            side="right"
-          >
-            <SidebarGroupAction
-              onClick={() => {
-                Promise.resolve(onOpenProject()).catch((err) => {
-                  toastManager.add({
-                    type: "error",
-                    title: "Failed to open project",
-                    description:
-                      err instanceof Error ? err.message : "An error occurred.",
           <SidebarGroupLabel>
             Projects
             <ShortcutTooltip command="workspace.openProject" label="Open Project" side="right">
