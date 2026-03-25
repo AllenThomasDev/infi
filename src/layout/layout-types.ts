@@ -22,5 +22,4 @@ export interface NiriCanvasLayout {
   lastColumnByRowId: Record<string, number>;
   rows: NiriRow[];
   selectedItemId?: string;
-  zoom: number;
 }

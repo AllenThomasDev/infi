@@ -9,10 +9,6 @@ import { TILE_WIDTH } from "@/layout/layout-types";
 
 const MIN_ITEM_WIDTH = Math.round(TILE_WIDTH * 0.25);
 const MAX_ITEM_WIDTH = 2400;
-const MIN_ZOOM = 0.5;
-const MAX_ZOOM = 2.0;
-const ZOOM_STEP = 0.1;
-
 type ResizeMap = Record<string, number | undefined>;
 
 interface ItemLocation {
@@ -42,8 +38,6 @@ interface LayoutState {
   toggleFullscreenMode: () => void;
   toggleNotes: () => void;
   toggleOverview: () => void;
-  zoomIn: () => void;
-  zoomOut: () => void;
 }
 
 function createRow(): NiriRow {
@@ -59,7 +53,6 @@ export function createInitialLayout(): NiriCanvasLayout {
     lastColumnByRowId: {},
     selectedItemId: undefined,
     rows: [],
-    zoom: 1,
   };
 }
 
@@ -518,23 +511,6 @@ export const useLayoutStore = create<LayoutState>()(
       });
     },
 
-    zoomIn: () => {
-      set((state) => {
-        state.layout.zoom = Math.min(
-          MAX_ZOOM,
-          Math.round((state.layout.zoom + ZOOM_STEP) * 10) / 10
-        );
-      });
-    },
-
-    zoomOut: () => {
-      set((state) => {
-        state.layout.zoom = Math.max(
-          MIN_ZOOM,
-          Math.round((state.layout.zoom - ZOOM_STEP) * 10) / 10
-        );
-      });
-    },
   }))
 );
 

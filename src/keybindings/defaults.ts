@@ -1,8 +1,6 @@
 import type { KeybindingRule } from "./types";
 
 export const DEFAULT_KEYBINDINGS: readonly KeybindingRule[] = [
-  { key: "mod+=", command: "canvas.zoomIn", label: "Zoom In" },
-  { key: "mod+-", command: "canvas.zoomOut", label: "Zoom Out" },
   { key: "mod+0", command: "canvas.fitView", label: "Fit View" },
   {
     key: "mod+shift+f",

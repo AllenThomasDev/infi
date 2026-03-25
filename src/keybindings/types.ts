@@ -1,6 +1,4 @@
 export const KEYBINDING_COMMANDS = [
-  "canvas.zoomIn",
-  "canvas.zoomOut",
   "canvas.fitView",
   "canvas.fullscreenNode",
   "canvas.selectAll",

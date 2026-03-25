@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 import React, { useEffect } from "react";
 import { createRoot } from "react-dom/client";
@@ -13,6 +14,8 @@ import "./localization/i18n";
 
 initializeWorkspacePersistence();
 
+const queryClient = new QueryClient();
+
 export default function App() {
   const { i18n } = useTranslation();
 
@@ -21,13 +24,15 @@ export default function App() {
   }, [i18n]);
 
   return (
-    <ThemeProvider defaultTheme="dark" storageKey={LOCAL_STORAGE_KEYS.THEME}>
-      <KeybindingsProvider>
-        <TooltipProvider>
-          <RouterProvider router={router} />
-        </TooltipProvider>
-      </KeybindingsProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="dark" storageKey={LOCAL_STORAGE_KEYS.THEME}>
+        <KeybindingsProvider>
+          <TooltipProvider>
+            <RouterProvider router={router} />
+          </TooltipProvider>
+        </KeybindingsProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

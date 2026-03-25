@@ -1,13 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FolderGit2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Maximize, Minimize, NotepadText, NotepadTextDashed, Plus, Terminal, X } from "lucide-react";
+import { GitBranch, Maximize, Minimize, NotepadText, NotepadTextDashed, Plus, Terminal, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { BranchPicker } from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
+import { GitActions } from "@/components/git-actions";
 import { NotesEditor } from "@/components/notes-editor";
 import { ShortcutKbd } from "@/components/shortcut-tooltip";
 import { StatusBar } from "@/components/status-bar";
 import { Button } from "@/components/ui/button";
+import { gitStatusQueryOptions } from "@/lib/git-query";
 import { closeTile } from "@/layout/close-tile";
 import { cn } from "@/utils/tailwind";
 import {
@@ -73,6 +76,8 @@ function HomePage() {
   const activeCanvas = activeCanvasId
     ? projects.flatMap((p) => p.canvases).find((c) => c.id === activeCanvasId)
     : null;
+  const gitCwd = activeCanvas?.worktreePath ?? null;
+  const { data: gitStatus } = useQuery(gitStatusQueryOptions(gitCwd));
 
   const { confirm, confirmDialog, confirmWithCheckbox } = useConfirm();
   const { closeCanvas, openBranch } = useWorkspaceActions({
@@ -206,7 +211,23 @@ function HomePage() {
             >
               <Plus />
             </Button>
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-1">
+              {gitStatus?.branch && (
+                <span className="flex items-center gap-1 px-1.5 text-[10px] text-muted-foreground">
+                  <GitBranch className="size-3" />
+                  {gitStatus.branch}
+                  {gitStatus.hasChanges && (
+                    <span className="size-1.5 rounded-full bg-primary" />
+                  )}
+                  {gitStatus.aheadCount > 0 && (
+                    <span>↑{gitStatus.aheadCount}</span>
+                  )}
+                  {gitStatus.behindCount > 0 && (
+                    <span>↓{gitStatus.behindCount}</span>
+                  )}
+                </span>
+              )}
+              <GitActions cwd={gitCwd} />
               <Button
                 onClick={toggleFullscreenMode}
                 size="icon-xs"

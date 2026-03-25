@@ -64,7 +64,6 @@ const layoutSchema = z.object({
   lastColumnByRowId: z.record(z.string(), z.number().int().nonnegative()),
   rows: z.array(layoutRowSchema),
   selectedItemId: z.string().min(1).optional(),
-  zoom: z.number().min(0.5).max(2).optional().default(1),
 });
 
 const versionedEnvelopeSchema = z.object({
@@ -166,7 +165,6 @@ function cloneLayout(layout: NiriCanvasLayout): NiriCanvasLayout {
       items: row.items.map(cloneLayoutItem),
     })),
     ...(layout.selectedItemId ? { selectedItemId: layout.selectedItemId } : {}),
-    zoom: layout.zoom ?? 1,
   };
 }
 
@@ -203,7 +201,6 @@ function sanitizeLayout(layout: NiriCanvasLayout): NiriCanvasLayout {
     ...(layout.selectedItemId && itemIds.has(layout.selectedItemId)
       ? { selectedItemId: layout.selectedItemId }
       : {}),
-    zoom: layout.zoom ?? 1,
   };
 }
 

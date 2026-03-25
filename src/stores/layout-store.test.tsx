@@ -31,7 +31,6 @@ function makeLayout(
     lastColumnByRowId,
     selectedItemId,
     rows,
-    zoom: 1,
   };
 }
 

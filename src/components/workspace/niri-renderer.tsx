@@ -12,7 +12,7 @@ interface NiriRendererProps {
 export function NiriRenderer({ layout }: NiriRendererProps) {
   const selectedItemId = layout.selectedItemId;
   const focusTick = layout.focusTick;
-  const { isFullscreenMode, isOverviewOpen, rows, zoom } = layout;
+  const { isFullscreenMode, isOverviewOpen, rows } = layout;
   const selectItem = useLayoutStore((state) => state.selectItem);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -151,7 +151,6 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
           isOverviewOpen ? "gap-5" : "gap-6"
         )}
         onScroll={handleScroll}
-        style={zoom !== 1 ? { zoom } : undefined}
       >
         <div
           className="shrink-0"
