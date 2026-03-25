@@ -216,10 +216,10 @@ export function resolveQuickAction(
       return { label: "Commit", disabled: false, kind: "run_action", action: "commit" };
     }
     if (hasOpenPr || isDefaultBranch) {
-      return { label: "Commit & push", disabled: false, kind: "run_action", action: "commit_push" };
+      return { label: "Commit & Push", disabled: false, kind: "run_action", action: "commit_push" };
     }
     return {
-      label: "Commit, push & PR",
+      label: "Commit, Push & PR",
       disabled: false,
       kind: "run_action",
       action: "commit_push_pr",
@@ -253,7 +253,7 @@ export function resolveQuickAction(
       return { label: "Push", disabled: false, kind: "run_action", action: "commit_push" };
     }
     return {
-      label: "Push & create PR",
+      label: "Push & Create PR",
       disabled: false,
       kind: "run_action",
       action: "commit_push_pr",
@@ -262,7 +262,7 @@ export function resolveQuickAction(
 
   if (isDiverged) {
     return {
-      label: "Sync branch",
+      label: "Sync Branch",
       disabled: true,
       kind: "show_hint",
       hint: "Branch has diverged from upstream. Rebase/merge first.",
@@ -282,7 +282,7 @@ export function resolveQuickAction(
       return { label: "Push", disabled: false, kind: "run_action", action: "commit_push" };
     }
     return {
-      label: "Push & create PR",
+      label: "Push & Create PR",
       disabled: false,
       kind: "run_action",
       action: "commit_push_pr",

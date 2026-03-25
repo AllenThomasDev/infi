@@ -402,7 +402,7 @@ export function GitActions({ cwd }: GitActionsProps) {
   return (
     <>
       {/* Split button */}
-      <div className="flex items-center rounded-md bg-accent text-foreground">
+      <div className="flex items-center">
         <Button
           className="rounded-r-none text-xs"
           disabled={quickAction.disabled || isBusy}
@@ -421,7 +421,7 @@ export function GitActions({ cwd }: GitActionsProps) {
         >
           <DropdownMenuTrigger asChild>
             <Button
-              className="rounded-l-none border-l border-l-border/50 px-1"
+              className="rounded-l-none px-1"
               disabled={isBusy}
               size="xs"
               variant="ghost"
