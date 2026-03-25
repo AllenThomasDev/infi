@@ -20,6 +20,17 @@ import {
   invalidateGitQueries,
 } from "@/lib/git-query";
 import { toastManager } from "@/components/ui/toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -36,6 +47,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/utils/tailwind";
 
@@ -463,7 +475,7 @@ export function GitActions({ cwd }: GitActionsProps) {
                   {gitStatus?.branch ?? "(detached)"}
                 </span>
                 {isDefaultBranch && (
-                  <span className="ml-2 text-yellow-500">default branch</span>
+                  <Badge variant="destructive" className="ml-2">default branch</Badge>
                 )}
               </span>
               <span className="text-muted-foreground">
@@ -472,41 +484,43 @@ export function GitActions({ cwd }: GitActionsProps) {
             </div>
 
             {allFiles.length > 0 && (
-              <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border border-input bg-background p-1">
-                {allFiles.map((file) => {
-                  const isExcluded = excludedFiles.has(file.path);
-                  return (
-                    <label
-                      key={file.path}
-                      className={cn(
-                        "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 font-mono text-xs hover:bg-accent/50",
-                        isExcluded && "opacity-50"
-                      )}
-                    >
-                      <Checkbox
-                        checked={!isExcluded}
-                        onCheckedChange={() => {
-                          setExcludedFiles((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(file.path)) {
-                              next.delete(file.path);
-                            } else {
-                              next.add(file.path);
-                            }
-                            return next;
-                          });
-                        }}
-                      />
-                      <span className="flex-1 truncate">{file.path}</span>
-                      <span className="shrink-0">
-                        <span className="text-green-500">+{file.insertions}</span>
-                        <span className="text-muted-foreground"> / </span>
-                        <span className="text-red-500">-{file.deletions}</span>
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
+              <ScrollArea className="h-44 rounded-md border border-input bg-background">
+                <div className="space-y-1 p-1">
+                  {allFiles.map((file) => {
+                    const isExcluded = excludedFiles.has(file.path);
+                    return (
+                      <label
+                        key={file.path}
+                        className={cn(
+                          "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 font-mono text-xs hover:bg-accent/50",
+                          isExcluded && "opacity-50"
+                        )}
+                      >
+                        <Checkbox
+                          checked={!isExcluded}
+                          onCheckedChange={() => {
+                            setExcludedFiles((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(file.path)) {
+                                next.delete(file.path);
+                              } else {
+                                next.add(file.path);
+                              }
+                              return next;
+                            });
+                          }}
+                        />
+                        <span className="flex-1 truncate">{file.path}</span>
+                        <span className="shrink-0">
+                          <span className="text-green-500">+{file.insertions}</span>
+                          <span className="text-muted-foreground"> / </span>
+                          <span className="text-red-500">-{file.deletions}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
             )}
           </div>
 
@@ -555,46 +569,40 @@ export function GitActions({ cwd }: GitActionsProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Default branch confirmation dialog */}
-      <Dialog
+      {/* Default branch confirmation */}
+      <AlertDialog
         open={pendingDefaultBranchAction !== null}
         onOpenChange={(open) => {
           if (!open) setPendingDefaultBranchAction(null);
         }}
       >
-        <DialogContent showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {pendingDefaultBranchActionCopy?.title ?? "Run action on default branch?"}
-            </DialogTitle>
-            <DialogDescription>
+            </AlertDialogTitle>
+            <AlertDialogDescription>
               {pendingDefaultBranchActionCopy?.description}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter showCloseButton={false}>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPendingDefaultBranchAction(null)}
-            >
-              Abort
-            </Button>
-            <Button
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel size="sm">Abort</AlertDialogCancel>
+            <AlertDialogAction
               variant="outline"
               size="sm"
               onClick={continuePendingAction}
             >
               {pendingDefaultBranchActionCopy?.continueLabel ?? "Continue"}
-            </Button>
-            <Button
+            </AlertDialogAction>
+            <AlertDialogAction
               size="sm"
               onClick={checkoutFeatureBranchAndContinue}
             >
               Checkout feature branch & continue
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
