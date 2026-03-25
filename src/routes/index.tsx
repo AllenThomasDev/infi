@@ -123,6 +123,8 @@ function HomePage() {
   const commandHandlers = useMemo<CommandHandlerMap>(
     () => ({
       "app.commandPalette": () => setCommandPaletteOpen((prev) => !prev),
+      "layout.toggleNotes": toggleNotes,
+      "layout.toggleDiffView": toggleDiffView,
       ...workspaceHandlers,
       ...canvasKeybindingState?.handlers,
     }),

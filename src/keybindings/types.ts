@@ -16,6 +16,8 @@ export const KEYBINDING_COMMANDS = [
   "tiling.moveUp",
   "tiling.moveDown",
   "tiling.toggleOverview",
+  "layout.toggleNotes",
+  "layout.toggleDiffView",
   "theme.toggle",
   "app.commandPalette",
   "workspace.newCanvas",

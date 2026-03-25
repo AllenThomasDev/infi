@@ -78,6 +78,8 @@ export const DEFAULT_KEYBINDINGS: readonly KeybindingRule[] = [
     command: "tiling.toggleOverview",
     label: "Toggle Overview",
   },
+  { key: "mod+n", command: "layout.toggleNotes", label: "Toggle Notes" },
+  { key: "mod+d", command: "layout.toggleDiffView", label: "Toggle Diff View" },
   { key: "mod+shift+p", command: "app.commandPalette" },
   { key: "mod+shift+n", command: "workspace.newCanvas", label: "New Canvas" },
   { key: "mod+o", command: "workspace.openProject", label: "Open Project" },
