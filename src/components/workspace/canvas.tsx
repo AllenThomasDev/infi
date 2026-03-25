@@ -16,9 +16,11 @@ import type {
 import { useLayoutStore } from "@/stores/layout-store";
 
 function isInputFocused() {
+  const el = document.activeElement;
   return (
-    document.activeElement?.tagName === "INPUT" ||
-    document.activeElement?.tagName === "TEXTAREA"
+    el?.tagName === "INPUT" ||
+    el?.tagName === "TEXTAREA" ||
+    (el instanceof HTMLElement && el.isContentEditable)
   );
 }
 

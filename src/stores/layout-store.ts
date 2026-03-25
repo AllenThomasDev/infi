@@ -35,6 +35,8 @@ interface LayoutState {
   selectItem: (itemId: string, options?: { scroll?: boolean }) => void;
   setActiveCanvas: (canvasId: string | null) => void;
   setColumnWidths: (widths: ResizeMap) => void;
+  setDiffRenderMode: (mode: "stacked" | "split") => void;
+  toggleDiffView: () => void;
   toggleFullscreenMode: () => void;
   toggleNotes: () => void;
   toggleOverview: () => void;
@@ -46,7 +48,9 @@ function createRow(): NiriRow {
 
 export function createInitialLayout(): NiriCanvasLayout {
   return {
+    diffRenderMode: "stacked",
     focusTick: 0,
+    isDiffViewOpen: false,
     isFullscreenMode: false,
     isNotesOpen: false,
     isOverviewOpen: false,
@@ -485,6 +489,22 @@ export const useLayoutStore = create<LayoutState>()(
       });
     },
 
+    setDiffRenderMode: (mode) => {
+      set((state) => {
+        state.layout.diffRenderMode = mode;
+      });
+    },
+
+    toggleDiffView: () => {
+      set((state) => {
+        const next = !state.layout.isDiffViewOpen;
+        state.layout.isDiffViewOpen = next;
+        if (next) {
+          state.layout.isNotesOpen = false;
+        }
+      });
+    },
+
     toggleFullscreenMode: () => {
       set((state) => {
         const next = !state.layout.isFullscreenMode;
@@ -497,7 +517,11 @@ export const useLayoutStore = create<LayoutState>()(
 
     toggleNotes: () => {
       set((state) => {
-        state.layout.isNotesOpen = !state.layout.isNotesOpen;
+        const next = !state.layout.isNotesOpen;
+        state.layout.isNotesOpen = next;
+        if (next) {
+          state.layout.isDiffViewOpen = false;
+        }
       });
     },
 

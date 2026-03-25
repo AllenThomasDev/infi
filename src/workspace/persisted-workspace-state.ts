@@ -57,7 +57,9 @@ const layoutRowSchema = z.object({
 });
 
 const layoutSchema = z.object({
+  diffRenderMode: z.enum(["stacked", "split"]).optional().default("stacked"),
   focusTick: z.number().int().nonnegative(),
+  isDiffViewOpen: z.boolean().optional().default(false),
   isFullscreenMode: z.boolean().optional().default(false),
   isNotesOpen: z.boolean().optional().default(false),
   isOverviewOpen: z.boolean(),
@@ -156,6 +158,8 @@ function cloneItemRef(ref: NiriItemRef): NiriItemRef {
 function cloneLayout(layout: NiriCanvasLayout): NiriCanvasLayout {
   return {
     focusTick: layout.focusTick,
+    diffRenderMode: layout.diffRenderMode ?? "stacked",
+    isDiffViewOpen: layout.isDiffViewOpen ?? false,
     isFullscreenMode: layout.isFullscreenMode ?? false,
     isNotesOpen: layout.isNotesOpen,
     isOverviewOpen: layout.isOverviewOpen,
@@ -193,6 +197,8 @@ function sanitizeLayout(layout: NiriCanvasLayout): NiriCanvasLayout {
       Number.isInteger(layout.focusTick) && layout.focusTick >= 0
         ? layout.focusTick
         : 0,
+    diffRenderMode: layout.diffRenderMode ?? "stacked",
+    isDiffViewOpen: layout.isDiffViewOpen ?? false,
     isFullscreenMode: layout.isFullscreenMode ?? false,
     isNotesOpen: layout.isNotesOpen,
     isOverviewOpen: layout.isOverviewOpen,

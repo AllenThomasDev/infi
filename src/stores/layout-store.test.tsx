@@ -24,7 +24,9 @@ function makeLayout(
   lastColumnByRowId: Record<string, number> = {}
 ): NiriCanvasLayout {
   return {
+    diffRenderMode: "stacked",
     focusTick: 0,
+    isDiffViewOpen: false,
     isFullscreenMode: false,
     isNotesOpen: false,
     isOverviewOpen: false,
