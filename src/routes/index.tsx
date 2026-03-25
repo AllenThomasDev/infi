@@ -147,7 +147,35 @@ function HomePage() {
         onOpenProject={openProjectAndPromptForBranch}
       />
       <div className="flex h-full w-full min-w-0 flex-col overflow-hidden">
-        <StatusBar />
+        <StatusBar>
+          {activeCanvas && (
+            <div className="nodrag ml-auto flex items-center gap-1">
+              {gitStatus?.branch && (
+                <span className="flex items-center gap-1 px-1.5 text-[10px] text-muted-foreground">
+                  <GitBranch className="size-3" />
+                  {gitStatus.branch}
+                  {gitStatus.hasWorkingTreeChanges && (
+                    <span className="size-1.5 rounded-full bg-primary" />
+                  )}
+                  {gitStatus.aheadCount > 0 && (
+                    <span>↑{gitStatus.aheadCount}</span>
+                  )}
+                  {gitStatus.behindCount > 0 && (
+                    <span>↓{gitStatus.behindCount}</span>
+                  )}
+                </span>
+              )}
+              <GitActions cwd={gitCwd} />
+              <Button
+                onClick={toggleFullscreenMode}
+                size="icon-xs"
+                variant={isFullscreenMode ? "secondary" : "ghost"}
+              >
+                {isFullscreenMode ? <Minimize /> : <Maximize />}
+              </Button>
+            </div>
+          )}
+        </StatusBar>
         {activeCanvas ? (
           <div className="flex h-9 shrink-0 items-center gap-1 border-sidebar-border border-b bg-sidebar px-2">
             <Button
@@ -211,31 +239,6 @@ function HomePage() {
             >
               <Plus />
             </Button>
-            <div className="ml-auto flex items-center gap-1">
-              {gitStatus?.branch && (
-                <span className="flex items-center gap-1 px-1.5 text-[10px] text-muted-foreground">
-                  <GitBranch className="size-3" />
-                  {gitStatus.branch}
-                  {gitStatus.hasWorkingTreeChanges && (
-                    <span className="size-1.5 rounded-full bg-primary" />
-                  )}
-                  {gitStatus.aheadCount > 0 && (
-                    <span>↑{gitStatus.aheadCount}</span>
-                  )}
-                  {gitStatus.behindCount > 0 && (
-                    <span>↓{gitStatus.behindCount}</span>
-                  )}
-                </span>
-              )}
-              <GitActions cwd={gitCwd} />
-              <Button
-                onClick={toggleFullscreenMode}
-                size="icon-xs"
-                variant={isFullscreenMode ? "secondary" : "ghost"}
-              >
-                {isFullscreenMode ? <Minimize /> : <Maximize />}
-              </Button>
-            </div>
           </div>
         ) : null}
         <div className="relative min-h-0 flex-1 overflow-hidden">

@@ -133,7 +133,7 @@ export function GitActions({ cwd }: GitActionsProps) {
 
   return (
     <>
-      <div className="flex items-center">
+      <div className="flex items-center rounded-md bg-accent">
         <Button
           className="rounded-r-none text-xs"
           disabled={quickAction.disabled || isBusy}
@@ -157,7 +157,7 @@ export function GitActions({ cwd }: GitActionsProps) {
         >
           <DropdownMenuTrigger asChild>
             <Button
-              className="rounded-l-none border-l border-l-border px-1"
+              className="rounded-l-none border-l border-l-border/50 px-1"
               disabled={isBusy}
               size="xs"
               variant="ghost"
