@@ -2,10 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import { Plus, Terminal } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { BaseNode } from "@/components/base-node";
-import {
-  formatTileCoordinates,
-  type TileCoordinates,
-} from "@/components/tiles/tile-coordinates";
+
 import { useFocusWhenSelected } from "@/components/tiles/use-tile-focus-effect";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +33,6 @@ const PICKER_OPTIONS: PickerOption[] = [
 
 interface PickerTileContentProps {
   className?: string;
-  coordinates: TileCoordinates;
   item: NiriLayoutItem;
   selected: boolean;
   style?: React.CSSProperties;
@@ -44,7 +40,6 @@ interface PickerTileContentProps {
 
 export function PickerTileContent({
   className,
-  coordinates,
   item,
   selected,
   style,
@@ -54,8 +49,6 @@ export function PickerTileContent({
   const selectItem = useLayoutStore((state) => state.selectItem);
   const containerRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(false);
-  const coordinateLabel = formatTileCoordinates(coordinates);
-
   const cancel = useCallback(() => {
     if (doneRef.current) {
       return;
@@ -101,9 +94,7 @@ export function PickerTileContent({
 
   return (
     <BaseNode
-      cardClassName="border-primary/35 border-dashed bg-primary/5 shadow-none backdrop-blur-sm"
-      className={cn("h-full w-full", className)}
-      label={coordinateLabel}
+      className={cn("h-full w-full border-primary/35 border-dashed bg-primary/5 shadow-none backdrop-blur-sm", className)}
       onMouseDown={() => selectItem(item.id, { scroll: true })}
       ref={containerRef}
       selected={selected}

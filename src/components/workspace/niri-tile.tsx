@@ -1,30 +1,22 @@
 import type { CSSProperties } from "react";
 import { PickerTileContent } from "@/components/tiles/picker-tile";
 import { TerminalTileContent } from "@/components/tiles/terminal-tile";
-import type { TileCoordinates } from "@/components/tiles/tile-coordinates";
 import type { NiriLayoutItem } from "@/layout/layout-types";
 
 interface NiriTileProps {
   className?: string;
-  coordinates: TileCoordinates;
+  fullscreen?: boolean;
   item: NiriLayoutItem;
   selected: boolean;
   style?: CSSProperties;
 }
 
-export function NiriTile({
-  className,
-  coordinates,
-  item,
-  selected,
-  style,
-}: NiriTileProps) {
+export function NiriTile({ className, fullscreen, item, selected, style }: NiriTileProps) {
   switch (item.ref.type) {
     case "picker":
       return (
         <PickerTileContent
           className={className}
-          coordinates={coordinates}
           item={item}
           selected={selected}
           style={style}
@@ -34,7 +26,7 @@ export function NiriTile({
       return (
         <TerminalTileContent
           className={className}
-          coordinates={coordinates}
+          fullscreen={fullscreen}
           item={item}
           selected={selected}
           style={style}

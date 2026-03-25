@@ -3,8 +3,7 @@ import { useTheme } from "@/components/theme-provider";
 import { EmptyCanvasState } from "@/components/workspace/empty-canvas-state";
 import { NiriRenderer } from "@/components/workspace/niri-renderer";
 import { WorkspaceContext } from "@/components/workspace/workspace-context";
-import { destroyTerminalInstance } from "@/components/terminal/terminal-view";
-import { ipc } from "@/ipc/manager";
+import { closeTile } from "@/layout/close-tile";
 import type {
   CommandHandlerMap,
   ShortcutMatchContext,
@@ -119,7 +118,7 @@ export function Canvas({
   const layout = useLayoutStore((state) => state.layout);
   const addItem = useLayoutStore((state) => state.addItem);
   const addRowBelow = useLayoutStore((state) => state.addRowBelow);
-  const removeItem = useLayoutStore((state) => state.removeItem);
+
   const focusNeighbor = useLayoutStore((state) => state.focusNeighbor);
   const focusNextItem = useLayoutStore((state) => state.focusNextItem);
   const focusPrevItem = useLayoutStore((state) => state.focusPrevItem);
@@ -143,14 +142,7 @@ export function Canvas({
           return;
         }
 
-        if (focused.item.ref.type === "terminal") {
-          ipc.client.terminal
-            .kill({ id: focused.item.id })
-            .catch(console.error);
-          destroyTerminalInstance(focused.item.id);
-        }
-
-        removeItem(focused.item.id);
+        closeTile(focused.item.id, focused.item.ref.type);
       },
       "tiling.addRight": () => addItem(createLayoutItem({ type: "terminal" })),
       "tiling.addBelow": () =>
@@ -174,7 +166,6 @@ export function Canvas({
       focusNeighbor,
       focusNextItem,
       focusPrevItem,
-      removeItem,
       toggleFullscreenMode,
       toggleOverview,
       toggleTheme,

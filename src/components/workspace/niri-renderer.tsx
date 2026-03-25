@@ -131,35 +131,12 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
   }
 
   if (isFullscreenMode) {
-    let selectedItem: NiriRendererProps["layout"]["rows"][number]["items"][number] | undefined;
-    let selectedRow = 0;
-    let selectedCol = 0;
-
-    for (const [ri, row] of rows.entries()) {
-      for (const [ci, item] of row.items.entries()) {
-        if (item.id === selectedItemId) {
-          selectedItem = item;
-          selectedRow = ri;
-          selectedCol = ci;
-        }
-      }
-    }
-
-    if (!selectedItem) {
-      selectedItem = rows[0].items[0];
-      selectedRow = 0;
-      selectedCol = 0;
-    }
+    const item =
+      rows.flatMap((r) => r.items).find((i) => i.id === selectedItemId) ??
+      rows[0].items[0];
 
     return (
-      <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-gradient-to-br from-background via-background to-muted/20 p-2">
-        <NiriTile
-          className="h-full w-full"
-          coordinates={{ column: selectedCol + 1, row: selectedRow + 1 }}
-          item={selectedItem}
-          selected
-        />
-      </div>
+      <NiriTile className="h-full w-full border-0 shadow-none" fullscreen item={item} selected={false} />
     );
   }
 
@@ -210,10 +187,6 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
                       >
                         <NiriTile
                           className="h-full"
-                          coordinates={{
-                            column: columnIndex + 1,
-                            row: rowIndex + 1,
-                          }}
                           item={item}
                           selected={item.id === selectedItemId}
                         />

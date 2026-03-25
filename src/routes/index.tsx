@@ -1,13 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FolderGit2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Maximize, Minimize, NotepadText, NotepadTextDashed, Plus, Terminal } from "lucide-react";
+import { Maximize, Minimize, NotepadText, NotepadTextDashed, Plus, Terminal, X } from "lucide-react";
 import { BranchPicker } from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
 import { NotesEditor } from "@/components/notes-editor";
 import { ShortcutKbd } from "@/components/shortcut-tooltip";
 import { StatusBar } from "@/components/status-bar";
 import { Button } from "@/components/ui/button";
+import { closeTile } from "@/layout/close-tile";
+import { cn } from "@/utils/tailwind";
 import {
   Empty,
   EmptyContent,
@@ -152,20 +154,43 @@ function HomePage() {
             </Button>
             {rows.flatMap((row, rowIndex) =>
               row.items.map((item, colIndex) => (
-                <Button
-                  className="gap-1.5 text-xs"
+                <div
+                  className={cn(
+                    "group/tab relative flex h-full items-center",
+                    !notesOpen && selectedItemId === item.id &&
+                      "after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary"
+                  )}
                   key={item.id}
-                  onClick={() => {
-                    if (notesOpen) toggleNotes();
-                    selectItem(item.id, { scroll: true });
-                  }}
-                  size="xs"
-                  variant={!notesOpen && selectedItemId === item.id ? "secondary" : "ghost"}
                 >
-                  <Terminal className="size-3.5" />
-                  <span className="max-w-32 truncate">{terminalTitles[item.id]?.trim() || "Terminal"}</span>
-                  <span className="text-muted-foreground">{rowIndex + 1}.{colIndex + 1}</span>
-                </Button>
+                  <Button
+                    className={cn(
+                      "gap-1.5 text-xs",
+                      !notesOpen && selectedItemId === item.id &&
+                        "hover:bg-transparent"
+                    )}
+                    onClick={() => {
+                      if (notesOpen) toggleNotes();
+                      selectItem(item.id, { scroll: true });
+                    }}
+                    size="xs"
+                    variant="ghost"
+                  >
+                    <Terminal className="size-3.5" />
+                    <span className="max-w-32 truncate">{terminalTitles[item.id]?.trim() || "Terminal"}</span>
+                    <span className="text-muted-foreground">{rowIndex + 1}.{colIndex + 1}</span>
+                  </Button>
+                  <Button
+                    className="size-5 opacity-0 group-hover/tab:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeTile(item.id, item.ref.type);
+                    }}
+                    size="icon-xs"
+                    variant="ghost"
+                  >
+                    <X className="size-3" />
+                  </Button>
+                </div>
               ))
             )}
             <Button
