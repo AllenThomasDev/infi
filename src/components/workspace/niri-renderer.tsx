@@ -1,9 +1,106 @@
 import { useCallback, useEffect, useRef } from "react";
 import { NiriTile } from "@/components/workspace/niri-tile";
-import type { NiriCanvasLayout } from "@/layout/layout-types";
+import type { NiriCanvasLayout, NiriLayoutItem } from "@/layout/layout-types";
 import { TILE_HEIGHT, TILE_WIDTH } from "@/layout/layout-types";
 import { useLayoutStore } from "@/stores/layout-store";
+import { useTerminalTitleStore } from "@/stores/terminal-title-store";
 import { cn } from "@/utils/tailwind";
+
+const OVERVIEW_SCALE = 0.3;
+const OVERVIEW_GAP = 12;
+
+function OverviewThumbnail({
+  item,
+  onSelect,
+  selected,
+}: {
+  item: NiriLayoutItem;
+  onSelect: (id: string) => void;
+  selected: boolean;
+}) {
+  const title = useTerminalTitleStore((state) =>
+    item.ref.type === "terminal" ? state.titles[item.id] : undefined
+  );
+  const itemWidth = item.preferredWidth ?? TILE_WIDTH;
+  const scaledWidth = Math.round(itemWidth * OVERVIEW_SCALE);
+  const scaledHeight = Math.round(TILE_HEIGHT * OVERVIEW_SCALE);
+
+  return (
+    <button
+      className="group relative shrink-0 cursor-pointer"
+      onClick={() => onSelect(item.id)}
+      style={{ width: scaledWidth, height: scaledHeight }}
+      type="button"
+    >
+      <div
+        className="pointer-events-none absolute origin-top-left"
+        style={{
+          width: itemWidth,
+          height: TILE_HEIGHT,
+          transform: `scale(${OVERVIEW_SCALE})`,
+        }}
+      >
+        <NiriTile
+          className="h-full w-full"
+          item={item}
+          selected={false}
+        />
+      </div>
+      <div
+        className={cn(
+          "absolute inset-0 rounded-sm border-2 transition-colors",
+          selected
+            ? "border-primary"
+            : "border-transparent group-hover:border-primary/40"
+        )}
+      />
+      {title && (
+        <span className="absolute bottom-0 left-0 right-0 truncate bg-background/80 px-1 py-0.5 text-[10px] text-muted-foreground">
+          {title}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function OverviewGrid({ layout }: { layout: NiriCanvasLayout }) {
+  const selectItem = useLayoutStore((state) => state.selectItem);
+  const toggleOverview = useLayoutStore((state) => state.toggleOverview);
+
+  const handleSelect = useCallback(
+    (id: string) => {
+      selectItem(id, { scroll: true });
+      toggleOverview();
+    },
+    [selectItem, toggleOverview]
+  );
+
+  return (
+    <div className="flex h-full w-full flex-col items-center overflow-auto bg-gradient-to-br from-background via-background to-muted/20 p-6">
+      <div
+        className="flex flex-col items-center"
+        style={{ gap: OVERVIEW_GAP }}
+      >
+        {layout.rows.map((row) => (
+          <div
+            className="flex flex-wrap justify-center"
+            key={row.id}
+            style={{ gap: OVERVIEW_GAP }}
+          >
+            {row.items.map((item) => (
+              <OverviewThumbnail
+                item={item}
+                key={item.id}
+                onSelect={handleSelect}
+                selected={item.id === layout.selectedItemId}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface NiriRendererProps {
   layout: NiriCanvasLayout;
@@ -140,16 +237,17 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
     );
   }
 
+  if (isOverviewOpen) {
+    return <OverviewGrid layout={layout} />;
+  }
+
   return (
     <div
       className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-gradient-to-br from-background via-background to-muted/20"
       ref={rootRef}
     >
       <div
-        className={cn(
-          "no-scrollbar flex min-h-0 w-full flex-1 snap-y snap-mandatory flex-col overflow-y-auto scroll-auto px-4",
-          isOverviewOpen ? "gap-5" : "gap-6"
-        )}
+        className="no-scrollbar flex min-h-0 w-full flex-1 snap-y snap-mandatory flex-col gap-6 overflow-y-auto scroll-auto px-4"
         onScroll={handleScroll}
       >
         <div
@@ -164,10 +262,7 @@ export function NiriRenderer({ layout }: NiriRendererProps) {
                 onScroll={handleScroll}
               >
                 <div
-                  className={cn(
-                    "flex min-h-0 gap-3 transition-transform duration-200 ease-out",
-                    isOverviewOpen && "origin-top scale-[0.95] py-2"
-                  )}
+                  className="flex min-h-0 gap-3"
                   style={{ height: TILE_HEIGHT }}
                 >
                   <div
