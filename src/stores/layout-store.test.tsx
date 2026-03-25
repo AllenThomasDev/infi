@@ -25,6 +25,7 @@ function makeLayout(
 ): NiriCanvasLayout {
   return {
     focusTick: 0,
+    isFullscreenMode: false,
     isNotesOpen: false,
     isOverviewOpen: false,
     lastColumnByRowId,
