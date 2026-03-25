@@ -7,7 +7,6 @@ import {
   Minus,
   X,
 } from "lucide-react";
-import type React from "react";
 import ModeToggle from "@/components/mode-toggle";
 import { ShortcutTooltip } from "@/components/shortcut-tooltip";
 import { Button } from "@/components/ui/button";
@@ -70,11 +69,7 @@ function ProjectItem({
           {isActive ? (
             <div className="absolute top-1/2 left-0 h-4 w-1 -translate-y-1/2 rounded-r-full bg-sidebar-primary" />
           ) : null}
-          <CollapsibleTrigger
-            nativeButton={false}
-            render={<span />}
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
-          >
+          <CollapsibleTrigger asChild onClick={(e) => e.stopPropagation()}>
             <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
           </CollapsibleTrigger>
           <FolderGit2 />
@@ -141,7 +136,7 @@ function CanvasItem({
   return (
     <SidebarMenuSubItem>
       <SidebarMenuSubButton
-        render={<button onClick={onSwitch} type="button" />}
+        asChild
         className={
           isActive
             ? "w-full pr-8 [&>svg]:text-inherit"
@@ -149,8 +144,10 @@ function CanvasItem({
         }
         isActive={isActive}
       >
-        <GitBranch className="size-3.5" />
-        <span>{canvas.name}</span>
+        <button onClick={onSwitch} type="button">
+          <GitBranch className="size-3.5" />
+          <span>{canvas.name}</span>
+        </button>
       </SidebarMenuSubButton>
       <ShortcutTooltip command="workspace.closeCanvas" label="Close Canvas">
         <Button
