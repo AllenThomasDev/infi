@@ -1,3 +1,4 @@
+// TODO: temporary test block — remove me
 import { contextBridge, ipcRenderer } from "electron";
 import { IPC_CHANNELS } from "./constants";
 
