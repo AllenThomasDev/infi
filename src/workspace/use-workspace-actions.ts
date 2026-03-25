@@ -147,7 +147,7 @@ export function useWorkspaceActions({
       createCanvasAction(projectId, {
         branch: selection.branch,
         name: selection.branch,
-        worktreePath: result.path,
+        worktreePath: result.worktree.path,
       });
     },
     [createCanvasAction, projects, switchCanvasAction]

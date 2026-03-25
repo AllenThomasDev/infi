@@ -19,13 +19,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  gitCommitMutationOptions,
-  gitPushMutationOptions,
+  gitRunStackedActionMutationOptions,
+  gitPullMutationOptions,
   gitStatusQueryOptions,
+  gitMutationKeys,
   invalidateGitQueries,
 } from "@/lib/git-query";
 import { buildMenuItems, resolveQuickAction } from "@/lib/git-actions-logic";
-import type { GitStatusFile } from "@/ipc/git/handlers";
+import type { GitStatusResult } from "@/ipc/git/contracts";
 import { cn } from "@/utils/tailwind";
 
 interface GitActionsProps {
@@ -42,14 +43,14 @@ export function GitActions({ cwd }: GitActionsProps) {
     new Set()
   );
 
-  const commitMutation = useMutation(
-    gitCommitMutationOptions({ cwd, queryClient })
+  const runStackedActionMutation = useMutation(
+    gitRunStackedActionMutationOptions({ cwd, queryClient })
   );
-  const pushMutation = useMutation(
-    gitPushMutationOptions({ cwd, queryClient })
+  const pullMutation = useMutation(
+    gitPullMutationOptions({ cwd, queryClient })
   );
 
-  const isBusy = commitMutation.isPending || pushMutation.isPending;
+  const isBusy = runStackedActionMutation.isPending || pullMutation.isPending;
   const quickAction = useMemo(
     () => resolveQuickAction(gitStatus, isBusy),
     [gitStatus, isBusy]
@@ -59,44 +60,29 @@ export function GitActions({ cwd }: GitActionsProps) {
     [gitStatus, isBusy]
   );
 
-  const allFiles: GitStatusFile[] = gitStatus?.files ?? [];
+  const allFiles = gitStatus?.workingTree.files ?? [];
   const selectedFiles = allFiles.filter((f) => !excludedFiles.has(f.path));
   const allSelected = excludedFiles.size === 0;
   const noneSelected = selectedFiles.length === 0;
 
-  const runCommit = useCallback(
-    async (message: string, filePaths?: string[]) => {
-      const msg = message.trim();
-      if (!msg) return;
-      await commitMutation.mutateAsync({ message: msg, filePaths });
-    },
-    [commitMutation]
-  );
-
-  const runPush = useCallback(async () => {
-    await pushMutation.mutateAsync();
-  }, [pushMutation]);
-
-  const runQuickAction = useCallback(async () => {
-    if (quickAction.disabled || !quickAction.action) return;
-
-    if (quickAction.action === "commit") {
+  const runQuickAction = useCallback(() => {
+    if (quickAction.kind === "run_pull") {
+      void pullMutation.mutateAsync();
+      return;
+    }
+    if (quickAction.kind === "run_action" && quickAction.action) {
+      if (quickAction.action === "commit") {
+        setIsCommitDialogOpen(true);
+        return;
+      }
+      // For commit_push / commit_push_pr, open dialog to get commit message.
       setIsCommitDialogOpen(true);
       return;
     }
-    if (quickAction.action === "push") {
-      await runPush();
-      return;
-    }
-    if (quickAction.action === "commit_push") {
-      setIsCommitDialogOpen(true);
-    }
-  }, [quickAction, runPush]);
+  }, [quickAction, pullMutation]);
 
   const handleDialogSubmit = useCallback(async () => {
     const msg = commitMessage.trim();
-    if (!msg) return;
-
     const filePaths = allSelected
       ? undefined
       : selectedFiles.map((f) => f.path);
@@ -105,33 +91,42 @@ export function GitActions({ cwd }: GitActionsProps) {
     setCommitMessage("");
     setExcludedFiles(new Set());
 
-    await runCommit(msg, filePaths);
+    const action =
+      quickAction.kind === "run_action" && quickAction.action
+        ? quickAction.action
+        : "commit";
 
-    if (
-      quickAction.action === "commit_push" &&
-      gitStatus?.hasUpstream
-    ) {
-      await runPush();
-    }
+    await runStackedActionMutation.mutateAsync({
+      action,
+      ...(msg ? { commitMessage: msg } : {}),
+      ...(filePaths ? { filePaths } : {}),
+    });
   }, [
     allSelected,
     commitMessage,
-    gitStatus?.hasUpstream,
-    quickAction.action,
-    runCommit,
-    runPush,
+    quickAction,
+    runStackedActionMutation,
     selectedFiles,
   ]);
 
   const handleMenuAction = useCallback(
-    (id: "commit" | "push") => {
-      if (id === "commit") {
-        setIsCommitDialogOpen(true);
-      } else {
-        void runPush();
+    (item: (typeof menuItems)[number]) => {
+      if (item.disabled) return;
+      if (item.dialogAction === "push") {
+        void runStackedActionMutation.mutateAsync({
+          action: "commit_push",
+        });
+        return;
       }
+      if (item.dialogAction === "create_pr") {
+        void runStackedActionMutation.mutateAsync({
+          action: "commit_push_pr",
+        });
+        return;
+      }
+      setIsCommitDialogOpen(true);
     },
-    [runPush]
+    [runStackedActionMutation]
   );
 
   if (!cwd) return null;
@@ -147,7 +142,8 @@ export function GitActions({ cwd }: GitActionsProps) {
           title={quickAction.hint}
           variant="ghost"
         >
-          {quickAction.action === "push" ? (
+          {quickAction.kind === "run_action" &&
+          quickAction.action === "commit_push" ? (
             <CloudUpload className="size-3" />
           ) : (
             <GitCommit className="size-3" />
@@ -174,9 +170,9 @@ export function GitActions({ cwd }: GitActionsProps) {
               <DropdownMenuItem
                 key={item.id}
                 disabled={item.disabled}
-                onClick={() => handleMenuAction(item.id)}
+                onClick={() => handleMenuAction(item)}
               >
-                {item.id === "commit" ? (
+                {item.icon === "commit" ? (
                   <GitCommit className="size-3.5" />
                 ) : (
                   <CloudUpload className="size-3.5" />
@@ -248,8 +244,10 @@ export function GitActions({ cwd }: GitActionsProps) {
                         }}
                       />
                       <span className="flex-1 truncate">{file.path}</span>
-                      <span className="shrink-0 text-muted-foreground">
-                        {file.status}
+                      <span className="shrink-0">
+                        <span className="text-green-500">+{file.insertions}</span>
+                        <span className="text-muted-foreground"> / </span>
+                        <span className="text-red-500">-{file.deletions}</span>
                       </span>
                     </label>
                   );

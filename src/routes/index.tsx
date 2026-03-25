@@ -216,7 +216,7 @@ function HomePage() {
                 <span className="flex items-center gap-1 px-1.5 text-[10px] text-muted-foreground">
                   <GitBranch className="size-3" />
                   {gitStatus.branch}
-                  {gitStatus.hasChanges && (
+                  {gitStatus.hasWorkingTreeChanges && (
                     <span className="size-1.5 rounded-full bg-primary" />
                   )}
                   {gitStatus.aheadCount > 0 && (

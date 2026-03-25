@@ -14,6 +14,7 @@ import { ipc } from "@/ipc/manager";
 
 interface BranchListItem {
   current: boolean;
+  isDefault: boolean;
   name: string;
   worktreePath: string | null;
 }
@@ -65,8 +66,8 @@ export function BranchPicker({
           return;
         }
 
-        setBranches(result.branches);
-        setCurrentBranch(result.currentBranch);
+        setBranches([...result.branches]);
+        setCurrentBranch(result.branches.find((b) => b.current)?.name ?? null);
       })
       .catch((err) => {
         if (cancelled) {
