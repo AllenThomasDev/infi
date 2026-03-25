@@ -21,7 +21,7 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupAction,
+
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
@@ -198,23 +198,26 @@ export function WorkspaceSidebar({
     >
       <SidebarContent>
         <SidebarGroup className={isMac ? "pt-14" : undefined}>
-          <SidebarGroupLabel>Projects</SidebarGroupLabel>
-          <ShortcutTooltip command="workspace.openProject" label="Open Project" side="right">
-            <SidebarGroupAction
-              onClick={() => {
-                Promise.resolve(onOpenProject()).catch((err) => {
-                  toastManager.add({
-                    type: "error",
-                    title: "Failed to open project",
-                    description: err instanceof Error ? err.message : "An error occurred.",
+          <SidebarGroupLabel>
+            Projects
+            <ShortcutTooltip command="workspace.openProject" label="Open Project" side="right">
+              <button
+                className="ml-auto flex items-center justify-center rounded-md p-0.5 text-sidebar-foreground/70 ring-sidebar-ring outline-hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2"
+                onClick={() => {
+                  Promise.resolve(onOpenProject()).catch((err) => {
+                    toastManager.add({
+                      type: "error",
+                      title: "Failed to open project",
+                      description: err instanceof Error ? err.message : "An error occurred.",
+                    });
                   });
-                });
-              }}
-              type="button"
-            >
-              <Import className="size-4" />
-            </SidebarGroupAction>
-          </ShortcutTooltip>
+                }}
+                type="button"
+              >
+                <Import className="size-3.5" />
+              </button>
+            </ShortcutTooltip>
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {projects.map((project) => (
