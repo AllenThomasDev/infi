@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import {
   ChevronRight,
   FolderGit2,
@@ -10,7 +11,6 @@ import {
 import ModeToggle from "@/components/mode-toggle";
 import { ShortcutTooltip } from "@/components/shortcut-tooltip";
 import { Button } from "@/components/ui/button";
-import { toastManager } from "@/components/ui/toast";
 import {
   Collapsible,
   CollapsibleContent,
@@ -33,7 +33,9 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { toastManager } from "@/components/ui/toast";
 import { isMacPlatform } from "@/keybindings/match";
+import { gitStatusQueryOptions } from "@/lib/git-query";
 import type { Canvas, Project } from "@/workspace/types";
 import { useWorkspaceStore } from "@/workspace/workspace-store";
 
@@ -97,7 +99,8 @@ function ProjectItem({
               toastManager.add({
                 type: "error",
                 title: "Failed to close project",
-                description: err instanceof Error ? err.message : "An error occurred.",
+                description:
+                  err instanceof Error ? err.message : "An error occurred.",
               });
             });
           }}
@@ -119,7 +122,10 @@ function ProjectItem({
                     toastManager.add({
                       type: "error",
                       title: "Failed to close canvas",
-                      description: err instanceof Error ? err.message : "An error occurred.",
+                      description:
+                        err instanceof Error
+                          ? err.message
+                          : "An error occurred.",
                     });
                   });
                 }}
@@ -144,6 +150,13 @@ function CanvasItem({
   onClose: () => void;
   onSwitch: () => void;
 }) {
+  const { data: gitStatus } = useQuery(
+    gitStatusQueryOptions(canvas.worktreePath)
+  );
+  const insertions = gitStatus?.workingTree.insertions ?? 0;
+  const deletions = gitStatus?.workingTree.deletions ?? 0;
+  const hasChanges = insertions > 0 || deletions > 0;
+
   return (
     <SidebarMenuSubItem>
       <SidebarMenuSubButton
@@ -157,7 +170,17 @@ function CanvasItem({
       >
         <button onClick={onSwitch} type="button">
           <GitBranch className="size-3.5" />
-          <span>{canvas.name}</span>
+          <span className="truncate">{canvas.name}</span>
+          {hasChanges && (
+            <span className="ml-auto flex shrink-0 items-center gap-1 font-mono text-[10px] leading-none group-hover/menu-sub-item:invisible">
+              {insertions > 0 && (
+                <span className="text-green-500">+{insertions}</span>
+              )}
+              {deletions > 0 && (
+                <span className="text-red-500">-{deletions}</span>
+              )}
+            </span>
+          )}
         </button>
       </SidebarMenuSubButton>
       <ShortcutTooltip command="workspace.closeCanvas" label="Close Canvas">
@@ -199,14 +222,19 @@ export function WorkspaceSidebar({
       <SidebarContent>
         <SidebarGroup className={isMac ? "pt-14" : undefined}>
           <SidebarGroupLabel>Projects</SidebarGroupLabel>
-          <ShortcutTooltip command="workspace.openProject" label="Open Project" side="right">
+          <ShortcutTooltip
+            command="workspace.openProject"
+            label="Open Project"
+            side="right"
+          >
             <SidebarGroupAction
               onClick={() => {
                 Promise.resolve(onOpenProject()).catch((err) => {
                   toastManager.add({
                     type: "error",
                     title: "Failed to open project",
-                    description: err instanceof Error ? err.message : "An error occurred.",
+                    description:
+                      err instanceof Error ? err.message : "An error occurred.",
                   });
                 });
               }}

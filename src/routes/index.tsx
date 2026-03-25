@@ -1,18 +1,25 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { FolderGit2 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { GitBranch, Maximize, Minimize, NotepadText, NotepadTextDashed, Plus, Terminal, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import {
+  FolderGit2,
+  GitBranch,
+  Maximize,
+  Minimize,
+  NotepadText,
+  NotepadTextDashed,
+  Plus,
+  Terminal,
+  X,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { BranchPicker } from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
+import { FileStatusCounts } from "@/components/file-status-counts";
 import { GitActions } from "@/components/git-actions";
 import { NotesEditor } from "@/components/notes-editor";
 import { ShortcutKbd } from "@/components/shortcut-tooltip";
 import { StatusBar } from "@/components/status-bar";
 import { Button } from "@/components/ui/button";
-import { gitStatusQueryOptions } from "@/lib/git-query";
-import { closeTile } from "@/layout/close-tile";
-import { cn } from "@/utils/tailwind";
 import {
   Empty,
   EmptyContent,
@@ -28,8 +35,11 @@ import { WorkspaceSidebar } from "@/components/workspace-sidebar";
 import { useConfirm } from "@/hooks/use-confirm";
 import type { CommandHandlerMap } from "@/keybindings/types";
 import { useKeybindings } from "@/keybindings/use-keybindings";
+import { closeTile } from "@/layout/close-tile";
+import { gitStatusQueryOptions } from "@/lib/git-query";
 import { useLayoutStore } from "@/stores/layout-store";
 import { useTerminalTitleStore } from "@/stores/terminal-title-store";
+import { cn } from "@/utils/tailwind";
 import { useBranchPickerState } from "@/workspace/use-branch-picker-state";
 import { useWorkspaceActions } from "@/workspace/use-workspace-actions";
 import { useWorkspaceCommandHandlers } from "@/workspace/use-workspace-command-handlers";
@@ -149,13 +159,13 @@ function HomePage() {
       <div className="flex h-full w-full min-w-0 flex-col overflow-hidden">
         <StatusBar>
           {activeCanvas && (
-            <div className="nodrag ml-auto flex items-center gap-1">
+            <>
               {gitStatus?.branch && (
-                <span className="flex items-center gap-1 px-1.5 text-[10px] text-muted-foreground">
+                <span className="nodrag flex items-center gap-1.5 px-1.5 text-[10px] text-muted-foreground">
                   <GitBranch className="size-3" />
                   {gitStatus.branch}
                   {gitStatus.hasWorkingTreeChanges && (
-                    <span className="size-1.5 rounded-full bg-primary" />
+                    <FileStatusCounts files={gitStatus.workingTree.files} />
                   )}
                   {gitStatus.aheadCount > 0 && (
                     <span>↑{gitStatus.aheadCount}</span>
@@ -165,15 +175,17 @@ function HomePage() {
                   )}
                 </span>
               )}
-              <GitActions cwd={gitCwd} />
-              <Button
-                onClick={toggleFullscreenMode}
-                size="icon-xs"
-                variant={isFullscreenMode ? "secondary" : "ghost"}
-              >
-                {isFullscreenMode ? <Minimize /> : <Maximize />}
-              </Button>
-            </div>
+              <div className="nodrag ml-auto flex items-center gap-1">
+                <GitActions cwd={gitCwd} />
+                <Button
+                  onClick={toggleFullscreenMode}
+                  size="icon-xs"
+                  variant={isFullscreenMode ? "secondary" : "ghost"}
+                >
+                  {isFullscreenMode ? <Minimize /> : <Maximize />}
+                </Button>
+              </div>
+            </>
           )}
         </StatusBar>
         {activeCanvas ? (
@@ -190,7 +202,8 @@ function HomePage() {
                 <div
                   className={cn(
                     "group/tab relative flex h-full items-center",
-                    !notesOpen && selectedItemId === item.id &&
+                    !notesOpen &&
+                      selectedItemId === item.id &&
                       "after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary"
                   )}
                   key={item.id}
@@ -198,19 +211,26 @@ function HomePage() {
                   <Button
                     className={cn(
                       "gap-1.5 text-xs",
-                      !notesOpen && selectedItemId === item.id &&
+                      !notesOpen &&
+                        selectedItemId === item.id &&
                         "hover:bg-transparent"
                     )}
                     onClick={() => {
-                      if (notesOpen) toggleNotes();
+                      if (notesOpen) {
+                        toggleNotes();
+                      }
                       selectItem(item.id, { scroll: true });
                     }}
                     size="xs"
                     variant="ghost"
                   >
                     <Terminal className="size-3.5" />
-                    <span className="max-w-32 truncate">{terminalTitles[item.id]?.trim() || "Terminal"}</span>
-                    <span className="text-muted-foreground">{rowIndex + 1}.{colIndex + 1}</span>
+                    <span className="max-w-32 truncate">
+                      {terminalTitles[item.id]?.trim() || "Terminal"}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {rowIndex + 1}.{colIndex + 1}
+                    </span>
                   </Button>
                   <Button
                     className="size-5 opacity-0 group-hover/tab:opacity-100"
@@ -228,7 +248,9 @@ function HomePage() {
             )}
             <Button
               onClick={() => {
-                if (notesOpen) toggleNotes();
+                if (notesOpen) {
+                  toggleNotes();
+                }
                 addItem({
                   id: `terminal-item-${crypto.randomUUID()}`,
                   ref: { type: "terminal" },
@@ -242,9 +264,7 @@ function HomePage() {
           </div>
         ) : null}
         <div className="relative min-h-0 flex-1 overflow-hidden">
-          {!hasProjects ? (
-            <WelcomeScreen onOpenProject={openProjectAndPromptForBranch} />
-          ) : (
+          {hasProjects ? (
             <>
               <div className={notesOpen ? "hidden" : "h-full w-full"}>
                 <WorkspaceContainer
@@ -263,6 +283,8 @@ function HomePage() {
                 />
               )}
             </>
+          ) : (
+            <WelcomeScreen onOpenProject={openProjectAndPromptForBranch} />
           )}
           <CommandPalette
             handlers={commandHandlers}

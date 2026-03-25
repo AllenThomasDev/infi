@@ -1,5 +1,10 @@
 import { Option, Schema } from "effect";
-import { NonNegativeInt, PositiveInt, TrimmedNonEmptyString } from "./baseSchemas";
+import {
+  NonNegativeInt,
+  PositiveInt,
+  TrimmedNonEmptyString,
+} from "./baseSchemas";
+
 // Inlined from t3code's model.ts — only this constant is needed by git contracts.
 const DEFAULT_GIT_TEXT_GENERATION_MODEL = "gpt-5.4-mini" as const;
 
@@ -7,7 +12,11 @@ const TrimmedNonEmptyStringSchema = TrimmedNonEmptyString;
 
 // Domain Types
 
-export const GitStackedAction = Schema.Literals(["commit", "commit_push", "commit_push_pr"]);
+export const GitStackedAction = Schema.Literals([
+  "commit",
+  "commit_push",
+  "commit_push_pr",
+]);
 export type GitStackedAction = typeof GitStackedAction.Type;
 const GitCommitStepStatus = Schema.Literals(["created", "skipped_no_changes"]);
 const GitPushStepStatus = Schema.Literals([
@@ -15,8 +24,15 @@ const GitPushStepStatus = Schema.Literals([
   "skipped_not_requested",
   "skipped_up_to_date",
 ]);
-const GitBranchStepStatus = Schema.Literals(["created", "skipped_not_requested"]);
-const GitPrStepStatus = Schema.Literals(["created", "opened_existing", "skipped_not_requested"]);
+const GitBranchStepStatus = Schema.Literals([
+  "created",
+  "skipped_not_requested",
+]);
+const GitPrStepStatus = Schema.Literals([
+  "created",
+  "opened_existing",
+  "skipped_not_requested",
+]);
 const GitStatusPrState = Schema.Literals(["open", "closed", "merged"]);
 const GitPullRequestReference = TrimmedNonEmptyStringSchema;
 const GitPullRequestState = Schema.Literals(["open", "closed", "merged"]);
@@ -61,13 +77,17 @@ export type GitPullInput = typeof GitPullInput.Type;
 export const GitRunStackedActionInput = Schema.Struct({
   cwd: TrimmedNonEmptyStringSchema,
   action: GitStackedAction,
-  commitMessage: Schema.optional(TrimmedNonEmptyStringSchema.check(Schema.isMaxLength(10_000))),
+  commitMessage: Schema.optional(
+    TrimmedNonEmptyStringSchema.check(Schema.isMaxLength(10_000))
+  ),
   featureBranch: Schema.optional(Schema.Boolean),
   filePaths: Schema.optional(
-    Schema.Array(TrimmedNonEmptyStringSchema).check(Schema.isMinLength(1)),
+    Schema.Array(TrimmedNonEmptyStringSchema).check(Schema.isMinLength(1))
   ),
   textGenerationModel: Schema.optional(TrimmedNonEmptyStringSchema).pipe(
-    Schema.withConstructorDefault(() => Option.some(DEFAULT_GIT_TEXT_GENERATION_MODEL)),
+    Schema.withConstructorDefault(() =>
+      Option.some(DEFAULT_GIT_TEXT_GENERATION_MODEL)
+    )
   ),
 });
 export type GitRunStackedActionInput = typeof GitRunStackedActionInput.Type;
@@ -96,7 +116,8 @@ export const GitPreparePullRequestThreadInput = Schema.Struct({
   reference: GitPullRequestReference,
   mode: GitPreparePullRequestThreadMode,
 });
-export type GitPreparePullRequestThreadInput = typeof GitPreparePullRequestThreadInput.Type;
+export type GitPreparePullRequestThreadInput =
+  typeof GitPreparePullRequestThreadInput.Type;
 
 export const GitRemoveWorktreeInput = Schema.Struct({
   cwd: TrimmedNonEmptyStringSchema,
@@ -122,6 +143,11 @@ export const GitInitInput = Schema.Struct({
 });
 export type GitInitInput = typeof GitInitInput.Type;
 
+// NOTE: GitFileStatus was added to surface per-file add/modify/delete state
+// from `git status --porcelain=2`. This breaks the original t3code contract
+// (one-time exemption from the protected-files rule).
+const GitFileStatus = Schema.Literals(["added", "modified", "deleted", "untracked"]);
+
 // RPC Results
 
 const GitStatusPr = Schema.Struct({
@@ -140,9 +166,10 @@ export const GitStatusResult = Schema.Struct({
     files: Schema.Array(
       Schema.Struct({
         path: TrimmedNonEmptyStringSchema,
+        status: GitFileStatus,
         insertions: NonNegativeInt,
         deletions: NonNegativeInt,
-      }),
+      })
     ),
     insertions: NonNegativeInt,
     deletions: NonNegativeInt,
@@ -169,14 +196,16 @@ export type GitCreateWorktreeResult = typeof GitCreateWorktreeResult.Type;
 export const GitResolvePullRequestResult = Schema.Struct({
   pullRequest: GitResolvedPullRequest,
 });
-export type GitResolvePullRequestResult = typeof GitResolvePullRequestResult.Type;
+export type GitResolvePullRequestResult =
+  typeof GitResolvePullRequestResult.Type;
 
 export const GitPreparePullRequestThreadResult = Schema.Struct({
   pullRequest: GitResolvedPullRequest,
   branch: TrimmedNonEmptyStringSchema,
   worktreePath: TrimmedNonEmptyStringSchema.pipe(Schema.NullOr),
 });
-export type GitPreparePullRequestThreadResult = typeof GitPreparePullRequestThreadResult.Type;
+export type GitPreparePullRequestThreadResult =
+  typeof GitPreparePullRequestThreadResult.Type;
 
 export const GitRunStackedActionResult = Schema.Struct({
   action: GitStackedAction,
