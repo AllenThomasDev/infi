@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FolderGit2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { GitBranch, Maximize, Minimize, NotepadText, NotepadTextDashed, Plus, Terminal, X } from "lucide-react";
+import { Diff, GitBranch, Maximize, Minimize, NotepadText, NotepadTextDashed, Plus, Terminal, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { BranchPicker } from "@/components/branch-picker";
 import { CommandPalette } from "@/components/command-palette";
 import { GitActions } from "@/components/git-actions";
+import { DiffViewer, DiffWorkerPoolProvider } from "@/components/diff-viewer";
 import { NotesEditor } from "@/components/notes-editor";
 import { ShortcutKbd } from "@/components/shortcut-tooltip";
 import { StatusBar } from "@/components/status-bar";
@@ -63,10 +64,12 @@ function HomePage() {
   const activeCanvasId = useWorkspaceStore((s) => s.activeCanvasId);
   const hasProjects = useWorkspaceStore((s) => s.projects.length > 0);
   const projects = useWorkspaceStore((s) => s.projects);
+  const diffViewOpen = useLayoutStore((s) => s.layout.isDiffViewOpen);
   const isFullscreenMode = useLayoutStore((s) => s.layout.isFullscreenMode);
   const notesOpen = useLayoutStore((s) => s.layout.isNotesOpen);
   const selectedItemId = useLayoutStore((s) => s.layout.selectedItemId);
   const rows = useLayoutStore((s) => s.layout.rows);
+  const toggleDiffView = useLayoutStore((s) => s.toggleDiffView);
   const toggleFullscreenMode = useLayoutStore((s) => s.toggleFullscreenMode);
   const toggleNotes = useLayoutStore((s) => s.toggleNotes);
   const selectItem = useLayoutStore((s) => s.selectItem);
@@ -139,6 +142,7 @@ function HomePage() {
   }
 
   return (
+    <DiffWorkerPoolProvider>
     <SidebarProvider>
       <WorkspaceSidebar
         onCloseCanvas={closeCanvas}
@@ -167,6 +171,13 @@ function HomePage() {
               )}
               <GitActions cwd={gitCwd} />
               <Button
+                onClick={toggleDiffView}
+                size="icon-xs"
+                variant={diffViewOpen ? "secondary" : "ghost"}
+              >
+                <Diff />
+              </Button>
+              <Button
                 onClick={toggleFullscreenMode}
                 size="icon-xs"
                 variant={isFullscreenMode ? "secondary" : "ghost"}
@@ -190,7 +201,7 @@ function HomePage() {
                 <div
                   className={cn(
                     "group/tab relative flex h-full items-center",
-                    !notesOpen && selectedItemId === item.id &&
+                    !notesOpen && !diffViewOpen && selectedItemId === item.id &&
                       "after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary"
                   )}
                   key={item.id}
@@ -198,11 +209,12 @@ function HomePage() {
                   <Button
                     className={cn(
                       "gap-1.5 text-xs",
-                      !notesOpen && selectedItemId === item.id &&
+                      !notesOpen && !diffViewOpen && selectedItemId === item.id &&
                         "hover:bg-transparent"
                     )}
                     onClick={() => {
                       if (notesOpen) toggleNotes();
+                      if (diffViewOpen) toggleDiffView();
                       selectItem(item.id, { scroll: true });
                     }}
                     size="xs"
@@ -229,6 +241,7 @@ function HomePage() {
             <Button
               onClick={() => {
                 if (notesOpen) toggleNotes();
+                if (diffViewOpen) toggleDiffView();
                 addItem({
                   id: `terminal-item-${crypto.randomUUID()}`,
                   ref: { type: "terminal" },
@@ -246,7 +259,7 @@ function HomePage() {
             <WelcomeScreen onOpenProject={openProjectAndPromptForBranch} />
           ) : (
             <>
-              <div className={notesOpen ? "hidden" : "h-full w-full"}>
+              <div className={notesOpen || diffViewOpen ? "hidden" : "h-full w-full"}>
                 <WorkspaceContainer
                   branchPickerOpen={branchPickerOpen}
                   commandPaletteOpen={commandPaletteOpen}
@@ -260,6 +273,13 @@ function HomePage() {
                   onClose={toggleNotes}
                   onContentChange={setHasNotes}
                   worktreePath={activeCanvas.worktreePath}
+                />
+              )}
+              {diffViewOpen && activeCanvas && (
+                <DiffViewer
+                  key={`diff-${activeCanvas.id}`}
+                  cwd={activeCanvas.worktreePath}
+                  onClose={toggleDiffView}
                 />
               )}
             </>
@@ -282,6 +302,7 @@ function HomePage() {
         </div>
       </div>
     </SidebarProvider>
+    </DiffWorkerPoolProvider>
   );
 }
 

@@ -12,6 +12,7 @@ import {
   createWorktreeInputSchema,
   gitCheckoutInputSchema,
   gitCommitInputSchema,
+  gitDiffInputSchema,
   gitInitInputSchema,
   gitPullInputSchema,
   gitPushInputSchema,
@@ -23,6 +24,7 @@ import {
 
 import { GitCore } from "./Services/GitCore";
 import { GitManager } from "./Services/GitManager";
+import { GitService } from "./Services/GitService";
 
 import { GitServiceLive } from "./Layers/GitService";
 import { GitCoreLive } from "./Layers/GitCore";
@@ -152,6 +154,22 @@ export const gitCommit = os
           ...(input.filePaths ? { filePaths: input.filePaths } : {}),
         });
       }).pipe(Effect.provide(GitManagerFull)),
+    ),
+  );
+
+export const gitDiff = os
+  .input(gitDiffInputSchema)
+  .handler(({ input }) =>
+    Effect.runPromise(
+      Effect.gen(function* () {
+        const git = yield* GitService;
+        const result = yield* git.execute({
+          operation: "gitDiff.head",
+          cwd: input.cwd,
+          args: ["diff", "--patch", "--minimal", "--no-color", "HEAD"],
+        });
+        return { diff: result.stdout };
+      }).pipe(Effect.provide(GitServiceLive), Effect.provide(NodeServices.layer)),
     ),
   );
 

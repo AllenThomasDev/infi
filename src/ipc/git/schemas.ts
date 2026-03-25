@@ -46,6 +46,10 @@ export const gitCheckoutInputSchema = z.object({
   branch: z.string().min(1),
 });
 
+export const gitDiffInputSchema = z.object({
+  cwd: cwdSchema,
+});
+
 export const gitRunStackedActionInputSchema = z.object({
   cwd: cwdSchema,
   action: z.enum(["commit", "commit_push", "commit_push_pr"]),
