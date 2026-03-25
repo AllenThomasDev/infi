@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import type { CommandHandlerMap } from "@/keybindings/types";
+import { toastManager } from "@/components/ui/toast";
 import { useWorkspaceStore } from "@/workspace/workspace-store";
 
 interface WorkspaceCommandHandlersOptions {
@@ -55,11 +56,23 @@ export function useWorkspaceCommandHandlers({
     () => ({
       "workspace.newCanvas": onCreateCanvas,
       "workspace.openProject": () => {
-        onOpenProject().catch(console.error);
+        onOpenProject().catch((err) => {
+          toastManager.add({
+            type: "error",
+            title: "Failed to open project",
+            description: err instanceof Error ? err.message : "Could not open the project.",
+          });
+        });
       },
       "workspace.closeCanvas": () => {
         if (activeCanvasId) {
-          Promise.resolve(onCloseCanvas(activeCanvasId)).catch(console.error);
+          Promise.resolve(onCloseCanvas(activeCanvasId)).catch((err) => {
+            toastManager.add({
+              type: "error",
+              title: "Failed to close canvas",
+              description: err instanceof Error ? err.message : "Could not close the canvas.",
+            });
+          });
         }
       },
       "workspace.prevCanvas": () => switchCanvasByOffset(-1),

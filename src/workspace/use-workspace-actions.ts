@@ -97,6 +97,7 @@ export function useWorkspaceActions({
               title: "Failed to remove worktree",
               description: error instanceof Error ? error.message : "Could not delete the worktree.",
             });
+            return;
           }
         }
       }

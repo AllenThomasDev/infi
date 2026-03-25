@@ -10,7 +10,6 @@ import {
   CommandList,
   CommandState,
 } from "@/components/ui/command";
-import { toastManager } from "@/components/ui/toast";
 import { ipc } from "@/ipc/manager";
 
 interface BranchListItem {
@@ -75,15 +74,9 @@ export function BranchPicker({
           return;
         }
 
-        const message = err instanceof Error ? err.message : String(err);
         setBranches([]);
         setCurrentBranch(null);
-        setError(message);
-        toastManager.add({
-          type: "error",
-          title: "Failed to load branches",
-          description: message,
-        });
+        setError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => {
         if (!cancelled) {
@@ -135,13 +128,7 @@ export function BranchPicker({
     })
       .then(() => onOpenChange(false))
       .catch((err) => {
-        const message = err instanceof Error ? err.message : String(err);
-        setError(message);
-        toastManager.add({
-          type: "error",
-          title: "Failed to open branch",
-          description: message,
-        });
+        setError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => {
         setSubmitting(false);
