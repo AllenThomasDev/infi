@@ -133,7 +133,7 @@ export function GitActions({ cwd }: GitActionsProps) {
 
   return (
     <>
-      <div className="flex items-center rounded-md bg-accent">
+      <div className="flex items-center rounded-md bg-accent text-foreground">
         <Button
           className="rounded-r-none text-xs"
           disabled={quickAction.disabled || isBusy}
