@@ -50,6 +50,10 @@ export const gitDiffInputSchema = z.object({
   cwd: cwdSchema,
 });
 
+export const gitDiffRangeInputSchema = z.object({
+  cwd: cwdSchema,
+});
+
 export const gitRunStackedActionInputSchema = z.object({
   cwd: cwdSchema,
   action: z.enum(["commit", "commit_push", "commit_push_pr"]),

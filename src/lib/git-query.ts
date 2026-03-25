@@ -12,6 +12,7 @@ export const gitQueryKeys = {
   status: (cwd: string | null) => ["git", "status", cwd] as const,
   branches: (cwd: string | null) => ["git", "branches", cwd] as const,
   diff: (cwd: string | null) => ["git", "diff", cwd] as const,
+  diffRange: (cwd: string | null) => ["git", "diffRange", cwd] as const,
 };
 
 export const gitMutationKeys = {
@@ -61,6 +62,19 @@ export function gitDiffQueryOptions(cwd: string | null) {
     queryFn: async () => {
       if (!cwd) throw new Error("Git diff is unavailable.");
       return ipc.client.git.diff({ cwd });
+    },
+    enabled: cwd !== null,
+    staleTime: GIT_STATUS_STALE_TIME_MS,
+    refetchOnWindowFocus: "always",
+  });
+}
+
+export function gitDiffRangeQueryOptions(cwd: string | null) {
+  return queryOptions({
+    queryKey: gitQueryKeys.diffRange(cwd),
+    queryFn: async () => {
+      if (!cwd) throw new Error("Git diff range is unavailable.");
+      return ipc.client.git.diffRange({ cwd });
     },
     enabled: cwd !== null,
     staleTime: GIT_STATUS_STALE_TIME_MS,

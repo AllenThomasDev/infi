@@ -73,6 +73,7 @@ function WelcomeScreen({ onOpenProject }: { onOpenProject: () => void }) {
 function HomePage() {
   const closeProjectAction = useWorkspaceStore((s) => s.closeProject);
   const activeCanvasId = useWorkspaceStore((s) => s.activeCanvasId);
+
   const hasProjects = useWorkspaceStore((s) => s.projects.length > 0);
   const projects = useWorkspaceStore((s) => s.projects);
   const diffViewOpen = useLayoutStore((s) => s.layout.isDiffViewOpen);

@@ -11,7 +11,7 @@ import DiffsWorker from "@pierre/diffs/worker/worker.js?worker";
 import { useQuery } from "@tanstack/react-query";
 import { Columns2Icon, Loader2, Rows3Icon } from "lucide-react";
 import { useMemo, useRef, type ReactNode } from "react";
-import { gitDiffQueryOptions } from "@/lib/git-query";
+import { gitDiffQueryOptions, gitDiffRangeQueryOptions } from "@/lib/git-query";
 import { useLayoutStore } from "@/stores/layout-store";
 
 type DiffRenderMode = "stacked" | "split";
@@ -100,8 +100,21 @@ interface DiffViewerProps {
 }
 
 function DiffContent({ cwd, onClose }: DiffViewerProps) {
-  const { data, isLoading, error } = useQuery(gitDiffQueryOptions(cwd));
-  const patch = data?.diff ?? "";
+  const rangeQuery = useQuery(gitDiffRangeQueryOptions(cwd));
+  const isLinkedWorktree = rangeQuery.data?.isLinkedWorktree ?? false;
+  const workingTreeQuery = useQuery({
+    ...gitDiffQueryOptions(cwd),
+    enabled: !isLinkedWorktree && !rangeQuery.isLoading,
+  });
+
+  const isLoading = rangeQuery.isLoading || (!isLinkedWorktree && workingTreeQuery.isLoading);
+  const error = isLinkedWorktree ? rangeQuery.error : workingTreeQuery.error;
+  const patch = isLinkedWorktree
+    ? rangeQuery.data?.diffPatch ?? ""
+    : workingTreeQuery.data?.diff ?? "";
+  const commitSummary = isLinkedWorktree
+    ? rangeQuery.data?.commitSummary ?? ""
+    : "";
   const renderMode = useLayoutStore((s) => s.layout.diffRenderMode);
   const setRenderMode = useLayoutStore((s) => s.setDiffRenderMode);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -140,6 +153,10 @@ function DiffContent({ cwd, onClose }: DiffViewerProps) {
       <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
         <span className="text-xs text-muted-foreground">
           {renderableFiles.length} file{renderableFiles.length !== 1 ? "s" : ""} changed
+          {commitSummary && (() => {
+            const commitCount = commitSummary.trim().split("\n").filter(Boolean).length;
+            return commitCount > 0 ? ` · ${commitCount} commit${commitCount !== 1 ? "s" : ""}` : null;
+          })()}
         </span>
         <div className="flex items-center gap-1">
           <button

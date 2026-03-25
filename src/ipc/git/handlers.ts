@@ -13,6 +13,7 @@ import {
   gitCheckoutInputSchema,
   gitCommitInputSchema,
   gitDiffInputSchema,
+  gitDiffRangeInputSchema,
   gitInitInputSchema,
   gitPullInputSchema,
   gitPushInputSchema,
@@ -170,6 +171,85 @@ export const gitDiff = os
         });
         return { diff: result.stdout };
       }).pipe(Effect.provide(GitServiceLive), Effect.provide(NodeServices.layer)),
+    ),
+  );
+
+const DEFAULT_BASE_CANDIDATES = ["main", "master"] as const;
+
+export const gitDiffRange = os
+  .input(gitDiffRangeInputSchema)
+  .handler(({ input }) =>
+    Effect.runPromise(
+      Effect.gen(function* () {
+        const core = yield* GitCore;
+        const git = yield* GitService;
+
+        // Detect if cwd is a linked worktree (not the main working tree).
+        // For the main worktree, git-dir is ".git"; for linked ones it's
+        // inside ".git/worktrees/<name>".
+        const gitDirResult = yield* git.execute({
+          operation: "gitDiffRange.gitDir",
+          cwd: input.cwd,
+          args: ["rev-parse", "--git-dir"],
+        });
+        const gitDir = gitDirResult.stdout.trim();
+        const isLinkedWorktree = gitDir.includes(".git/worktrees/");
+
+        if (!isLinkedWorktree) {
+          return { isLinkedWorktree: false, commitSummary: "", diffSummary: "", diffPatch: "" };
+        }
+
+        // Resolve the current branch name
+        const headResult = yield* git.execute({
+          operation: "gitDiffRange.head",
+          cwd: input.cwd,
+          args: ["rev-parse", "--abbrev-ref", "HEAD"],
+        });
+        const currentBranch = headResult.stdout.trim();
+
+        // Resolve default branch: origin/HEAD → fallback to main/master
+        const refResult = yield* git.execute({
+          operation: "gitDiffRange.defaultRef",
+          cwd: input.cwd,
+          args: ["symbolic-ref", "refs/remotes/origin/HEAD"],
+          allowNonZeroExit: true,
+        });
+
+        let baseBranch: string | null = null;
+        if (refResult.code === 0) {
+          const ref = refResult.stdout.trim().replace(/^refs\/remotes\/origin\//, "");
+          if (ref.length > 0 && ref !== currentBranch) {
+            baseBranch = ref;
+          }
+        }
+
+        if (!baseBranch) {
+          for (const candidate of DEFAULT_BASE_CANDIDATES) {
+            if (candidate === currentBranch) continue;
+            const check = yield* git.execute({
+              operation: "gitDiffRange.branchExists",
+              cwd: input.cwd,
+              args: ["rev-parse", "--verify", candidate],
+              allowNonZeroExit: true,
+            });
+            if (check.code === 0) {
+              baseBranch = candidate;
+              break;
+            }
+          }
+        }
+
+        if (!baseBranch) {
+          return { isLinkedWorktree: true, commitSummary: "", diffSummary: "", diffPatch: "" };
+        }
+
+        const range = yield* core.readRangeContext(input.cwd, baseBranch);
+        return { isLinkedWorktree: true, ...range };
+      }).pipe(
+        Effect.provide(GitCoreFull),
+        Effect.provide(GitServiceLive),
+        Effect.provide(NodeServices.layer),
+      ),
     ),
   );
 
