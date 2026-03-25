@@ -1,6 +1,7 @@
 import path from "pathe";
 import { useCallback } from "react";
 import type { BranchPickerSelection } from "@/components/branch-picker";
+import { toastManager } from "@/components/ui/toast";
 import { ipc } from "@/ipc/manager";
 import { useWorkspaceStore } from "@/workspace/workspace-store";
 
@@ -91,7 +92,11 @@ export function useWorkspaceActions({
               path: orphan.worktreePath,
             });
           } catch (error) {
-            console.error("Failed to remove worktree", error);
+            toastManager.add({
+              type: "error",
+              title: "Failed to remove worktree",
+              description: error instanceof Error ? error.message : "Could not delete the worktree.",
+            });
           }
         }
       }

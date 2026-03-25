@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MilkdownEditor } from "@/components/editors/milkdown-editor";
+import { toastManager } from "@/components/ui/toast";
 import { ipc } from "@/ipc/manager";
 
 const NOTES_PATH = ".context/notes.md";
@@ -37,8 +38,13 @@ export function NotesEditor({
         setEditorKey((k) => k + 1);
         onContentChangeRef.current?.(!!text.trim());
       })
-      .catch(() => {
+      .catch((err) => {
         setInitialContent("");
+        toastManager.add({
+          type: "error",
+          title: "Failed to load notes",
+          description: err instanceof Error ? err.message : "Could not read notes file.",
+        });
       });
   }, [worktreePath]);
 
@@ -53,7 +59,13 @@ export function NotesEditor({
       debounceRef.current = setTimeout(() => {
         ipc.client.files
           .writeFile({ path: getNotesPath(worktreePath), content: markdown })
-          .catch(console.error);
+          .catch((err) => {
+            toastManager.add({
+              type: "error",
+              title: "Failed to save notes",
+              description: err instanceof Error ? err.message : "Could not write notes file.",
+            });
+          });
       }, DEBOUNCE_MS);
     },
     [worktreePath]
